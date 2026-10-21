@@ -11,6 +11,10 @@ Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직
 
 ![타이틀](screenshots/title.png)
 
+> **다운로드**: [GitHub Releases](https://github.com/murse2000/DalbearSurvival/releases/latest)  
+> Windows 실행 파일과 Android APK를 릴리스에서 받을 수 있습니다.
+> 저장소: [github.com/murse2000/DalbearSurvival](https://github.com/murse2000/DalbearSurvival)
+
 ---
 
 ## 실행 방법
