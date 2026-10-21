@@ -1,0 +1,342 @@
+extends Control
+
+## Title screen: moonlit key art, logo, story, start / settings / quit.
+
+const SettingsPanel := preload("res://scripts/ui/settings_panel.gd")
+
+var _args: PackedStringArray
+var _bg: TextureRect
+var _content: Control
+var _warning: Label
+var _ticker: Panel
+var _domain: Label
+var _credits: Label
+var _version: Label
+var _time := 0.0
+var _starting := false
+var _settings_panel: Control
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	Game.running = false
+	Engine.time_scale = 1.0
+	get_tree().paused = false
+	_args = OS.get_cmdline_user_args()
+	Audio.set_music_volume(-18.0, 2.0)
+	_build()
+	_fit_title()
+	get_viewport().size_changed.connect(_fit_title)
+	if "--capture-title" in _args:
+		_capture()
+	if "--capture-settings" in _args:
+		_capture_settings()
+	if "--test-settings" in _args:
+		_test_settings()
+	if "--smoke-start" in _args:
+		_start.call_deferred()
+
+
+func _build() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	_bg = TextureRect.new()
+	_bg.texture = load("res://assets/art/ui/title_bg.png")
+	_bg.position = Vector2(-26, -14)
+	_bg.size = Vector2(1332, 748)
+	_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_bg.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_bg)
+
+	var grad := ColorRect.new()
+	grad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	grad.anchor_right = 1.0
+	grad.anchor_bottom = 1.0
+	grad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var gm := ShaderMaterial.new()
+	gm.shader = load("res://assets/shaders/title_gradient.gdshader")
+	grad.material = gm
+	add_child(grad)
+
+	_build_fireflies()
+
+	_content = Control.new()
+	_content.position = Vector2(96, 96)
+	_content.size = Vector2(640, 560)
+	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_content)
+
+	var over := HBoxContainer.new()
+	over.position = Vector2(4, 0)
+	over.add_theme_constant_override("separation", 10)
+	_content.add_child(over)
+	var moon := UIKit.icon("res://assets/art/ui/icon_moon.png", 26)
+	over.add_child(moon)
+	var over_label := UIKit.label("달빛 수호대  ·  MOON GUARDIAN", 15, UIKit.MINT)
+	over.add_child(over_label)
+
+	var title := UIKit.label("달베어", 99, UIKit.GOLD, 12)
+	title.position = Vector2(-4, 28)
+	title.size = Vector2(600, 124)
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	title.add_theme_constant_override("shadow_offset_x", 4)
+	title.add_theme_constant_override("shadow_offset_y", 6)
+	_content.add_child(title)
+
+	var sub := UIKit.label("지구를 지켜라", 44, UIKit.CREAM, 7)
+	sub.position = Vector2(2, 146)
+	_content.add_child(sub)
+
+	var eng := UIKit.label("D A L B E A R   ·   E A R T H   D E F E N S E", 14, UIKit.MINT)
+	eng.position = Vector2(4, 206)
+	_content.add_child(eng)
+
+	var line := ColorRect.new()
+	line.color = Color(0.85, 0.68, 0.35, 0.65)
+	line.position = Vector2(4, 238)
+	line.size = Vector2(390, 2)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_content.add_child(line)
+
+	var story := UIKit.label(
+		"달빛을 먹고 자란 곰, 달베어.\n외계 함대가 지구를 덮친 밤, 홀로 숲을 지킨다.",
+		17, Color(0.78, 0.82, 0.85)
+	)
+	story.position = Vector2(4, 256)
+	story.add_theme_constant_override("line_spacing", 8)
+	_content.add_child(story)
+
+	var goal := UIKit.label("세 개의 전선을 지켜내면 새벽이 온다", 17, UIKit.GOLD)
+	goal.position = Vector2(4, 320)
+	_content.add_child(goal)
+
+	var fronts := UIKit.label("3 FRONTS  ·  4 DIFFICULTIES  ·  BOSS AT 02:50", 13, UIKit.MUTED)
+	fronts.position = Vector2(4, 344)
+	_content.add_child(fronts)
+
+	var buttons := HBoxContainer.new()
+	buttons.position = Vector2(0, 380)
+	buttons.add_theme_constant_override("separation", 10)
+	_content.add_child(buttons)
+	var start := UIKit.button("모험 시작", Vector2(200, 60))
+	start.add_theme_font_size_override("font_size", 24)
+	start.pressed.connect(_start)
+	start.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(start)
+	var friends_btn := UIKit.button("친구들", Vector2(110, 60))
+	friends_btn.add_theme_font_size_override("font_size", 18)
+	friends_btn.pressed.connect(_open_characters)
+	friends_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(friends_btn)
+	var equipment_btn := UIKit.button("장비", Vector2(110, 60))
+	equipment_btn.add_theme_font_size_override("font_size", 18)
+	equipment_btn.pressed.connect(_open_equipment)
+	equipment_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(equipment_btn)
+	var settings_btn := UIKit.button("설정", Vector2(100, 60))
+	settings_btn.add_theme_font_size_override("font_size", 18)
+	settings_btn.pressed.connect(_open_settings)
+	settings_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(settings_btn)
+	var quit := UIKit.button("종료", Vector2(130, 60))
+	quit.add_theme_font_size_override("font_size", 18)
+	quit.pressed.connect(_quit)
+	quit.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(quit)
+	start.grab_focus()
+
+	var record := UIKit.label(Game.record_text(), 15, UIKit.MINT)
+	record.position = Vector2(4, 462)
+	_content.add_child(record)
+
+	var hint := UIKit.label("이동 WASD / 방향키   대시 Space   궁극기 Q   장비 I   친구들 C", 13, UIKit.MUTED)
+	hint.position = Vector2(4, 496)
+	_content.add_child(hint)
+
+	# top-right invasion ticker
+	var ticker := UIKit.panel(Color(0.12, 0.035, 0.045, 0.75), Color(0.9, 0.3, 0.3, 0.6), 1)
+	UIKit.place(ticker, 1024, 26, 228, 34)
+	add_child(ticker)
+	_ticker = ticker
+	var dot := ColorRect.new()
+	dot.color = Color(1.0, 0.25, 0.25, 1)
+	dot.position = Vector2(12, 14)
+	dot.size = Vector2(6, 6)
+	ticker.add_child(dot)
+	_warning = UIKit.label("외계 함대 접근 중", 13, Color(1.0, 0.62, 0.56))
+	_warning.position = Vector2(26, 7)
+	ticker.add_child(_warning)
+
+	# bottom branding
+	var domain := UIKit.label("dalbear.com", 17, UIKit.GOLD)
+	domain.position = Vector2(96, 664)
+	add_child(domain)
+	_domain = domain
+	var credits := UIKit.label("무료 에셋  Kenney (CC0)  ·  Galmuri 폰트 (OFL)  ·  Godot 4.7", 12, UIKit.MUTED)
+	credits.position = Vector2(96, 690)
+	add_child(credits)
+	_credits = credits
+	var version := UIKit.label("v1.0  ·  MOONLIT EARTH", 12, Color(0.5, 0.58, 0.66))
+	version.position = Vector2(1030, 690)
+	version.size = Vector2(220, 20)
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(version)
+	_version = version
+
+	_settings_panel = SettingsPanel.new()
+	add_child(_settings_panel)
+	UIFit.fit_canvas_control(_settings_panel)
+
+	# intro animation (fade only; positioning is handled by _fit_title)
+	_content.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(_content, "modulate:a", 1.0, 0.7).set_delay(0.1)
+
+
+func _fit_title() -> void:
+	var vp := get_viewport_rect().size
+	var s := maxf(1.0, minf(vp.y / 720.0, vp.x / 820.0))
+	_content.scale = Vector2(s, s)
+	_content.position = Vector2(96.0 * s, maxf(24.0, (vp.y - 560.0 * s) * 0.5))
+	_bg.position = Vector2.ZERO
+	_bg.size = vp
+	_bg.scale = Vector2.ONE
+	_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	if _ticker != null:
+		_ticker.position = Vector2(vp.x - 256.0, 26)
+	if _domain != null:
+		_domain.position = Vector2(96.0 * s, vp.y - 56.0)
+	if _credits != null:
+		_credits.position = Vector2(96.0 * s, vp.y - 30.0)
+	if _version != null:
+		_version.position = Vector2(vp.x - 260.0, vp.y - 30.0)
+		_version.size = Vector2(240, 20)
+
+
+func _build_fireflies() -> void:
+	var p := CPUParticles2D.new()
+	p.texture = load("res://assets/art/fx/firefly.png")
+	p.position = Vector2(640, 380)
+	p.amount = 55
+	p.lifetime = 7.0
+	p.preprocess = 5.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 420.0
+	p.direction = Vector2.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 10.0
+	p.gravity = Vector2(0, -1.5)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.5
+	p.color = Color(1, 0.85, 0.5, 0.7)
+	p.local_coords = false
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = mat
+	add_child(p)
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	if _warning != null:
+		_warning.modulate.a = 0.55 + 0.45 * absf(sin(_time * 2.0))
+
+
+func _start() -> void:
+	if _starting:
+		return
+	_starting = true
+	Audio.play_click()
+	Game.go_stage_select()
+
+
+func _quit() -> void:
+	Audio.play_click()
+	get_tree().quit()
+
+
+func _open_settings() -> void:
+	if _settings_panel != null:
+		_settings_panel.open()
+
+
+func _open_equipment() -> void:
+	if _starting:
+		return
+	Audio.play_click()
+	Game.go_equipment("title")
+
+
+func _open_characters() -> void:
+	if _starting:
+		return
+	Audio.play_click()
+	Game.go_characters("title")
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _settings_panel != null and _settings_panel.visible:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_I:
+			_open_equipment()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_C:
+			_open_characters()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
+			_start()
+			get_viewport().set_input_as_handled()
+
+
+func _capture_settings() -> void:
+	await get_tree().create_timer(1.0, true, false, true).timeout
+	if _settings_panel != null:
+		_settings_panel.open()
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	await get_tree().process_frame
+	var dir := ProjectSettings.globalize_path("res://screenshots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(dir + "/settings.png")
+	print("CAPTURED: ", dir + "/settings.png")
+	get_tree().quit()
+
+
+func _test_settings() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var original := Settings.bloom
+	_settings_panel.open()
+	_settings_panel._on_toggle(not original, "bloom")
+	var target := not original
+	if Settings.bloom != target:
+		push_error("SETTINGS TEST: toggle did not update value")
+		get_tree().quit()
+		return
+	if String(_settings_panel._buttons["bloom"].text) != ("켜짐" if target else "꺼짐"):
+		push_error("SETTINGS TEST: toggle label not updated")
+		get_tree().quit()
+		return
+	Settings.load_settings()
+	if Settings.bloom != target:
+		push_error("SETTINGS TEST: value did not persist")
+		get_tree().quit()
+		return
+	Settings.set_option("bloom", original)
+	print("SETTINGS TEST OK bloom=", target, " persisted and restored=", original)
+	get_tree().quit()
+
+
+func _capture() -> void:
+	await get_tree().create_timer(1.2, true, false, true).timeout
+	await get_tree().process_frame
+	var dir := ProjectSettings.globalize_path("res://screenshots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(dir + "/title.png")
+	print("CAPTURED: ", dir + "/title.png")
+	get_tree().quit()

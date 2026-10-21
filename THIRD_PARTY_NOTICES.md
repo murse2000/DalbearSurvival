@@ -1,0 +1,47 @@
+# Third-party notices
+
+This project uses the following third-party assets. Full license texts are kept
+next to the assets and linked below.
+
+## 1. Kenney Particle Pack 1.1 — CC0 1.0 Universal
+
+- Author: Kenney Vleugels (Kenney.nl)
+- Source: https://kenney.nl/assets/particle-pack
+- License: Creative Commons Zero 1.0 (public domain dedication)
+- Local license: `assets/particles/LICENSE_kenney.txt`
+- Files used: selected PNG particle textures in `assets/particles/`
+  (star, spark, flare, magic, circle, smoke, muzzle, slash, dirt, symbol,
+  trace, twirl, light, flame).
+- Modifications: downscaled to 128px and tinted at runtime; no other changes.
+
+CC0 1.0 summary: The author waived all copyright and related rights. The assets
+may be used in personal and commercial projects without attribution.
+
+## 2. Galmuri11 — SIL Open Font License 1.1
+
+- Author: Lee Minseo (quiple@quiple.dev)
+- Source: https://github.com/quiple/galmuri
+- License: SIL Open Font License, Version 1.1
+- Local license: `assets/fonts/OFL.md`
+- File: `assets/fonts/Galmuri11.ttf`
+- Use: Korean/Latin pixel UI font.
+
+The font is used as-is, not sold by itself, and is embedded in the game. The
+reserved font name(s) of the original are not modified.
+
+## 3. Godot Engine 4.7.1 — MIT License
+
+- Copyright: Godot Engine contributors / Juan Linietsky, Ariel Manzur
+- Source: https://godotengine.org
+- License: MIT
+- The exported game embeds the Godot runtime. See the Godot license for details.
+
+## 4. Project-original assets
+
+All other art, audio, game code and text were created for this project
+(2026, dalbear.com) and are original works. They are not derived from any
+third-party game or franchise.
+
+- Character/enemy/world/UI/title art: `assets/art/`
+- Generated music and SFX: `assets/audio/`
+- Generation tools: `tools/` (Python/Pillow/NumPy)

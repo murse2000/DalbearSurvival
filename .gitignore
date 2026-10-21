@@ -1,0 +1,22 @@
+# Godot editor/import cache
+.godot/
+*.translation
+
+# Exported builds and release artifacts
+build/
+*.apk
+*.aab
+*.exe
+*.pck
+*.idsig
+
+# Local backups and OS noise
+*.bak
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Python tooling caches/previews
+__pycache__/
+tools/preview/

@@ -1,0 +1,60 @@
+; Engine configuration file.
+; DALBEAR: Earth Defense
+config_version=5
+
+[application]
+
+config/name="DALBEAR: Earth Defense"
+config/description="달빛의 곰 '달베어'가 외계 함대로부터 지구를 지키는 2D 로그라이트 서바이벌."
+config/version="1.0.0"
+run/main_scene="res://scenes/title.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.035, 0.055, 0.09, 1)
+boot_splash/show_image=false
+config/icon="res://icon.png"
+
+[autoload]
+
+Settings="*res://autoload/settings.gd"
+Game="*res://autoload/game.gd"
+Audio="*res://autoload/audio.gd"
+FX="*res://autoload/fx.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=0
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=true
+pointing/android/enable_long_press_as_right_click=false
+
+[gui]
+
+theme/custom="res://assets/ui_theme.tres"
+
+[physics]
+
+common/physics_ticks_per_second=60
+2d/default_gravity=0.0
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.035, 0.055, 0.09, 1)
+anti_aliasing/quality/msaa_2d=0
+
+[audio]
+
+driver/enable_input=false
+
