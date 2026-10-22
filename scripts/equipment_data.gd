@@ -90,6 +90,20 @@ const STAT_ORDER := [
 	"speed_pct", "crit", "pickup", "regen",
 ]
 
+## One-character type tags so every icon can be told apart at a glance.
+const ITEM_SHORT := {
+	"helmet": "헬", "gloves": "장", "chest": "흉", "pants": "각",
+	"boots": "부", "cape": "망", "weapon": "무", "ring": "반", "necklace": "목",
+}
+
+const TYPE_COLORS := {
+	"helmet": Color(0.55, 0.74, 0.98), "gloves": Color(0.5, 0.88, 0.95),
+	"chest": Color(0.46, 0.66, 0.98), "pants": Color(0.62, 0.72, 0.92),
+	"boots": Color(0.56, 0.85, 0.7), "cape": Color(0.76, 0.6, 0.98),
+	"weapon": Color(1.0, 0.68, 0.32), "ring": Color(1.0, 0.86, 0.45),
+	"necklace": Color(0.5, 0.95, 0.72),
+}
+
 const ICON_PATHS := {
 	"helmet": "res://assets/art/ui/icon_equip_helmet.png",
 	"gloves": "res://assets/art/ui/icon_equip_gloves.png",
@@ -236,6 +250,47 @@ static func rarity_name(id: String) -> String:
 
 static func rarity_color(id: String) -> Color:
 	return rarity(id)["color"]
+
+
+static func item_short(item: Dictionary) -> String:
+	return String(ITEM_SHORT.get(String(item.get("slot", "")), "장"))
+
+
+static func slot_short(slot: String) -> String:
+	if slot in WEAPON_SLOTS:
+		return "무"
+	if slot in RING_SLOTS:
+		return "반"
+	return String(ITEM_SHORT.get(slot, "장"))
+
+
+static func type_color(item: Dictionary) -> Color:
+	return TYPE_COLORS.get(String(item.get("slot", "")), Color(0.7, 0.74, 0.82))
+
+
+static func is_legendary(item: Dictionary) -> bool:
+	return String(item.get("rarity", "common")) == "legendary"
+
+
+## Per-stat comparison between `item` and the currently equipped `current`.
+## `lower_better` marks stats where a negative delta is an upgrade.
+static func stat_compare(item: Dictionary, current: Dictionary) -> Array:
+	var a := stats_for(item)
+	var b := {} if current.is_empty() else stats_for(current)
+	var out: Array = []
+	for key in STAT_ORDER:
+		if not a.has(key) and not b.has(key):
+			continue
+		var value := float(a.get(key, 0.0))
+		var before := float(b.get(key, 0.0))
+		out.append({
+			"key": key,
+			"value": value,
+			"current": before,
+			"delta": value - before,
+			"lower_better": key == "cooldown_pct",
+		})
+	return out
 
 
 static func max_level(item: Dictionary) -> int:

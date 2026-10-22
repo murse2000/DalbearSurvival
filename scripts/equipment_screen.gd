@@ -45,11 +45,13 @@ var _paper_glow: TextureRect
 var _paper_hint: Label
 var _detail_panel: Panel
 var _detail_icon: TextureRect
+var _detail_glow: TextureRect
 var _detail_name: Label
 var _detail_type: Label
-var _detail_stats: Label
+var _detail_stats: RichTextLabel
 var _detail_weapon: Label
 var _action_row: HBoxContainer
+var _legendary_effects: Array = []
 var _portrait := false
 var _paper_pos := PAPER_PANEL_POS
 var _inv_pos := INV_PANEL_POS
@@ -306,9 +308,25 @@ func _make_slot_card(parent: Control, slot: String, pos: Vector2) -> void:
 	var card := UIKit.panel(Color(0.06, 0.095, 0.14, 0.96), UIKit.BORDER, 2)
 	card.position = pos
 	card.size = SLOT_CARD_SIZE
+	card.clip_contents = true
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	parent.add_child(card)
+
+	var glow := TextureRect.new()
+	glow.texture = load("res://assets/art/fx/glow_gold.png")
+	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glow.stretch_mode = TextureRect.STRETCH_SCALE
+	glow.position = Vector2(-4, -10)
+	glow.size = Vector2(80, 80)
+	glow.pivot_offset = Vector2(40, 40)
+	glow.modulate = Color(1.0, 0.84, 0.42, 0.32)
+	var gmat := CanvasItemMaterial.new()
+	gmat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	glow.material = gmat
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.visible = false
+	card.add_child(glow)
 
 	var icon := UIKit.icon(_empty_slot_icon(slot), 48)
 	UIKit.place(icon, 12, 8, 48, 48)
@@ -323,6 +341,13 @@ func _make_slot_card(parent: Control, slot: String, pos: Vector2) -> void:
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	level_badge.add_child(level_label)
 
+	var rarity_band := ColorRect.new()
+	rarity_band.position = Vector2(0, 68)
+	rarity_band.size = Vector2(SLOT_CARD_SIZE.x, 4)
+	rarity_band.visible = false
+	rarity_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(rarity_band)
+
 	var slot_label := UIKit.label(String(EquipmentData.SLOT_LABELS.get(slot, slot)), 10, UIKit.MUTED)
 	slot_label.position = Vector2(pos.x, pos.y + 74)
 	slot_label.size = Vector2(SLOT_CARD_SIZE.x, 15)
@@ -335,6 +360,7 @@ func _make_slot_card(parent: Control, slot: String, pos: Vector2) -> void:
 	_slot_cards[slot] = {
 		"root": card, "icon": icon, "level_badge": level_badge,
 		"level_label": level_label, "slot_label": slot_label,
+		"rarity_band": rarity_band, "glow": glow,
 	}
 
 
@@ -411,6 +437,21 @@ func _build_inventory_panel() -> void:
 	UIKit.place(_detail_panel, 16, 360, 488, 172)
 	panel.add_child(_detail_panel)
 
+	_detail_glow = TextureRect.new()
+	_detail_glow.texture = load("res://assets/art/fx/glow_gold.png")
+	_detail_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_detail_glow.stretch_mode = TextureRect.STRETCH_SCALE
+	_detail_glow.position = Vector2(-8, -12)
+	_detail_glow.size = Vector2(76, 76)
+	_detail_glow.pivot_offset = Vector2(38, 38)
+	_detail_glow.modulate = Color(1.0, 0.84, 0.42, 0.34)
+	var detail_mat := CanvasItemMaterial.new()
+	detail_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_detail_glow.material = detail_mat
+	_detail_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail_glow.visible = false
+	_detail_panel.add_child(_detail_glow)
+
 	_detail_icon = UIKit.icon("res://assets/art/ui/icon_equip_chest.png", 40)
 	UIKit.place(_detail_icon, 8, 8, 40, 40)
 	_detail_panel.add_child(_detail_icon)
@@ -421,23 +462,29 @@ func _build_inventory_panel() -> void:
 	_detail_type = UIKit.label("", 10, UIKit.MUTED)
 	UIKit.place(_detail_type, 56, 26, 420, 16)
 	_detail_panel.add_child(_detail_type)
-	_detail_stats = UIKit.label("", 11, UIKit.CREAM)
-	UIKit.place(_detail_stats, 56, 43, 420, 34)
-	_detail_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_stats.add_theme_constant_override("line_spacing", 1)
+	_detail_stats = RichTextLabel.new()
+	_detail_stats.bbcode_enabled = true
+	_detail_stats.scroll_active = false
+	_detail_stats.fit_content = true
+	_detail_stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail_stats.add_theme_font_override("normal_font", load("res://assets/fonts/Galmuri11.ttf"))
+	_detail_stats.add_theme_font_size_override("normal_font_size", 10)
+	_detail_stats.add_theme_constant_override("line_separation", 0)
+	UIKit.place(_detail_stats, 56, 42, 420, 62)
 	_detail_panel.add_child(_detail_stats)
 	_detail_weapon = UIKit.label("", 10, UIKit.GOLD)
-	UIKit.place(_detail_weapon, 56, 79, 420, 15)
+	UIKit.place(_detail_weapon, 56, 106, 420, 13)
 	_detail_panel.add_child(_detail_weapon)
 
 	_action_row = HBoxContainer.new()
-	_action_row.position = Vector2(8, 116)
+	_action_row.position = Vector2(8, 122)
 	_action_row.size = Vector2(472, 32)
 	_action_row.add_theme_constant_override("separation", 6)
 	_detail_panel.add_child(_action_row)
 
 
 func _refresh_all() -> void:
+	_legendary_effects.clear()
 	var keep_scroll := 0
 	if _scroll != null:
 		keep_scroll = _scroll.scroll_vertical
@@ -464,11 +511,15 @@ func _refresh_slots() -> void:
 		var level_badge: Panel = refs["level_badge"]
 		var level_label: Label = refs["level_label"]
 		var slot_label: Label = refs["slot_label"]
+		var rarity_band: ColorRect = refs["rarity_band"]
+		var glow: TextureRect = refs["glow"]
 		var selected := false
 		if item.is_empty():
 			icon.texture = load(_empty_slot_icon(slot))
 			icon.modulate = Color(1, 1, 1, 0.22)
 			level_badge.visible = false
+			rarity_band.visible = false
+			glow.visible = false
 			slot_label.add_theme_color_override("font_color", Color(0.46, 0.53, 0.6))
 			card.add_theme_stylebox_override("panel",
 				UIKit.style(Color(0.035, 0.052, 0.078, 0.94), UIKit.BORDER, 2, 0))
@@ -476,6 +527,7 @@ func _refresh_slots() -> void:
 		else:
 			var accent := EquipmentData.display_color(item)
 			var rarity_accent := EquipmentData.rarity_color(String(item.get("rarity", "common")))
+			var legendary := EquipmentData.is_legendary(item)
 			selected = String(item.get("uid", "")) == _selected_uid
 			icon.texture = load(EquipmentData.item_icon(item))
 			icon.modulate = Color.WHITE
@@ -484,10 +536,16 @@ func _refresh_slots() -> void:
 				UIKit.style(Color(0.02, 0.032, 0.052, 0.96), rarity_accent.darkened(0.25), 1, 0))
 			level_label.text = "Lv.%d" % int(item.get("level", 1))
 			level_label.add_theme_color_override("font_color", rarity_accent)
-			slot_label.add_theme_color_override("font_color", UIKit.GOLD if selected else UIKit.MUTED)
+			rarity_band.visible = true
+			rarity_band.color = rarity_accent
+			glow.visible = legendary
+			if legendary:
+				_legendary_effects.append({"node": glow, "phase": randf() * TAU, "base": 0.32})
+			slot_label.add_theme_color_override("font_color", UIKit.GOLD if selected else rarity_accent.lightened(0.2))
 			card.add_theme_stylebox_override("panel", UIKit.style(
 				Color(0.09, 0.13, 0.18, 0.98) if selected else Color(0.06, 0.095, 0.14, 0.96),
-				UIKit.GOLD if selected else accent.darkened(0.2), 3 if selected else 2, 0))
+				UIKit.GOLD if selected else (rarity_accent.lightened(0.15) if legendary else accent.darkened(0.2)),
+				3 if (selected or legendary) else 2, 0))
 			card.tooltip_text = "%s\n%s · %s · Lv.%d\n%s" % [
 				EquipmentData.item_name(item),
 				EquipmentData.type_label(item),
@@ -628,37 +686,91 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 	var rarity_id := String(item.get("rarity", "common"))
 	var accent := EquipmentData.display_color(item)
 	var rarity_accent := EquipmentData.rarity_color(rarity_id)
+	var type_accent := EquipmentData.type_color(item)
 	var uid := String(item.get("uid", ""))
 	var selected := uid == _selected_uid
+	var equipped := Game.is_item_equipped(uid)
+	var legendary := EquipmentData.is_legendary(item)
 	var can_use := not EquipmentData.is_signature(item) or EquipmentData.item_character(item) == Game.selected_character
-	var cell := UIKit.panel(
-		Color(0.09, 0.13, 0.18, 0.98) if selected else Color(0.055, 0.082, 0.115, 0.96),
-		UIKit.GOLD if selected else accent.darkened(0.2), 2)
+	var border := rarity_accent
+	if equipped:
+		border = UIKit.GOLD
+	elif legendary:
+		border = rarity_accent.lightened(0.2)
+	var bg := Color(0.055, 0.082, 0.115, 0.96)
+	if selected:
+		bg = Color(0.09, 0.13, 0.18, 0.98)
+	elif equipped:
+		bg = Color(0.075, 0.10, 0.135, 0.98)
+	var cell := UIKit.panel(bg, border, 3 if (equipped or legendary) else 2)
 	cell.custom_minimum_size = Vector2(INV_CELL, INV_CELL)
+	cell.clip_contents = true
 	cell.mouse_filter = Control.MOUSE_FILTER_PASS
 	cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-	var icon := UIKit.icon(EquipmentData.item_icon(item), 42)
-	UIKit.place(icon, 11, 7, 42, 42)
+	if legendary:
+		var glow := TextureRect.new()
+		glow.texture = load("res://assets/art/fx/glow_gold.png")
+		glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		glow.stretch_mode = TextureRect.STRETCH_SCALE
+		glow.position = Vector2(-2, -8)
+		glow.size = Vector2(68, 68)
+		glow.pivot_offset = Vector2(34, 34)
+		glow.modulate = Color(1.0, 0.84, 0.42, 0.32)
+		var gmat := CanvasItemMaterial.new()
+		gmat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		glow.material = gmat
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(glow)
+		_legendary_effects.append({"node": glow, "phase": randf() * TAU, "base": 0.32})
+
+	var icon := UIKit.icon(EquipmentData.item_icon(item), 40)
+	UIKit.place(icon, 12, 4, 40, 40)
 	icon.modulate = Color(1, 1, 1, 0.38) if not can_use else Color.WHITE
 	cell.add_child(icon)
 
+	# Type badge (헬/장/흉/각/부/망/무/반/목) so silhouettes never blur together.
+	var badge := UIKit.panel(type_accent.darkened(0.62), type_accent, 1)
+	UIKit.place(badge, 2, 1, 18, 16)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(badge)
+	var badge_label := UIKit.label(EquipmentData.item_short(item), 10, type_accent.lightened(0.35))
+	UIKit.place(badge_label, 0, 2, 18, 12)
+	badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(badge_label)
+
 	var level_badge := UIKit.panel(Color(0.02, 0.032, 0.052, 0.96), rarity_accent.darkened(0.25), 1)
-	UIKit.place(level_badge, 32, 47, 30, 15)
+	UIKit.place(level_badge, 33, 37, 29, 14)
 	level_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.add_child(level_badge)
 	var level_label := UIKit.label("Lv.%d" % int(item.get("level", 1)), 8, rarity_accent)
-	UIKit.place(level_label, 0, 1, 30, 12)
+	UIKit.place(level_label, 0, 1, 29, 12)
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	level_badge.add_child(level_label)
 
-	if Game.is_item_equipped(uid):
-		var dot := ColorRect.new()
-		dot.color = UIKit.GOLD
-		dot.position = Vector2(54, 4)
-		dot.size = Vector2(6, 6)
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_child(dot)
+	# Rarity band with its name, readable at a glance.
+	var band := ColorRect.new()
+	band.color = rarity_accent
+	band.position = Vector2(0, 52)
+	band.size = Vector2(INV_CELL, 12)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(band)
+	var band_label := UIKit.label(EquipmentData.rarity_name(rarity_id), 8,
+		Color(0.06, 0.05, 0.08) if rarity_accent.get_luminance() > 0.5 else Color(0.96, 0.97, 1.0))
+	UIKit.place(band_label, 0, 0, INV_CELL, 12)
+	band_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	band_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	band_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(band_label)
+
+	if equipped:
+		var check := UIKit.label("✓", 13, UIKit.GOLD, 3)
+		UIKit.place(check, 46, 0, 16, 16)
+		check.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		check.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(check)
 
 	var affinity := EquipmentData.affinity_label(item)
 	var tooltip := "%s\n%s · %s · Lv.%d\n%s" % [
@@ -668,6 +780,8 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 		int(item.get("level", 1)),
 		"  ·  ".join(EquipmentData.stat_lines(item)),
 	]
+	if equipped:
+		tooltip = "[장착 중]\n" + tooltip
 	if affinity != "":
 		tooltip += "\n" + affinity
 		if not can_use:
@@ -733,6 +847,8 @@ func _refresh_detail() -> void:
 		_detail_type.text = "캐릭터 주변 슬롯이나 오른쪽 격자에서 장비를 선택하세요."
 		_detail_stats.text = ""
 		_detail_weapon.text = ""
+		if _detail_glow != null:
+			_detail_glow.visible = false
 		_update_paper_profile()
 		return
 
@@ -745,6 +861,12 @@ func _refresh_detail() -> void:
 	var can_use := affinity == "" or EquipmentData.item_character(item) == Game.selected_character
 	_detail_icon.texture = load(EquipmentData.item_icon(item))
 	_detail_icon.modulate = Color.WHITE if can_use else Color(1, 1, 1, 0.42)
+	var legendary := EquipmentData.is_legendary(item)
+	_detail_glow.visible = legendary
+	if legendary:
+		_legendary_effects = _legendary_effects.filter(func(e: Dictionary) -> bool:
+			return e.get("node") != _detail_glow)
+		_legendary_effects.append({"node": _detail_glow, "phase": randf() * TAU, "base": 0.34})
 	_detail_name.text = EquipmentData.item_name(item)
 	_detail_name.add_theme_color_override("font_color", accent)
 	var equipped_slot := Game.equipped_slot_of(_selected_uid)
@@ -758,7 +880,10 @@ func _refresh_detail() -> void:
 		EquipmentData.type_label(item), EquipmentData.rarity_name(rarity_id), lv, cap,
 		equipped_text, affinity_text,
 	]
-	_detail_stats.text = "  ·  ".join(EquipmentData.stat_lines(item))
+	if Game.is_item_equipped(_selected_uid):
+		_detail_stats.text = _plain_stats_bbcode(item)
+	else:
+		_detail_stats.text = _comparison_bbcode(item, Game.equipped_item(_compare_slot_for(item)))
 	if item_slot == "weapon":
 		_detail_weapon.text = "시작 무기 Lv.%d · 강화로 시작 레벨 상승" % EquipmentData.starting_weapon_level(item)
 	elif affinity != "":
@@ -801,6 +926,79 @@ func _action_button(text: String, width: float) -> Button:
 	var b := UIKit.button(text, Vector2(width, 30))
 	b.add_theme_font_size_override("font_size", 11)
 	return b
+
+
+func _compare_slot_for(item: Dictionary) -> String:
+	var uid := String(item.get("uid", ""))
+	var item_slot := String(item.get("slot", ""))
+	if item_slot == "weapon":
+		var occupied := Game.equipped_slot_of(uid)
+		var wid := String(item.get("weapon_id", ""))
+		for slot in EquipmentData.WEAPON_SLOTS:
+			if String(slot) == occupied:
+				continue
+			var cur := Game.equipped_item(String(slot))
+			if not cur.is_empty() and String(cur.get("weapon_id", "")) == wid:
+				return String(slot)
+		return _weakest_slot(EquipmentData.WEAPON_SLOTS, occupied)
+	if item_slot == "ring":
+		return _weakest_slot(EquipmentData.RING_SLOTS, Game.equipped_slot_of(uid))
+	return item_slot
+
+
+func _weakest_slot(slots: Array, skip: String) -> String:
+	var best := ""
+	var best_power := INF
+	for slot in slots:
+		if String(slot) == skip:
+			continue
+		var cur := Game.equipped_item(String(slot))
+		var power := EquipmentData.item_power(cur) if not cur.is_empty() else -1.0
+		if power < best_power:
+			best_power = power
+			best = String(slot)
+	return best if best != "" else String(slots[0])
+
+
+func _delta_text(key: String, delta: float) -> String:
+	match key:
+		"max_hp", "pickup", "power":
+			return "%+d" % int(round(delta))
+		"armor", "regen":
+			return "%+.1f" % delta
+	return "%+.1f%%" % (delta * 100.0)
+
+
+func _plain_stats_bbcode(item: Dictionary) -> String:
+	var lines: Array = []
+	for key in EquipmentData.STAT_ORDER:
+		var stats := EquipmentData.stats_for(item)
+		if stats.has(key):
+			lines.append(EquipmentData.stat_line(key, float(stats[key])))
+	return "\n".join(lines)
+
+
+func _comparison_bbcode(item: Dictionary, current: Dictionary) -> String:
+	var lines: Array = []
+	var power := EquipmentData.item_power(item)
+	var current_power := 0.0 if current.is_empty() else EquipmentData.item_power(current)
+	if current.is_empty():
+		lines.append("[color=#93a3b4]전투력[/color] %d" % int(round(power)))
+	else:
+		var pd := power - current_power
+		var pcol := "#7ee08a" if pd >= 0.0 else "#ff7a72"
+		lines.append("[color=#93a3b4]전투력[/color] %d [color=%s](%s)[/color]" % [
+			int(round(power)), pcol, _delta_text("power", pd),
+		])
+	for row in EquipmentData.stat_compare(item, current):
+		var text := EquipmentData.stat_line(String(row["key"]), float(row["value"]))
+		var delta := float(row["delta"])
+		if absf(delta) > 0.0005:
+			var better: bool = (delta < 0.0) if bool(row["lower_better"]) else (delta > 0.0)
+			var col := "#7ee08a" if better else "#ff7a72"
+			text += "  [color=%s](%s)[/color]" % [col, _delta_text(String(row["key"]), delta)]
+		lines.append(text)
+	return "\n".join(lines)
 
 
 func _on_target_pressed(uid: String, target: String, currently_equipped: bool) -> void:
@@ -871,6 +1069,13 @@ func _process(delta: float) -> void:
 		if _confirm_timer <= 0.0 and _confirm_dismantle_uid != "":
 			_confirm_dismantle_uid = ""
 			_refresh_detail()
+	for effect in _legendary_effects:
+		var node: CanvasItem = effect.get("node")
+		if not is_instance_valid(node):
+			continue
+		var pulse := 0.5 + 0.5 * sin(_paper_time * 2.6 + float(effect.get("phase", 0.0)))
+		node.modulate.a = float(effect.get("base", 0.3)) + pulse * 0.22
+		node.scale = Vector2.ONE * (1.0 + pulse * 0.06)
 
 
 func _input(event: InputEvent) -> void:
@@ -1035,9 +1240,22 @@ func _capture() -> void:
 
 func _capture_detail() -> void:
 	await get_tree().create_timer(0.8, true, false, true).timeout
-	var item := Game.equipped_item("main")
-	if not item.is_empty():
-		_select_item(String(item.get("uid", "")))
+	# Prefer an unequipped item so the capture shows the equip comparison.
+	var best := {}
+	var best_power := -1.0
+	for entry in Game.inventory:
+		if not (entry is Dictionary):
+			continue
+		if Game.is_item_equipped(String(entry.get("uid", ""))):
+			continue
+		var power := EquipmentData.item_power(entry)
+		if power > best_power:
+			best = entry
+			best_power = power
+	if best.is_empty():
+		best = Game.equipped_item("main")
+	if not best.is_empty():
+		_select_item(String(best.get("uid", "")))
 	await get_tree().create_timer(0.4, true, false, true).timeout
 	await get_tree().process_frame
 	var dir := ProjectSettings.globalize_path("res://screenshots")
