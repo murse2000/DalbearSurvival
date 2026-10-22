@@ -119,11 +119,11 @@ func _build() -> void:
 	story.add_theme_constant_override("line_spacing", 8)
 	_content.add_child(story)
 
-	var goal := UIKit.label("세 개의 전선을 지켜내면 새벽이 온다", 17, UIKit.GOLD)
+	var goal := UIKit.label("열다섯 개의 전선을 지켜내면 새벽이 온다", 17, UIKit.GOLD)
 	goal.position = Vector2(4, 320)
 	_content.add_child(goal)
 
-	var fronts := UIKit.label("3 FRONTS  ·  4 DIFFICULTIES  ·  BOSS AT 02:50", 13, UIKit.MUTED)
+	var fronts := UIKit.label("15 FRONTS  ·  4 DIFFICULTIES  ·  BOSS AT 02:50", 13, UIKit.MUTED)
 	fronts.position = Vector2(4, 344)
 	_content.add_child(fronts)
 

@@ -2,9 +2,9 @@
 ### DALBEAR: Earth Defense · [dalbear.com](https://dalbear.com)
 
 > 달빛을 먹고 자란 곰, **달베어**.
-> 외계 함대가 지구를 덮친 밤, 세 개의 전선을 지켜낸다.
+> 외계 함대가 지구를 덮친 밤, 열다섯 개의 전선을 지켜낸다.
 
-**5개 스테이지 × 4분**, **4단계 난이도**, **23종 외계인 + 10종 중간 보스 + 5종 최종 보스**,
+**15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
 **무기 8종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
@@ -66,7 +66,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | `ESC` | 일시정지 / 계속하기 / 장비·친구 화면에서 돌아가기 |
 | **터치** | 왼쪽 가상 조이스틱 이동 · 오른쪽 **대시/궁극기** · 우측 상단 **일시정지** |
 | `ENTER` | 타이틀·전선 선택에서 출격, 결과 화면에서 다음 전선/재도전 |
-| `1` `2` `3` / `←` `→` | 전선 선택 화면에서 스테이지/난이도 선택 |
+| `1`~`9` `0` / 마우스 휠 / `←` `→` | 전선 선택 화면에서 스테이지(1~10)/난이도 선택 |
 | 게임패드 | 왼쪽 스틱 이동 지원 |
 
 ---
@@ -101,7 +101,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 ---
 
-## 캠페인: 다섯 개의 전선
+## 캠페인: 열다섯 개의 전선
 
 | | 전선 | 테마 | 보스 | 새로운 위협 |
 |---|---|---|---|---|
@@ -110,12 +110,23 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 3 | **모선 심장부** | 달을 삼킨 자의 배 | **모선 '달을 삼킨 자'** | 격벽 포탑(레이저), 위상 사냥꾼(순간이동), 분열체, 전투 로봇 |
 | 4 | **잿빛 균열** | 재와 용암이 흐르는 균열 | **재의 레비아탄** | 마그마 포식자, 잿불 사수, 용암 거인, 잿빛 마녀 |
 | 5 | **달의 뒷면** | 빛이 닿지 않는 월식 | **월식의 군주** | 균열 망령, 심연 나방, 균열 추적자, 별을 삼키는 자 |
+| 6 | **붉은 사막** | 모래 폭풍이 삼킨 황야 | **사막의 스콜피온** | 사막 추적자, 모래 사수, 사막 여왕 |
+| 7 | **얼어붙은 호수** | 얼음 아래 숨은 빛 | **서리 거인** | 서리 정령, 빙갑 게, 서리 거상 |
+| 8 | **독성 수렁** | 숨 쉬는 것도 독이 되는 늪 | **독니 여왕** | 수렁 잠복자, 독나방, 수렁 모체 |
+| 9 | **강철 폐허** | 무너진 기계가 다시 걷는 땅 | **폐허의 강철신** | 녹슨 사냥개, 톱니 파수꾼, 강철 집행자 |
+| 10 | **달빛 성채** | 달의 성벽이 하늘을 가르는 곳 | **달빛 성채의 군주** | 월광 기사, 별안 현자, 성채 파수병 |
+| 11 | **심연 해구** | 아래로 갈수록 빛이 죽는 곳 | **심연 포식자** | 심연 아가리, 심층 유충, 해구 포식자 |
+| 12 | **태양 흑점** | 궤도를 삼키는 타오르는 흑점 | **흑점의 군주** | 태양불꽃, 마그마 날개, 흑점 폭군 |
+| 13 | **성운 미궁** | 별빛이 길을 접는 미궁 | **미궁의 현자** | 미궁 직조자, 프리즘 눈, 미궁 예언자 |
+| 14 | **종말 궤도** | 마지막 궤도가 불타는 곳 | **종말의 궤도신** | 궤도 드론, 공허 절단자, 궤도 파괴자 |
+| 15 | **새벽의 문** | 모든 밤이 끝나는 문 | **새벽을 삼킨 자** | 새벽 전령, 빛 포식자, 새벽 세라핌 |
 
 - 각 전선은 **4분(240초)** 동안 이어집니다. **2분 50초**에 보스가 강림합니다.
 - 보스를 격추하면 **즉시 전선 확보**. 시간이 끝날 때까지 버텨도 전선을 지켜냅니다.
 - **다음 전선은 이전 전선을 클리어한 경우에만 개방**됩니다. 전선 선택 화면에 LOCK으로 표시됩니다.
-- 4·5전선은 HP·피해량·출현 밀도가 더 높아지고, 보스 체력도 단계적으로 상승합니다.
-- 5번 전선의 월식의 군주를 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
+- 6~15전선은 HP·피해량·출현 밀도가 단계적으로 상승하고, 보스 체력도 4,800 → 14,500으로 올라갑니다.
+- 신규 10개 전선은 **새 몬스터 20종 · 새 중간 보스 10종 · 새 최종 보스 10종**과 전용 지형·파괴물·썸네일을 사용합니다.
+- 15번 전선의 새벽을 삼킨 자를 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
 
 ### 난이도
 
@@ -323,6 +334,12 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![런 보상](screenshots/rewards.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
 | ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
 | ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
+| ![15개 전선 선택](screenshots/stage_select_late.png) | ![붉은 사막](screenshots/stage_dunes.png) |
+| ![얼어붙은 호수](screenshots/stage_frost.png) | ![독성 수렁](screenshots/stage_mire.png) |
+| ![강철 폐허](screenshots/stage_ruins.png) | ![달빛 성채](screenshots/stage_citadel.png) |
+| ![심연 해구](screenshots/stage_trench.png) | ![태양 흑점](screenshots/stage_sunspot.png) |
+| ![성운 미궁](screenshots/stage_maze.png) | ![종말 궤도](screenshots/stage_orbit.png) |
+| ![새벽의 문](screenshots/stage_dawn.png) | ![사막의 스콜피온](screenshots/boss_dunes.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
@@ -331,6 +348,10 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
 `screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
+`screenshots/stage_select_late.png`, `screenshots/stage_dunes.png`, `screenshots/stage_frost.png`,
+`screenshots/stage_mire.png`, `screenshots/stage_ruins.png`, `screenshots/stage_citadel.png`,
+`screenshots/stage_trench.png`, `screenshots/stage_sunspot.png`, `screenshots/stage_maze.png`,
+`screenshots/stage_orbit.png`, `screenshots/stage_dawn.png`, `screenshots/boss_dunes.png`,
 `screenshots/title.png`
 
 ---
@@ -342,20 +363,20 @@ DalbearSurvival/
 ├─ project.godot                 # Godot 4.7.1 프로젝트 설정
 ├─ scenes/
 │  ├─ title.tscn                 # 타이틀
-│  ├─ stage_select.tscn          # 3개 전선 + 4개 난이도 선택
+│  ├─ stage_select.tscn          # 15개 전선 + 4개 난이도 선택
 │  ├─ equipment.tscn             # 장비 & 인벤토리 화면
 │  ├─ characters.tscn            # 달베어 친구 선택
 │  ├─ main.tscn / player.tscn / enemy.tscn
 ├─ scripts/
-│  ├─ game_data.gd               # 스테이지/난이도/무기/적/패시브 데이터
+│  ├─ game_data.gd               # 15개 전선/난이도/무기/적/보스/패시브 데이터
 │  ├─ character_data.gd          # 친구 5명 능력치/특성/전용 장비
 │  ├─ character_select.gd        # 친구 선택 UI
 │  ├─ equipment_data.gd          # 장비 등급/슬롯/능력치/강화 계산
 │  ├─ equipment_screen.gd        # 장비 장착/필터/강화/분해 UI
 │  ├─ player.gd                  # 이동, 체력, 강화, XP, 장비/친구 스탯
-│  ├─ enemy.gd                   # 외계인 AI, 신규 패턴, 보스 3종
-│  ├─ enemy_manager.gd           # 스테이지 스폰, 공간 해시, 판정
-│  ├─ world.gd                   # 숲/군체/모선 3개 환경
+│  ├─ enemy.gd                   # 외계인 AI, 중간 보스/최종 보스 패턴
+│  ├─ enemy_manager.gd           # 스테이지 스폰, 전용 파괴물, 공간 해시, 판정
+│  ├─ world.gd                   # 15개 전선 테마/지형/프롭
 │  ├─ stage_select.gd            # 캠페인 허브 UI
 │  ├─ weapons/                   # 4개 무기 + 베이스
 │  └─ ui/                        # HUD, 레벨업/일시정지/결과, 설정 패널, 터치 조작, 화면비 대응
@@ -411,6 +432,9 @@ DalbearSurvival/
   python gen_friends.py
   python gen_menu_backdrop.py
   python gen_new_stages.py
+  python gen_new_content.py
+  python gen_relics.py
+  python gen_stage_thumbs.py
   python gen_audio.py
   ```
   `Pillow`, `numpy`, `ffmpeg`가 필요합니다.
@@ -427,8 +451,14 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-world-expansion
   godot --path . res://scenes/main.tscn -- --capture-crit
   godot --path . res://scenes/main.tscn -- --capture-new-skills
+  godot --path . res://scenes/main.tscn -- --stage=dunes --capture-game
+  godot --path . res://scenes/main.tscn -- --stage=dunes --capture-boss
+  godot --path . res://scenes/main.tscn -- --stage=dawn --capture-game
+  godot --path . res://scenes/stage_select.tscn -- --capture-select
+  godot --path . res://scenes/stage_select.tscn -- --capture-select-late
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression
+  godot --path . res://scenes/main.tscn -- --test-late-balance
   godot --path . res://scenes/main.tscn -- --test-new-skills
   godot --path . res://scenes/main.tscn -- --test-balance
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear

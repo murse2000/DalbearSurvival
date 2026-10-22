@@ -314,16 +314,20 @@ func spawn_stage_obstacles() -> void:
 		return
 	var kinds: Array = []
 	var count := 22
-	match Game.stage_id:
-		"hive":
-			kinds = ["hive_egg", "hive_pod", "hive_coral"]
-			count = 24
-		"ship":
-			kinds = ["ship_pod", "ship_console", "ship_wall"]
-			count = 24
-		_:
-			kinds = ["forest_tree", "forest_rock", "forest_crystal"]
-			count = 22
+	if GameData.NEW_STAGE_OBSTACLES.has(Game.stage_id):
+		kinds = GameData.NEW_STAGE_OBSTACLES[Game.stage_id]
+		count = 24
+	else:
+		match Game.stage_id:
+			"hive":
+				kinds = ["hive_egg", "hive_pod", "hive_coral"]
+				count = 24
+			"ship":
+				kinds = ["ship_pod", "ship_console", "ship_wall"]
+				count = 24
+			_:
+				kinds = ["forest_tree", "forest_rock", "forest_crystal"]
+				count = 22
 	for i in count:
 		var placed := false
 		for tries in 28:

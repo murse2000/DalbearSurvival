@@ -5,7 +5,37 @@ extends RefCounted
 
 const ARENA_HALF := 1700.0
 const DEFAULT_DURATION := 240.0
-const STAGE_ORDER := ["forest", "hive", "ship", "crater", "void"]
+const STAGE_ORDER := ["forest", "hive", "ship", "crater", "void",
+	"dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn"]
+
+## Each new front has its own enemy roster; no existing enemy is re-used.
+const NEW_STAGE_ENEMIES := {
+	"dunes": ["dune_stalker", "sand_spitter"],
+	"frost": ["frost_wisp", "ice_crab"],
+	"mire": ["mire_lurker", "toxic_moth"],
+	"ruins": ["rust_hound", "cog_sentry"],
+	"citadel": ["moon_knight", "astral_seer"],
+	"trench": ["abyss_jaw", "deep_larva"],
+	"sunspot": ["solar_flare", "magma_wing"],
+	"maze": ["maze_weaver", "prism_eye"],
+	"orbit": ["orbit_drone", "void_cutter"],
+	"dawn": ["dawn_herald", "light_eater"],
+}
+
+## Each new front also has its own destructible relics, so terrain never
+## recycles the forest/hive/ship props from earlier fronts.
+const NEW_STAGE_OBSTACLES := {
+	"dunes": ["relic_dunes_a", "relic_dunes_b"],
+	"frost": ["relic_frost_a", "relic_frost_b"],
+	"mire": ["relic_mire_a", "relic_mire_b"],
+	"ruins": ["relic_ruins_a", "relic_ruins_b"],
+	"citadel": ["relic_citadel_a", "relic_citadel_b"],
+	"trench": ["relic_trench_a", "relic_trench_b"],
+	"sunspot": ["relic_sunspot_a", "relic_sunspot_b"],
+	"maze": ["relic_maze_a", "relic_maze_b"],
+	"orbit": ["relic_orbit_a", "relic_orbit_b"],
+	"dawn": ["relic_dawn_a", "relic_dawn_b"],
+}
 
 const WEAPONS := {
 	"moon_shot": {
@@ -525,6 +555,106 @@ const ENEMIES := {
 		"flying": true,
 		"scale": 0.86,
 	},
+	"dune_stalker": {
+		"name": "사막 추적자", "hp": 58.0, "speed": 62.0, "damage": 11.0, "xp": 18,
+		"radius": 14.0, "texture": "res://assets/art/char/new_enemy_dune_stalker.png",
+		"height": 38.0, "color": Color(0.82, 0.48, 0.24), "flying": false, "behavior": "brute",
+	},
+	"sand_spitter": {
+		"name": "모래 사수", "hp": 42.0, "speed": 52.0, "damage": 9.0, "xp": 14,
+		"radius": 11.0, "texture": "res://assets/art/char/new_enemy_sand_spitter.png",
+		"height": 34.0, "color": Color(0.9, 0.68, 0.34), "flying": false, "behavior": "spitter",
+	},
+	"frost_wisp": {
+		"name": "서리 정령", "hp": 44.0, "speed": 74.0, "damage": 9.0, "xp": 16,
+		"radius": 10.0, "texture": "res://assets/art/char/new_enemy_frost_wisp.png",
+		"height": 32.0, "color": Color(0.55, 0.84, 0.98), "flying": true,
+	},
+	"ice_crab": {
+		"name": "빙갑 게", "hp": 68.0, "speed": 44.0, "damage": 12.0, "xp": 20,
+		"radius": 16.0, "texture": "res://assets/art/char/new_enemy_ice_crab.png",
+		"height": 32.0, "color": Color(0.48, 0.72, 0.9), "flying": false, "behavior": "brute",
+	},
+	"mire_lurker": {
+		"name": "수렁 잠복자", "hp": 62.0, "speed": 58.0, "damage": 10.0, "xp": 19,
+		"radius": 13.0, "texture": "res://assets/art/char/new_enemy_mire_lurker.png",
+		"height": 36.0, "color": Color(0.48, 0.6, 0.28), "flying": false, "behavior": "burrower",
+	},
+	"toxic_moth": {
+		"name": "독나방", "hp": 40.0, "speed": 108.0, "damage": 9.0, "xp": 14,
+		"radius": 9.0, "texture": "res://assets/art/char/new_enemy_toxic_moth.png",
+		"height": 28.0, "color": Color(0.62, 0.78, 0.3), "flying": true, "scale": 0.9,
+	},
+	"rust_hound": {
+		"name": "녹슨 사냥개", "hp": 60.0, "speed": 86.0, "damage": 11.0, "xp": 22,
+		"radius": 13.0, "texture": "res://assets/art/char/new_enemy_rust_hound.png",
+		"height": 34.0, "color": Color(0.58, 0.42, 0.3), "flying": false, "behavior": "brute",
+	},
+	"cog_sentry": {
+		"name": "톱니 파수꾼", "hp": 74.0, "speed": 38.0, "damage": 10.0, "xp": 24,
+		"radius": 15.0, "texture": "res://assets/art/char/new_enemy_cog_sentry.png",
+		"height": 36.0, "color": Color(0.56, 0.6, 0.64), "flying": false, "behavior": "sentinel",
+	},
+	"moon_knight": {
+		"name": "월광 기사", "hp": 64.0, "speed": 60.0, "damage": 12.0, "xp": 26,
+		"radius": 15.0, "texture": "res://assets/art/char/new_enemy_moon_knight.png",
+		"height": 40.0, "color": Color(0.62, 0.56, 0.8), "flying": false, "behavior": "brute",
+	},
+	"astral_seer": {
+		"name": "별안 현자", "hp": 48.0, "speed": 50.0, "damage": 11.0, "xp": 24,
+		"radius": 12.0, "texture": "res://assets/art/char/new_enemy_astral_seer.png",
+		"height": 34.0, "color": Color(0.48, 0.44, 0.76), "flying": true, "behavior": "spitter",
+	},
+	"abyss_jaw": {
+		"name": "심연 아가리", "hp": 76.0, "speed": 52.0, "damage": 13.0, "xp": 28,
+		"radius": 18.0, "texture": "res://assets/art/char/new_enemy_abyss_jaw.png",
+		"height": 44.0, "color": Color(0.38, 0.28, 0.56), "flying": false, "behavior": "brute",
+	},
+	"deep_larva": {
+		"name": "심층 유충", "hp": 44.0, "speed": 100.0, "damage": 10.0, "xp": 18,
+		"radius": 9.0, "texture": "res://assets/art/char/new_enemy_deep_larva.png",
+		"height": 28.0, "color": Color(0.42, 0.34, 0.56), "flying": false, "scale": 0.85,
+	},
+	"solar_flare": {
+		"name": "태양불꽃", "hp": 54.0, "speed": 70.0, "damage": 12.0, "xp": 26,
+		"radius": 12.0, "texture": "res://assets/art/char/new_enemy_solar_flare.png",
+		"height": 36.0, "color": Color(0.92, 0.48, 0.18), "flying": true,
+	},
+	"magma_wing": {
+		"name": "마그마 날개", "hp": 66.0, "speed": 92.0, "damage": 13.0, "xp": 28,
+		"radius": 14.0, "texture": "res://assets/art/char/new_enemy_magma_wing.png",
+		"height": 38.0, "color": Color(0.84, 0.3, 0.16), "flying": true,
+	},
+	"maze_weaver": {
+		"name": "미궁 직조자", "hp": 78.0, "speed": 66.0, "damage": 14.0, "xp": 30,
+		"radius": 16.0, "texture": "res://assets/art/char/new_enemy_maze_weaver.png",
+		"height": 42.0, "color": Color(0.5, 0.42, 0.72), "flying": false, "behavior": "phase",
+	},
+	"prism_eye": {
+		"name": "프리즘 눈", "hp": 56.0, "speed": 45.0, "damage": 12.0, "xp": 30,
+		"radius": 15.0, "texture": "res://assets/art/char/new_enemy_prism_eye.png",
+		"height": 38.0, "color": Color(0.38, 0.5, 0.72), "flying": true, "behavior": "sentinel",
+	},
+	"orbit_drone": {
+		"name": "궤도 드론", "hp": 52.0, "speed": 100.0, "damage": 13.0, "xp": 28,
+		"radius": 12.0, "texture": "res://assets/art/char/new_enemy_orbit_drone.png",
+		"height": 34.0, "color": Color(0.36, 0.62, 0.7), "flying": true,
+	},
+	"void_cutter": {
+		"name": "공허 절단자", "hp": 82.0, "speed": 74.0, "damage": 15.0, "xp": 34,
+		"radius": 14.0, "texture": "res://assets/art/char/new_enemy_void_cutter.png",
+		"height": 40.0, "color": Color(0.4, 0.28, 0.62), "flying": false, "behavior": "phase",
+	},
+	"dawn_herald": {
+		"name": "새벽 전령", "hp": 88.0, "speed": 58.0, "damage": 15.0, "xp": 38,
+		"radius": 18.0, "texture": "res://assets/art/char/new_enemy_dawn_herald.png",
+		"height": 46.0, "color": Color(0.84, 0.68, 0.36), "flying": false, "behavior": "brute",
+	},
+	"light_eater": {
+		"name": "빛 포식자", "hp": 72.0, "speed": 80.0, "damage": 14.0, "xp": 38,
+		"radius": 16.0, "texture": "res://assets/art/char/new_enemy_light_eater.png",
+		"height": 42.0, "color": Color(0.74, 0.52, 0.26), "flying": true, "behavior": "sentinel",
+	},
 	"elder_treant": {
 		"name": "고목 수호자",
 		"hp": 520.0,
@@ -675,6 +805,66 @@ const ENEMIES := {
 		"mini_style": "summon",
 		"scale": 0.62,
 	},
+	"dune_queen": {
+		"name": "사막 여왕", "hp": 1000.0, "speed": 34.0, "damage": 24.0, "xp": 45,
+		"radius": 42.0, "texture": "res://assets/art/char/new_mini_dune_queen.png",
+		"height": 90.0, "color": Color(0.8, 0.45, 0.2), "flying": false,
+		"mini_boss": true, "mini_style": "slam", "scale": 1.35,
+	},
+	"frost_colossus": {
+		"name": "서리 거상", "hp": 1150.0, "speed": 28.0, "damage": 25.0, "xp": 48,
+		"radius": 46.0, "texture": "res://assets/art/char/new_mini_frost_colossus.png",
+		"height": 96.0, "color": Color(0.42, 0.7, 0.92), "flying": false,
+		"mini_boss": true, "mini_style": "slam", "scale": 1.45,
+	},
+	"mire_mother": {
+		"name": "수렁 모체", "hp": 1250.0, "speed": 30.0, "damage": 26.0, "xp": 50,
+		"radius": 44.0, "texture": "res://assets/art/char/new_mini_mire_mother.png",
+		"height": 92.0, "color": Color(0.4, 0.62, 0.26), "flying": false,
+		"mini_boss": true, "mini_style": "summon", "scale": 1.35,
+	},
+	"iron_executor": {
+		"name": "강철 집행자", "hp": 1400.0, "speed": 36.0, "damage": 28.0, "xp": 54,
+		"radius": 44.0, "texture": "res://assets/art/char/new_mini_iron_executor.png",
+		"height": 94.0, "color": Color(0.5, 0.54, 0.6), "flying": false,
+		"mini_boss": true, "mini_style": "beam", "scale": 1.4,
+	},
+	"citadel_guardian": {
+		"name": "성채 파수병", "hp": 1550.0, "speed": 32.0, "damage": 30.0, "xp": 58,
+		"radius": 48.0, "texture": "res://assets/art/char/new_mini_citadel_guardian.png",
+		"height": 100.0, "color": Color(0.55, 0.44, 0.76), "flying": false,
+		"mini_boss": true, "mini_style": "caster", "scale": 1.5,
+	},
+	"trench_devourer": {
+		"name": "해구 포식자", "hp": 1700.0, "speed": 38.0, "damage": 32.0, "xp": 62,
+		"radius": 48.0, "texture": "res://assets/art/char/new_mini_trench_devourer.png",
+		"height": 102.0, "color": Color(0.32, 0.24, 0.48), "flying": false,
+		"mini_boss": true, "mini_style": "charger", "scale": 1.5,
+	},
+	"solar_tyrant": {
+		"name": "흑점 폭군", "hp": 1850.0, "speed": 40.0, "damage": 34.0, "xp": 66,
+		"radius": 50.0, "texture": "res://assets/art/char/new_mini_solar_tyrant.png",
+		"height": 104.0, "color": Color(0.86, 0.4, 0.14), "flying": false,
+		"mini_boss": true, "mini_style": "slam", "scale": 1.55,
+	},
+	"maze_oracle": {
+		"name": "미궁 예언자", "hp": 2000.0, "speed": 34.0, "damage": 36.0, "xp": 70,
+		"radius": 46.0, "texture": "res://assets/art/char/new_mini_maze_oracle.png",
+		"height": 100.0, "color": Color(0.44, 0.36, 0.72), "flying": false,
+		"mini_boss": true, "mini_style": "caster", "scale": 1.45,
+	},
+	"orbit_breaker": {
+		"name": "궤도 파괴자", "hp": 2200.0, "speed": 30.0, "damage": 38.0, "xp": 74,
+		"radius": 50.0, "texture": "res://assets/art/char/new_mini_orbit_breaker.png",
+		"height": 108.0, "color": Color(0.3, 0.58, 0.66), "flying": false,
+		"mini_boss": true, "mini_style": "beam", "scale": 1.55,
+	},
+	"dawn_seraph": {
+		"name": "새벽 세라핌", "hp": 2500.0, "speed": 42.0, "damage": 42.0, "xp": 80,
+		"radius": 52.0, "texture": "res://assets/art/char/new_mini_dawn_seraph.png",
+		"height": 112.0, "color": Color(0.84, 0.66, 0.32), "flying": false,
+		"mini_boss": true, "mini_style": "summon", "scale": 1.6,
+	},
 	"boss_scout": {
 		"name": "정찰 모선",
 		"hp": 900.0,
@@ -750,6 +940,56 @@ const ENEMIES := {
 		"style": "ship",
 		"scale": 1.18,
 	},
+	"boss_dune": {
+		"name": "사막의 스콜피온", "hp": 4800.0, "speed": 30.0, "damage": 28.0, "xp": 130,
+		"radius": 64.0, "texture": "res://assets/art/char/new_boss_dune.png", "height": 124.0,
+		"color": Color(0.84, 0.36, 0.16), "flying": true, "boss": true, "style": "queen", "scale": 1.10,
+	},
+	"boss_frost": {
+		"name": "서리 거인", "hp": 5400.0, "speed": 28.0, "damage": 30.0, "xp": 140,
+		"radius": 68.0, "texture": "res://assets/art/char/new_boss_frost.png", "height": 128.0,
+		"color": Color(0.4, 0.68, 0.9), "flying": true, "boss": true, "style": "ship", "scale": 1.15,
+	},
+	"boss_mire": {
+		"name": "독니 여왕", "hp": 6100.0, "speed": 30.0, "damage": 32.0, "xp": 150,
+		"radius": 68.0, "texture": "res://assets/art/char/new_boss_mire.png", "height": 130.0,
+		"color": Color(0.38, 0.6, 0.24), "flying": true, "boss": true, "style": "queen", "scale": 1.15,
+	},
+	"boss_ruins": {
+		"name": "폐허의 강철신", "hp": 6900.0, "speed": 32.0, "damage": 34.0, "xp": 160,
+		"radius": 70.0, "texture": "res://assets/art/char/new_boss_ruins.png", "height": 132.0,
+		"color": Color(0.46, 0.5, 0.56), "flying": true, "boss": true, "style": "ship", "scale": 1.20,
+	},
+	"boss_citadel": {
+		"name": "달빛 성채의 군주", "hp": 7800.0, "speed": 30.0, "damage": 36.0, "xp": 170,
+		"radius": 72.0, "texture": "res://assets/art/char/new_boss_citadel.png", "height": 136.0,
+		"color": Color(0.5, 0.4, 0.74), "flying": true, "boss": true, "style": "queen", "scale": 1.25,
+	},
+	"boss_trench": {
+		"name": "심연 포식자", "hp": 8800.0, "speed": 34.0, "damage": 38.0, "xp": 180,
+		"radius": 74.0, "texture": "res://assets/art/char/new_boss_trench.png", "height": 138.0,
+		"color": Color(0.28, 0.2, 0.42), "flying": true, "boss": true, "style": "ship", "scale": 1.30,
+	},
+	"boss_solar": {
+		"name": "흑점의 군주", "hp": 9900.0, "speed": 32.0, "damage": 41.0, "xp": 195,
+		"radius": 76.0, "texture": "res://assets/art/char/new_boss_solar.png", "height": 140.0,
+		"color": Color(0.9, 0.32, 0.1), "flying": true, "boss": true, "style": "queen", "scale": 1.35,
+	},
+	"boss_maze": {
+		"name": "미궁의 현자", "hp": 11200.0, "speed": 36.0, "damage": 44.0, "xp": 210,
+		"radius": 78.0, "texture": "res://assets/art/char/new_boss_maze.png", "height": 142.0,
+		"color": Color(0.42, 0.3, 0.68), "flying": true, "boss": true, "style": "ship", "scale": 1.40,
+	},
+	"boss_orbit": {
+		"name": "종말의 궤도신", "hp": 12600.0, "speed": 38.0, "damage": 47.0, "xp": 225,
+		"radius": 80.0, "texture": "res://assets/art/char/new_boss_orbit.png", "height": 146.0,
+		"color": Color(0.26, 0.54, 0.62), "flying": true, "boss": true, "style": "queen", "scale": 1.45,
+	},
+	"boss_dawn": {
+		"name": "새벽을 삼킨 자", "hp": 14500.0, "speed": 40.0, "damage": 52.0, "xp": 250,
+		"radius": 84.0, "texture": "res://assets/art/char/new_boss_dawn.png", "height": 150.0,
+		"color": Color(0.86, 0.66, 0.28), "flying": true, "boss": true, "style": "ship", "scale": 1.55,
+	},
 }
 
 const BASE_STATS := {
@@ -802,6 +1042,86 @@ const DESTRUCTIBLES := {
 	"ship_wall": {
 		"texture": "res://assets/art/world/ship_wall.png", "radius": 34.0,
 		"hp": 330.0, "color": Color(0.55, 0.78, 0.82), "drop": 4, "burst": "",
+	},
+	"relic_dunes_a": {
+		"texture": "res://assets/art/world/relic_dunes_a.png", "radius": 28.0,
+		"hp": 210.0, "color": Color(0.86, 0.5, 0.24), "drop": 3, "burst": "",
+	},
+	"relic_dunes_b": {
+		"texture": "res://assets/art/world/relic_dunes_b.png", "radius": 24.0,
+		"hp": 170.0, "color": Color(0.92, 0.62, 0.3), "drop": 2, "burst": "shard",
+	},
+	"relic_frost_a": {
+		"texture": "res://assets/art/world/relic_frost_a.png", "radius": 30.0,
+		"hp": 240.0, "color": Color(0.55, 0.82, 0.96), "drop": 3, "burst": "shard",
+	},
+	"relic_frost_b": {
+		"texture": "res://assets/art/world/relic_frost_b.png", "radius": 26.0,
+		"hp": 190.0, "color": Color(0.65, 0.9, 1.0), "drop": 2, "burst": "shard",
+	},
+	"relic_mire_a": {
+		"texture": "res://assets/art/world/relic_mire_a.png", "radius": 26.0,
+		"hp": 230.0, "color": Color(0.52, 0.76, 0.3), "drop": 3, "burst": "acid",
+	},
+	"relic_mire_b": {
+		"texture": "res://assets/art/world/relic_mire_b.png", "radius": 30.0,
+		"hp": 260.0, "color": Color(0.64, 0.86, 0.36), "drop": 3, "burst": "acid",
+	},
+	"relic_ruins_a": {
+		"texture": "res://assets/art/world/relic_ruins_a.png", "radius": 30.0,
+		"hp": 300.0, "color": Color(0.62, 0.64, 0.66), "drop": 4, "burst": "shock",
+	},
+	"relic_ruins_b": {
+		"texture": "res://assets/art/world/relic_ruins_b.png", "radius": 26.0,
+		"hp": 240.0, "color": Color(0.76, 0.66, 0.4), "drop": 3, "burst": "shock",
+	},
+	"relic_citadel_a": {
+		"texture": "res://assets/art/world/relic_citadel_a.png", "radius": 30.0,
+		"hp": 330.0, "color": Color(0.62, 0.5, 0.86), "drop": 4, "burst": "shard",
+	},
+	"relic_citadel_b": {
+		"texture": "res://assets/art/world/relic_citadel_b.png", "radius": 26.0,
+		"hp": 270.0, "color": Color(0.72, 0.58, 0.96), "drop": 3, "burst": "shard",
+	},
+	"relic_trench_a": {
+		"texture": "res://assets/art/world/relic_trench_a.png", "radius": 32.0,
+		"hp": 360.0, "color": Color(0.4, 0.28, 0.58), "drop": 4, "burst": "acid",
+	},
+	"relic_trench_b": {
+		"texture": "res://assets/art/world/relic_trench_b.png", "radius": 28.0,
+		"hp": 300.0, "color": Color(0.56, 0.34, 0.72), "drop": 3, "burst": "acid",
+	},
+	"relic_sunspot_a": {
+		"texture": "res://assets/art/world/relic_sunspot_a.png", "radius": 30.0,
+		"hp": 390.0, "color": Color(0.96, 0.42, 0.14), "drop": 4, "burst": "shard",
+	},
+	"relic_sunspot_b": {
+		"texture": "res://assets/art/world/relic_sunspot_b.png", "radius": 26.0,
+		"hp": 320.0, "color": Color(1.0, 0.6, 0.2), "drop": 3, "burst": "shard",
+	},
+	"relic_maze_a": {
+		"texture": "res://assets/art/world/relic_maze_a.png", "radius": 30.0,
+		"hp": 420.0, "color": Color(0.5, 0.38, 0.78), "drop": 4, "burst": "shard",
+	},
+	"relic_maze_b": {
+		"texture": "res://assets/art/world/relic_maze_b.png", "radius": 26.0,
+		"hp": 350.0, "color": Color(0.64, 0.48, 0.9), "drop": 3, "burst": "shard",
+	},
+	"relic_orbit_a": {
+		"texture": "res://assets/art/world/relic_orbit_a.png", "radius": 32.0,
+		"hp": 460.0, "color": Color(0.38, 0.7, 0.76), "drop": 4, "burst": "shock",
+	},
+	"relic_orbit_b": {
+		"texture": "res://assets/art/world/relic_orbit_b.png", "radius": 28.0,
+		"hp": 380.0, "color": Color(0.5, 0.86, 0.88), "drop": 3, "burst": "shock",
+	},
+	"relic_dawn_a": {
+		"texture": "res://assets/art/world/relic_dawn_a.png", "radius": 34.0,
+		"hp": 520.0, "color": Color(0.92, 0.72, 0.34), "drop": 5, "burst": "shard",
+	},
+	"relic_dawn_b": {
+		"texture": "res://assets/art/world/relic_dawn_b.png", "radius": 30.0,
+		"hp": 430.0, "color": Color(1.0, 0.84, 0.48), "drop": 4, "burst": "shard",
 	},
 }
 
@@ -863,6 +1183,7 @@ const STAGES := {
 		"num": 1,
 		"name": "제1전선",
 		"short": "달빛 숲",
+		"theme": "forest",
 		"subtitle": "외계 함대 침공",
 		"desc": "달빛 숲. 첫 번째 함대를 막아라.",
 		"duration": 240.0,
@@ -883,6 +1204,7 @@ const STAGES := {
 		"num": 2,
 		"name": "제2전선",
 		"short": "군체 분화구",
+		"theme": "hive",
 		"subtitle": "포자가 바람에 흩날린다",
 		"desc": "군체 분화구. 여왕을 깨우지 마라.",
 		"duration": 240.0,
@@ -903,6 +1225,7 @@ const STAGES := {
 		"num": 3,
 		"name": "제3전선",
 		"short": "모선 심장부",
+		"theme": "ship",
 		"subtitle": "달을 삼킨 자의 배",
 		"desc": "모선 심장부. 격벽을 돌파하라.",
 		"duration": 240.0,
@@ -923,6 +1246,7 @@ const STAGES := {
 		"num": 4,
 		"name": "제4전선",
 		"short": "잿빛 균열",
+		"theme": "crater",
 		"subtitle": "재와 용암이 흐른다",
 		"desc": "잿빛 균열. 재의 레비아탄을 막아라.",
 		"duration": 240.0,
@@ -945,6 +1269,7 @@ const STAGES := {
 		"num": 5,
 		"name": "제5전선",
 		"short": "달의 뒷면",
+		"theme": "void",
 		"subtitle": "빛이 닿지 않는 곳",
 		"desc": "달의 뒷면. 월식의 군주를 쓰러뜨려라.",
 		"duration": 240.0,
@@ -962,6 +1287,146 @@ const STAGES := {
 		"thumb": "res://assets/art/ui/stage_void.png",
 		"goal": "월식 종결까지",
 		"warnings": [[50.0, "달빛이 꺼진다"], [118.0, "공허가 열린다"]],
+	},
+	"dunes": {
+		"num": 6, "name": "제6전선", "short": "붉은 사막", "theme": "crater",
+		"subtitle": "모래 아래에서 발톱이 움직인다", "desc": "붉은 사막. 사막의 스콜피온을 처치하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_dune",
+		"enemies": ["dune_stalker", "sand_spitter"],
+		"enemy_icons": ["dune_stalker", "sand_spitter"],
+		"minibosses": [[105.0, "dune_queen"]],
+		"hp_scale": 2.05, "damage_scale": 1.50, "spawn_scale": 0.82, "music_pitch": 0.78,
+		"tint": Color(1.16, 0.72, 0.58), "accent": Color(1.0, 0.38, 0.18),
+		"thumb": "res://assets/art/ui/stage_dunes.png",
+		"ground": "res://assets/art/world/ground_dunes.png",
+		"goal": "사막 봉쇄까지",
+		"warnings": [[50.0, "모래 폭풍이 몰아친다"], [118.0, "발톱 군단이 솟아난다"]],
+	},
+	"frost": {
+		"num": 7, "name": "제7전선", "short": "얼어붙은 호수", "theme": "void",
+		"subtitle": "얼음 아래에서 빛이 숨 쉰다", "desc": "얼어붙은 호수. 서리 거인을 쓰러뜨려라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_frost",
+		"enemies": ["frost_wisp", "ice_crab"],
+		"enemy_icons": ["frost_wisp", "ice_crab"],
+		"minibosses": [[105.0, "frost_colossus"]],
+		"hp_scale": 2.22, "damage_scale": 1.56, "spawn_scale": 0.80, "music_pitch": 1.22,
+		"tint": Color(0.72, 0.86, 1.18), "accent": Color(0.45, 0.82, 1.0),
+		"thumb": "res://assets/art/ui/stage_frost.png",
+		"ground": "res://assets/art/world/ground_frost.png",
+		"goal": "호수 동결까지",
+		"warnings": [[50.0, "호수가 얼어붙는다"], [118.0, "서리 거인이 깨어난다"]],
+	},
+	"mire": {
+		"num": 8, "name": "제8전선", "short": "독성 수렁", "theme": "hive",
+		"subtitle": "숨 쉬는 것도 독이 된다", "desc": "독성 수렁. 독니 여왕을 처치하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_mire",
+		"enemies": ["mire_lurker", "toxic_moth"],
+		"enemy_icons": ["mire_lurker", "toxic_moth"],
+		"minibosses": [[105.0, "mire_mother"]],
+		"hp_scale": 2.42, "damage_scale": 1.62, "spawn_scale": 0.78, "music_pitch": 0.86,
+		"tint": Color(0.92, 1.12, 0.62), "accent": Color(0.58, 0.94, 0.38),
+		"thumb": "res://assets/art/ui/stage_mire.png",
+		"ground": "res://assets/art/world/ground_mire.png",
+		"goal": "독원 정화까지",
+		"warnings": [[50.0, "독안개가 번진다"], [118.0, "둥지가 부풀어 오른다"]],
+	},
+	"ruins": {
+		"num": 9, "name": "제9전선", "short": "강철 폐허", "theme": "ship",
+		"subtitle": "무너진 기계가 다시 걷는다", "desc": "강철 폐허. 폐허의 강철신을 파괴하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_ruins",
+		"enemies": ["rust_hound", "cog_sentry"],
+		"enemy_icons": ["rust_hound", "cog_sentry"],
+		"minibosses": [[105.0, "iron_executor"]],
+		"hp_scale": 2.64, "damage_scale": 1.69, "spawn_scale": 0.76, "music_pitch": 1.04,
+		"tint": Color(0.72, 0.88, 0.98), "accent": Color(0.52, 0.78, 0.9),
+		"thumb": "res://assets/art/ui/stage_ruins.png",
+		"ground": "res://assets/art/world/ground_ruins.png",
+		"goal": "폐허 정리까지",
+		"warnings": [[50.0, "기계 군단이 기동한다"], [118.0, "집행자가 내려온다"]],
+	},
+	"citadel": {
+		"num": 10, "name": "제10전선", "short": "달빛 성채", "theme": "void",
+		"subtitle": "달의 성벽이 하늘을 가른다", "desc": "달빛 성채. 달빛 성채의 군주를 넘어라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_citadel",
+		"enemies": ["moon_knight", "astral_seer"],
+		"enemy_icons": ["moon_knight", "astral_seer"],
+		"minibosses": [[105.0, "citadel_guardian"]],
+		"hp_scale": 2.88, "damage_scale": 1.76, "spawn_scale": 0.74, "music_pitch": 1.16,
+		"tint": Color(0.84, 0.70, 1.16), "accent": Color(0.72, 0.48, 1.0),
+		"thumb": "res://assets/art/ui/stage_citadel.png",
+		"ground": "res://assets/art/world/ground_citadel.png",
+		"goal": "성채 함락까지",
+		"warnings": [[50.0, "성벽이 닫힌다"], [118.0, "수호자가 왕좌에서 내려온다"]],
+	},
+	"trench": {
+		"num": 11, "name": "제11전선", "short": "심연 해구", "theme": "hive",
+		"subtitle": "아래로 갈수록 빛이 죽는다", "desc": "심연 해구. 심연 포식자를 사냥하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_trench",
+		"enemies": ["abyss_jaw", "deep_larva"],
+		"enemy_icons": ["abyss_jaw", "deep_larva"],
+		"minibosses": [[105.0, "trench_devourer"]],
+		"hp_scale": 3.14, "damage_scale": 1.84, "spawn_scale": 0.72, "music_pitch": 0.74,
+		"tint": Color(0.66, 0.50, 0.88), "accent": Color(0.56, 0.32, 0.92),
+		"thumb": "res://assets/art/ui/stage_trench.png",
+		"ground": "res://assets/art/world/ground_trench.png",
+		"goal": "해구 봉인까지",
+		"warnings": [[50.0, "해구가 갈라진다"], [118.0, "심연 포식자가 솟아오른다"]],
+	},
+	"sunspot": {
+		"num": 12, "name": "제12전선", "short": "태양 흑점", "theme": "crater",
+		"subtitle": "타오르는 흑점이 궤도를 삼킨다", "desc": "태양 흑점. 흑점의 군주를 격추하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_solar",
+		"enemies": ["solar_flare", "magma_wing"],
+		"enemy_icons": ["solar_flare", "magma_wing"],
+		"minibosses": [[105.0, "solar_tyrant"]],
+		"hp_scale": 3.42, "damage_scale": 1.92, "spawn_scale": 0.70, "music_pitch": 0.88,
+		"tint": Color(1.20, 0.66, 0.40), "accent": Color(1.0, 0.56, 0.16),
+		"thumb": "res://assets/art/ui/stage_sunspot.png",
+		"ground": "res://assets/art/world/ground_sunspot.png",
+		"goal": "흑점 소멸까지",
+		"warnings": [[50.0, "태양풍이 몰아친다"], [118.0, "흑점의 군주가 강림한다"]],
+	},
+	"maze": {
+		"num": 13, "name": "제13전선", "short": "성운 미궁", "theme": "void",
+		"subtitle": "별빛이 길을 속이고 다시 접힌다", "desc": "성운 미궁. 미궁의 현자를 찾아내라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_maze",
+		"enemies": ["maze_weaver", "prism_eye"],
+		"enemy_icons": ["maze_weaver", "prism_eye"],
+		"minibosses": [[105.0, "maze_oracle"]],
+		"hp_scale": 3.72, "damage_scale": 2.00, "spawn_scale": 0.68, "music_pitch": 1.24,
+		"tint": Color(0.68, 0.62, 1.20), "accent": Color(0.56, 0.42, 1.0),
+		"thumb": "res://assets/art/ui/stage_maze.png",
+		"ground": "res://assets/art/world/ground_maze.png",
+		"goal": "미궁 탈출까지",
+		"warnings": [[50.0, "별길이 접힌다"], [118.0, "현자가 모습을 드러낸다"]],
+	},
+	"orbit": {
+		"num": 14, "name": "제14전선", "short": "종말 궤도", "theme": "ship",
+		"subtitle": "마지막 궤도가 불타고 있다", "desc": "종말 궤도. 종말의 궤도신을 막아라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_orbit",
+		"enemies": ["orbit_drone", "void_cutter"],
+		"enemy_icons": ["orbit_drone", "void_cutter"],
+		"minibosses": [[105.0, "orbit_breaker"]],
+		"hp_scale": 4.04, "damage_scale": 2.08, "spawn_scale": 0.66, "music_pitch": 1.12,
+		"tint": Color(0.76, 0.92, 1.10), "accent": Color(0.42, 0.94, 0.94),
+		"thumb": "res://assets/art/ui/stage_orbit.png",
+		"ground": "res://assets/art/world/ground_orbit.png",
+		"goal": "궤도 사수까지",
+		"warnings": [[50.0, "궤도가 무너진다"], [118.0, "파괴자가 전면에 선다"]],
+	},
+	"dawn": {
+		"num": 15, "name": "제15전선", "short": "새벽의 문", "theme": "void",
+		"subtitle": "모든 밤이 끝나는 문 앞", "desc": "새벽의 문. 새벽을 삼킨 자와 최후의 결전.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_dawn",
+		"enemies": ["dawn_herald", "light_eater"],
+		"enemy_icons": ["dawn_herald", "light_eater"],
+		"minibosses": [[105.0, "dawn_seraph"]],
+		"hp_scale": 4.40, "damage_scale": 2.18, "spawn_scale": 0.64, "music_pitch": 1.30,
+		"tint": Color(1.10, 0.86, 0.54), "accent": Color(1.0, 0.78, 0.34),
+		"thumb": "res://assets/art/ui/stage_dawn.png",
+		"ground": "res://assets/art/world/ground_dawn.png",
+		"goal": "새벽을 맞이하라",
+		"warnings": [[50.0, "새벽의 문이 열린다"], [118.0, "모든 밤이 한곳으로 모인다"]],
 	},
 }
 
@@ -1073,6 +1538,14 @@ static func spawn_batch(t: float, duration: float = 240.0) -> int:
 
 
 static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
+	if NEW_STAGE_ENEMIES.has(stage_id):
+		var pair: Array = NEW_STAGE_ENEMIES[stage_id]
+		var w := {String(pair[0]): 4.0, String(pair[1]): 3.0}
+		if t > 70.0:
+			w[String(pair[1])] = 4.5
+		if t > 140.0:
+			w[String(pair[0])] = 5.0
+		return w
 	match stage_id:
 		"hive":
 			var w := {"spitter": 4.2, "blob": maxf(2.0, 8.0 - t / 50.0), "larva": 3.0}

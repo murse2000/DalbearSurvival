@@ -246,7 +246,7 @@ func _process(delta: float) -> void:
 			aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) if boss
 				else 0.68) * (1.0 + sin(age * 2.2) * 0.04)
 			aura.modulate.a = 0.22 + sin(age * 3.0) * 0.05
-	elif kind == "drone" or kind == "jelly" or kind == "sentinel" or kind == "moth" or kind == "sporeling":
+	elif bool(data.get("flying", false)) or kind in ["drone", "jelly", "sentinel", "moth", "sporeling"]:
 		sprite.position.y = sprite_base_y + sin(age * 4.0 + seeded) * 3.0
 	else:
 		sprite.position.y = sprite_base_y + sin(age * 7.0 + seeded) * 0.8
@@ -538,6 +538,8 @@ func _miniboss_charger(delta: float, dir: Vector2, dist: float) -> void:
 
 func _miniboss_summon() -> void:
 	var kinds := ["larva", "sporeling"] if mini_style == "summon" else ["blob", "grey"]
+	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
+		kinds = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
 	var count := 4
 	for i in count:
 		var a := TAU * float(i) / float(count) + randf() * 0.4
@@ -691,7 +693,9 @@ func _fire_slam() -> void:
 func _boss_summon() -> void:
 	var count := 5 if enraged else 4
 	var summon_kinds := ["drone", "grey"]
-	if boss_style == "queen":
+	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
+		summon_kinds = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
+	elif boss_style == "queen":
 		summon_kinds = ["spitter", "bomber"]
 	elif boss_style == "ship":
 		summon_kinds = ["phase", "sentinel", "splitter"]

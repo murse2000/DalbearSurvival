@@ -689,7 +689,7 @@ func grant_run_rewards(victory: bool, boss_killed: bool) -> Dictionary:
 	var diff_idx := maxi(0, GameData.DIFFICULTY_ORDER.find(difficulty_id))
 	var stage_idx := maxi(0, GameData.STAGE_ORDER.find(stage_id))
 	var diff_mult := float([0.8, 1.0, 1.25, 1.6][mini(diff_idx, 3)])
-	var stage_mult := float([1.0, 1.2, 1.45][mini(stage_idx, 2)])
+	var stage_mult := 1.0 + float(stage_idx) * 0.12
 	var gain := 40.0 + float(kills) * 0.16 + time * 0.09
 	if victory:
 		gain += 55.0
@@ -701,7 +701,7 @@ func grant_run_rewards(victory: bool, boss_killed: bool) -> Dictionary:
 		luck += 1.6
 	if boss_killed:
 		luck += 2.0
-	var drop_level := 1 + (1 if diff_idx >= 2 else 0)
+	var drop_level := 1 + (1 if diff_idx >= 2 else 0) + floori(float(stage_idx) / 5.0)
 	var drop_count := 1 + (1 if victory else 0) + (1 if boss_killed else 0)
 	var drops: Array = []
 	for i in drop_count:

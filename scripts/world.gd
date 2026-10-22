@@ -15,6 +15,7 @@ var fx_root: Node2D
 var damage_root: Node2D
 var target: Node2D
 var stage_id := "forest"
+var stage_key := "forest"
 
 var _fog: Array[Sprite2D] = []
 var _fireflies: Array[CPUParticles2D] = []
@@ -24,7 +25,10 @@ var _time := 0.0
 
 
 func build(stage: String) -> void:
-	stage_id = stage
+	stage_key = stage
+	# New fronts carry a visual theme; reuse the theme's border/props but keep
+	# their own ground, tint and thumbnails.
+	stage_id = String(GameData.stage(stage).get("theme", stage))
 	_rng.seed = 20261021
 	z_as_relative = false
 	_build_containers()
@@ -66,6 +70,9 @@ func _node(node_name: String) -> Node2D:
 
 
 func _ground_path() -> String:
+	var st := GameData.stage(stage_key)
+	if st.has("ground"):
+		return String(st["ground"])
 	match stage_id:
 		"hive", "crater":
 			return A + "world/ground_hive.png"

@@ -49,14 +49,19 @@ func _ready() -> void:
 			var fid := a.substr(9)
 			if CharacterData.CHARACTERS.has(fid):
 				Game.select_character(fid)
-	if "--capture-boss" in _args or "--capture-final" in _args:
-		Game.stage_id = "ship"
-	elif "--capture-queen" in _args:
-		Game.stage_id = "hive"
-	elif "--capture-hive" in _args:
-		Game.stage_id = "hive"
-	elif "--capture-ship" in _args:
-		Game.stage_id = "ship"
+	var explicit_stage := false
+	for a in _args:
+		if a.begins_with("--stage="):
+			explicit_stage = true
+	if not explicit_stage:
+		if "--capture-boss" in _args or "--capture-final" in _args:
+			Game.stage_id = "ship"
+		elif "--capture-queen" in _args:
+			Game.stage_id = "hive"
+		elif "--capture-hive" in _args:
+			Game.stage_id = "hive"
+		elif "--capture-ship" in _args:
+			Game.stage_id = "ship"
 	if "--test-checkpoint-resume" in _args:
 		Game.prepare_resume_checkpoint()
 	var run_snapshot: Dictionary = Game.consume_run_snapshot()
@@ -155,6 +160,8 @@ func _ready() -> void:
 		_test_new_skills()
 	elif "--test-balance" in _args:
 		_test_balance()
+	elif "--test-late-balance" in _args:
+		_test_late_balance()
 	elif "--test-world-expansion" in _args:
 		_test_world_expansion()
 	elif "--test-progression" in _args:
@@ -551,6 +558,60 @@ func _test_balance() -> void:
 	get_tree().quit()
 
 
+func _test_late_balance() -> void:
+	# Benchmarks the late campaign: a fully built bear against end-of-stage
+	# enemies, so the 6-15 HP curve stays in line with player power.
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	Game.time = 216.0
+	manager.spawn_timer = 999.0
+	manager.boss_spawned = true
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	player.invuln = 999.0
+	for id in ["core", "star", "coolant", "armor", "heart"]:
+		player.passive_levels[id] = 5
+	for id in ["moon_shot", "satellite", "pulse", "laser", "meteor", "chain",
+			"singularity", "blades"]:
+		if not player.weapon_levels.has(id):
+			player.add_weapon(id)
+		while int(player.weapon_levels.get(id, 0)) < 6:
+			player.upgrade_weapon(id)
+	player.recalc_stats()
+	for id in ["moon_shot", "satellite", "pulse", "laser"]:
+		player.evolve_weapon(id)
+	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(Game.stage_id, ["dune_stalker", "sand_spitter"])
+	var start_hp := 0.0
+	for i in 64:
+		var a := TAU * float(i) / 64.0
+		manager.spawn_enemy(String(pair[i % 2]),
+			player.global_position + Vector2.from_angle(a) * (230.0 + float(i % 4) * 45.0), false)
+	for e in manager.enemies:
+		if is_instance_valid(e):
+			start_hp += e.max_hp
+	var kills_before := Game.kills
+	await get_tree().create_timer(8.0, true, false, true).timeout
+	var alive := 0
+	var alive_hp := 0.0
+	for e in manager.enemies:
+		if is_instance_valid(e) and not e.dead:
+			alive += 1
+			alive_hp += e.hp
+	var hp_scale := GameData.enemy_hp_mult(Game.stage_id, Game.time, Game.difficulty_id)
+	var kills := Game.kills - kills_before
+	print("LATE BALANCE TEST stage=%s scale=%.2f kills=%d alive=%d dealt=%.0f dps=%.0f" % [
+		Game.stage_id, hp_scale, kills, alive,
+		start_hp - alive_hp, (start_hp - alive_hp) / 8.0,
+	])
+	if kills < 16:
+		push_error("LATE BALANCE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("LATE BALANCE TEST OK")
+	get_tree().quit()
+
+
 func _test_world_expansion() -> void:
 	await get_tree().create_timer(0.8, true, false, true).timeout
 	player.invuln = 999.0
@@ -572,7 +633,11 @@ func _test_world_expansion() -> void:
 			collision_ok = resolved.distance_to(o.global_position) >= o.radius + player.radius - 0.5
 	for kind in ["thorn", "moth", "larva", "sporeling", "crawler", "nullifier"]:
 		manager.spawn_enemy(kind, player.global_position + Vector2(randf_range(-260, 260), randf_range(-200, 200)), false)
-	Game.time = 70.2
+	var schedule: Array = Game.stage_data().get("minibosses", [])
+	var first_mini := 70.0
+	if not schedule.is_empty():
+		first_mini = float(schedule[0][0])
+	Game.time = first_mini + 0.2
 	manager.boss_spawned = true
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	var mini_ok: bool = Game.miniboss != null and is_instance_valid(Game.miniboss) and Game.miniboss.miniboss
@@ -622,6 +687,19 @@ func _test_progression() -> void:
 	Game.record_stage_result("ship", "normal", true, false, 200.0, 14, 140)
 	Game.record_stage_result("crater", "normal", true, false, 200.0, 16, 160)
 	var void_open := Game.is_stage_unlocked("void")
+	var dunes_locked := not Game.is_stage_unlocked("dunes")
+	Game.record_stage_result("void", "normal", true, false, 200.0, 18, 180)
+	var dunes_open := Game.is_stage_unlocked("dunes")
+	var frost_locked := not Game.is_stage_unlocked("frost")
+	# Walk the rest of the chain: clearing each front opens exactly the next one.
+	var chain_ok := dunes_open and frost_locked
+	for i in range(5, GameData.STAGE_ORDER.size() - 1):
+		var cleared_id: String = GameData.STAGE_ORDER[i]
+		var next_id: String = GameData.STAGE_ORDER[i + 1]
+		Game.record_stage_result(cleared_id, "normal", true, false, 200.0, 20 + i, 200 + i)
+		chain_ok = chain_ok and Game.is_stage_unlocked(next_id)
+		if i + 2 < GameData.STAGE_ORDER.size():
+			chain_ok = chain_ok and not Game.is_stage_unlocked(GameData.STAGE_ORDER[i + 2])
 	var sheet: Texture2D = load(CharacterData.sheet(Game.selected_character))
 	var diagonal_ok := sheet.get_height() / 36 == 5
 	player._update_facing(Vector2(1, 1))
@@ -630,16 +708,34 @@ func _test_progression() -> void:
 	diagonal_ok = diagonal_ok and player._row == 1 and player._flip
 	player._update_facing(Vector2(1, -1))
 	diagonal_ok = diagonal_ok and player._row == 3
-	var content_ok := GameData.STAGE_ORDER.size() == 5 \
-		and GameData.ENEMIES.has("boss_leviathan") \
-		and GameData.ENEMIES.has("boss_eclipse") \
-		and GameData.ENEMIES.has("magma_titan") \
-		and GameData.ENEMIES.has("rift_hunter")
-	print("PROGRESSION TEST forest=%s hive_locked=%s hive=%s ship_locked=%s void=%s diagonal=%s content=%s" % [
-		forest_open, hive_locked, hive_open, ship_locked, void_open, diagonal_ok, content_ok,
+	var content_ok := GameData.STAGE_ORDER.size() == 15 \
+		and GameData.STAGES.size() == 15 \
+		and GameData.NEW_STAGE_ENEMIES.size() == 10 \
+		and GameData.NEW_STAGE_OBSTACLES.size() == 10
+	for id in ["dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn"]:
+		var st: Dictionary = GameData.stage(id)
+		content_ok = content_ok and GameData.ENEMIES.has(String(st["boss"]))
+		content_ok = content_ok and st.has("ground") and st.has("thumb")
+		content_ok = content_ok and (st["enemies"] as Array).size() == 2
+		for eid in st["enemies"]:
+			content_ok = content_ok and GameData.ENEMIES.has(String(eid))
+		for eid in st["enemy_icons"]:
+			content_ok = content_ok and GameData.ENEMIES.has(String(eid))
+		for mini in st["minibosses"]:
+			content_ok = content_ok and GameData.ENEMIES.has(String(mini[1]))
+		for relic in GameData.NEW_STAGE_OBSTACLES[id]:
+			content_ok = content_ok and GameData.DESTRUCTIBLES.has(String(relic))
+	for id in ["dune_queen", "frost_colossus", "mire_mother", "iron_executor",
+			"citadel_guardian", "trench_devourer", "solar_tyrant", "maze_oracle",
+			"orbit_breaker", "dawn_seraph"]:
+		content_ok = content_ok and GameData.ENEMIES.has(id)
+	print("PROGRESSION TEST stages=%d forest=%s hive_locked=%s hive=%s ship_locked=%s void=%s dunes_locked=%s dunes=%s chain=%s diagonal=%s content=%s" % [
+		GameData.STAGE_ORDER.size(), forest_open, hive_locked, hive_open, ship_locked,
+		void_open, dunes_locked, dunes_open, chain_ok, diagonal_ok, content_ok,
 	])
 	if not forest_open or not hive_locked or not hive_open or not ship_locked \
-			or not void_open or not diagonal_ok or not content_ok:
+			or not void_open or not dunes_locked or not dunes_open or not chain_ok \
+			or not diagonal_ok or not content_ok:
 		push_error("PROGRESSION TEST FAILED")
 		get_tree().quit(1)
 		return
@@ -769,7 +865,12 @@ func _capture_game() -> void:
 	Game.kills_changed.emit(Game.kills)
 	Game.xp_changed.emit(Game.xp, Game.xp_need, Game.level)
 	var kinds := ["blob", "blob", "drone", "drone", "grey", "jelly", "blob", "drone", "grey", "jelly", "blob", "mech"]
-	if Game.stage_id == "hive":
+	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
+		var pair: Array = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
+		kinds = [String(pair[0]), String(pair[1]), String(pair[0]), String(pair[0]),
+			String(pair[1]), String(pair[0]), String(pair[1]), String(pair[0]),
+			String(pair[1]), String(pair[0]), String(pair[0]), String(pair[1])]
+	elif Game.stage_id == "hive":
 		kinds = ["spitter", "bomber", "burrower", "spitter", "blob", "drone", "spitter", "bomber", "brute", "spitter", "burrower", "blob"]
 	elif Game.stage_id == "ship":
 		kinds = ["sentinel", "phase", "splitter", "drone", "grey", "phase", "sentinel", "splitter", "mech", "phase", "sentinel", "drone"]
@@ -831,12 +932,13 @@ func _capture_boss() -> void:
 	Game.xp_changed.emit(Game.xp, Game.xp_need, Game.level)
 	manager.boss_spawned = true
 	var pos: Vector2 = player.global_position + Vector2(0, -170)
-	manager.spawn_enemy("boss_final", pos, false)
+	manager.spawn_enemy(String(Game.stage_data()["boss"]), pos, false)
 	await get_tree().create_timer(1.4, true, false, true).timeout
 	if hud != null:
 		hud.warning_panel.visible = false
 	await get_tree().create_timer(1.2, true, false, true).timeout
-	await _capture("boss")
+	var shot := "boss" if Game.stage_id == "ship" else "boss_" + Game.stage_id
+	await _capture(shot)
 
 
 func _capture_queen() -> void:

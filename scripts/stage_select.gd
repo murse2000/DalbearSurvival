@@ -1,9 +1,10 @@
 extends Control
 
-## Campaign hub: choose one of three fronts and a difficulty.
+## Campaign hub: choose one of fifteen fronts and a difficulty.
 
 var _cards := {}
 var _diff_chips := {}
+var _scroll: ScrollContainer
 var _diff_desc: Label
 var _stage_hint: Label
 var _shards_label: Label
@@ -24,13 +25,28 @@ func _ready() -> void:
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
 	_selected_stage = Game.selected_stage if GameData.STAGES.has(Game.selected_stage) else "forest"
-	if not Game.is_stage_unlocked(_selected_stage):
+	var marketing := "--capture-select" in _args or "--capture-select-late" in _args
+	if marketing:
+		# Marketing captures show the map unlocked without touching the save.
+		for id in GameData.STAGE_ORDER:
+			Game.stage_records["%s:normal" % id] = {
+				"clears": 1, "boss": true, "best_kills": 180, "best_level": 18,
+				"best_time": 210.0,
+			}
+	if "--capture-select-late" in _args:
+		_selected_stage = "dawn"
+	elif "--capture-select" in _args:
+		_selected_stage = "dunes"
+	elif not Game.is_stage_unlocked(_selected_stage):
 		_selected_stage = Game.first_unlocked_stage()
 	_selected_diff = Game.selected_difficulty if GameData.DIFFICULTIES.has(Game.selected_difficulty) else "normal"
 	Game.select_stage(_selected_stage, _selected_diff)
 	_build()
 	UIFit.wrap_menu(self)
-	if "--capture-select" in _args:
+	_ensure_visible.call_deferred(_selected_stage)
+	if "--capture-select-late" in _args:
+		_capture("stage_select_late")
+	elif "--capture-select" in _args:
 		_capture()
 	if "--smoke-start" in _args:
 		_start.call_deferred()
@@ -61,9 +77,14 @@ func _build() -> void:
 	var title := UIKit.label("전선 선택", 52, UIKit.GOLD, 7)
 	title.position = Vector2(52, 48)
 	add_child(title)
-	var sub := UIKit.label("다섯 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
+	var sub := UIKit.label("열다섯 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
 	sub.position = Vector2(56, 112)
 	add_child(sub)
+	var count_hint := UIKit.label("15 FRONTS  ·  SCROLL", 13, UIKit.MUTED)
+	count_hint.position = Vector2(1030, 116)
+	count_hint.size = Vector2(194, 20)
+	count_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(count_hint)
 	var back_top := UIKit.button("← 타이틀", Vector2(140, 42))
 	back_top.position = Vector2(1084, 34)
 	back_top.add_theme_font_size_override("font_size", 18)
@@ -82,10 +103,23 @@ func _build() -> void:
 	_character_btn.pressed.connect(_open_characters)
 	add_child(_character_btn)
 
+	_scroll = ScrollContainer.new()
+	UIKit.place(_scroll, 26, 154, 1228, 370)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.add_theme_stylebox_override("panel", UIKit.style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 0))
+	add_child(_scroll)
+
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	_scroll.add_child(grid)
+
 	for i in GameData.STAGE_ORDER.size():
 		var id: String = GameData.STAGE_ORDER[i]
 		var card := _make_stage_card(id, i)
-		add_child(card["root"])
+		grid.add_child(card["root"])
 		_cards[id] = card
 
 	# difficulty chips
@@ -126,7 +160,7 @@ func _build() -> void:
 	var domain := UIKit.label("dalbear.com", 13, UIKit.GOLD)
 	domain.position = Vector2(56, 690)
 	add_child(domain)
-	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  ESC 타이틀  ·  1~5 전선", 10, UIKit.MUTED)
+	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  ESC 타이틀  ·  스크롤로 전선 선택", 10, UIKit.MUTED)
 	ver.position = Vector2(600, 698)
 	ver.size = Vector2(624, 18)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -139,7 +173,7 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	var info: Dictionary = GameData.STAGES[id]
 	var accent: Color = info["accent"]
 	var root := UIKit.panel(Color(0.045, 0.07, 0.105, 0.94), UIKit.BORDER, 2)
-	UIKit.place(root, 26 + index * 246, 158, 236, 366)
+	root.custom_minimum_size = Vector2(230, 366)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	root.clip_contents = true
@@ -185,8 +219,9 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	var icon_label := UIKit.label("출현", 11, UIKit.MUTED)
 	icon_label.position = Vector2(16, 199)
 	root.add_child(icon_label)
-	for i in 3:
-		var enemy_id: String = info["enemy_icons"][i]
+	var icons: Array = info["enemy_icons"]
+	for i in mini(3, icons.size()):
+		var enemy_id: String = icons[i]
 		var enemy_info: Dictionary = GameData.ENEMIES[enemy_id]
 		var icon := UIKit.icon(String(enemy_info["texture"]), 25)
 		icon.position = Vector2(56 + i * 34, 194)
@@ -284,7 +319,14 @@ func _select_stage(id: String) -> void:
 	_selected_stage = id
 	Game.select_stage(_selected_stage, _selected_diff)
 	_refresh()
+	_ensure_visible(id)
 	Audio.play_click()
+
+
+func _ensure_visible(id: String) -> void:
+	if _scroll == null or not _cards.has(id):
+		return
+	_scroll.ensure_control_visible(_cards[id]["root"])
 
 
 func _select_diff(id: String) -> void:
@@ -385,6 +427,21 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_5:
 			_select_stage("void")
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_6:
+			_select_stage("dunes")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_7:
+			_select_stage("frost")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_8:
+			_select_stage("mire")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_9:
+			_select_stage("ruins")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_0:
+			_select_stage("citadel")
+			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
 			var idx := maxi(0, GameData.DIFFICULTY_ORDER.find(_selected_diff) - 1)
 			_select_diff(GameData.DIFFICULTY_ORDER[idx])
@@ -395,12 +452,14 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func _capture() -> void:
+func _capture(shot: String = "stage_select") -> void:
 	await get_tree().create_timer(1.2, true, false, true).timeout
+	_ensure_visible(_selected_stage)
+	await get_tree().process_frame
 	await get_tree().process_frame
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/stage_select.png")
-	print("CAPTURED: ", dir + "/stage_select.png")
+	img.save_png(dir + "/%s.png" % shot)
+	print("CAPTURED: ", dir + "/%s.png" % shot)
 	get_tree().quit()
