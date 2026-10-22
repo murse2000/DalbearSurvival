@@ -43,6 +43,13 @@ var _dash_root: Panel
 var _ult_root: Panel
 var _ult_ready := false
 var _last_level := 0
+var _combo := 0
+var _combo_timer := 0.0
+var _combo_last_kills := 0
+var _combo_label: Label
+var _combo_banner: Label
+var _combo_tw: Tween
+var _combo_banner_tw: Tween
 var _warning_id := 0
 var _warning_tw: Tween
 var _time := 0.0
@@ -126,6 +133,20 @@ func _build() -> void:
 	kills_label.position = Vector2(44, 7)
 	kills_label.size = Vector2(92, 26)
 	kills_panel.add_child(kills_label)
+
+	# combo label / milestone banner (centered under the timer)
+	_combo_label = UIKit.label("", 24, UIKit.GOLD, 5)
+	_combo_label.position = Vector2(0, 106)
+	_combo_label.size = Vector2(1280, 36)
+	_combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_combo_label.visible = false
+	root.add_child(_combo_label)
+	_combo_banner = UIKit.label("", 30, UIKit.GOLD, 7)
+	_combo_banner.position = Vector2(0, 146)
+	_combo_banner.size = Vector2(1280, 44)
+	_combo_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_combo_banner.visible = false
+	root.add_child(_combo_banner)
 
 	# boss bar
 	boss_panel = UIKit.panel(Color(0.06, 0.045, 0.10, 0.94), Color(0.55, 0.32, 0.8, 0.95), 2)
@@ -319,6 +340,14 @@ func _fit_ui() -> void:
 		_dash_root.position = Vector2(vp.x * 0.5 + 168.0, vp.y - 70.0)
 	if _ult_root != null:
 		_ult_root.position = Vector2(vp.x * 0.5 + 220.0, vp.y - 70.0)
+	if _combo_label != null:
+		_combo_label.position = Vector2(vp.x * 0.5 - 300.0, 106)
+		_combo_label.size = Vector2(600, 36)
+		_combo_label.pivot_offset = Vector2(300, 18)
+	if _combo_banner != null:
+		_combo_banner.position = Vector2(vp.x * 0.5 - 300.0, 146)
+		_combo_banner.size = Vector2(600, 44)
+		_combo_banner.pivot_offset = Vector2(300, 22)
 
 
 func set_touch_mode(enabled: bool) -> void:
@@ -350,6 +379,70 @@ func _on_xp(_xp: int, _need: int, level: int) -> void:
 
 func _on_kills(kills: int) -> void:
 	kills_label.text = str(kills)
+	var gained := kills - _combo_last_kills
+	_combo_last_kills = kills
+	if gained <= 0:
+		return
+	_combo += gained
+	_combo_timer = 2.4
+	_update_combo_label()
+	var milestones := [10, 25, 50, 100, 150, 200, 300, 400]
+	var crossed := 0
+	for m in milestones:
+		if _combo >= int(m) and _combo - gained < int(m):
+			crossed = int(m)
+	if crossed > 0:
+		_show_combo_banner(crossed)
+
+
+func _combo_color() -> Color:
+	if _combo >= 200:
+		return Color(1.0, 0.45, 0.9)
+	if _combo >= 100:
+		return Color(1.0, 0.36, 0.42)
+	if _combo >= 50:
+		return Color(1.0, 0.55, 0.28)
+	if _combo >= 25:
+		return Color(1.0, 0.74, 0.34)
+	return UIKit.GOLD
+
+
+func _update_combo_label() -> void:
+	if _combo_label == null:
+		return
+	if _combo < 3:
+		_combo_label.visible = false
+		return
+	_combo_label.visible = true
+	_combo_label.text = "%d COMBO" % _combo
+	_combo_label.add_theme_color_override("font_color", _combo_color())
+	var pulse_scale := 1.28 if _combo < 50 else 1.45
+	_combo_label.scale = Vector2(pulse_scale, pulse_scale)
+	if _combo_tw != null and _combo_tw.is_valid():
+		_combo_tw.kill()
+	_combo_tw = create_tween()
+	_combo_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_combo_tw.tween_property(_combo_label, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _show_combo_banner(milestone: int) -> void:
+	if _combo_banner == null:
+		return
+	_combo_banner.visible = true
+	_combo_banner.text = "%d COMBO!" % milestone
+	_combo_banner.add_theme_color_override("font_color", _combo_color())
+	_combo_banner.scale = Vector2(1.6, 1.6)
+	_combo_banner.modulate.a = 1.0
+	if _combo_banner_tw != null and _combo_banner_tw.is_valid():
+		_combo_banner_tw.kill()
+	_combo_banner_tw = create_tween()
+	_combo_banner_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_combo_banner_tw.set_parallel(true)
+	_combo_banner_tw.tween_property(_combo_banner, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_combo_banner_tw.tween_property(_combo_banner, "modulate:a", 0.0, 0.45).set_delay(0.45)
+	_combo_banner_tw.chain().tween_callback(func(): _combo_banner.visible = false)
+	if player != null and is_instance_valid(player):
+		FX.combo_burst(player.global_position + Vector2(0, -8), milestone)
 
 
 func _refresh_stage() -> void:
@@ -391,6 +484,14 @@ func _refresh_skills() -> void:
 
 func tick(delta: float) -> void:
 	_time += delta
+	if _combo_timer > 0.0:
+		_combo_timer = maxf(0.0, _combo_timer - delta)
+		if _combo_timer <= 0.0:
+			_combo = 0
+			if _combo_label != null:
+				_combo_label.visible = false
+			if _combo_banner != null:
+				_combo_banner.visible = false
 	if Game.running:
 		var t := Game.time_left()
 		timer_label.text = GameData.format_time(t)

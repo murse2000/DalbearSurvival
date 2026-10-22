@@ -87,6 +87,8 @@ func _ready() -> void:
 		_capture_rewards()
 	elif "--capture-banish" in _args:
 		_capture_banish()
+	elif "--capture-combo" in _args:
+		_capture_combo()
 	elif "--test-reroll-banish" in _args:
 		_test_reroll_banish()
 	elif "--test-settings-effects" in _args:
@@ -525,6 +527,23 @@ func _capture_banish() -> void:
 		overlay._toggle_banish()
 	await get_tree().create_timer(0.35, true, false, true).timeout
 	await _capture("banish")
+
+
+func _capture_combo() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	player.invuln = 999.0
+	for i in 8:
+		var a := TAU * float(i) / 8.0
+		manager.spawn_enemy("blob", player.global_position + Vector2.from_angle(a) * 190.0, false)
+	Game.kills = 49
+	Game.kills_changed.emit(Game.kills)
+	await get_tree().create_timer(0.12, true, false, true).timeout
+	Game.kills = 50
+	Game.kills_changed.emit(Game.kills)
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	if hud != null:
+		hud.warning_panel.visible = false
+	await _capture("combo")
 
 
 func _test_reroll_banish() -> void:

@@ -181,6 +181,9 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 적중/사망/폭발/픽업/레벨 업마다 **파티클 폭발 + 충격파 + 플래시**
 - 투사체 빛 궤적, 레이저 전격 아크, 보스 등장 빔, 보스 사망 연쇄 폭발 + 슬로우 모션
 - **대시 잔상 · 궁극기 달빛 심판 · 6연속 유성 폭격**
+- **콤보 시스템**: 연속 처치 시 화면 중앙 콤보 카운터, 10/25/50/100/150/200 콤보 마일스톤 버스트, 콤보 색상 변화
+- **히트스톱 · 화면 충격 줌 · 방사형 속도선 · 채도 펄스**로 강한 타격감
+- **궁극기/보스 격추 시 화면 왜곡·속도선·대형 플래시·슬로우 모션**
 - 화면 흔들림, 카메라 펀치 줌, 보스전 카메라 프레이밍
 - Kenney CC0 파티클 텍스처 + 직접 만든 픽셀아트/글로우
 
@@ -271,12 +274,13 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
 | ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
 | ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
+| ![50 콤보 연출](screenshots/combo.png) | ![게임플레이](screenshots/gameplay.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
 `screenshots/equipment_detail.png`, `screenshots/characters.png`, `screenshots/rewards.png`,
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
-`screenshots/title_fold.png`, `screenshots/title.png`
+`screenshots/title_fold.png`, `screenshots/combo.png`, `screenshots/title.png`
 
 ---
 
@@ -367,6 +371,7 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear
   godot --path . res://scenes/main.tscn -- --capture-levelup
   godot --path . res://scenes/main.tscn -- --capture-banish
+  godot --path . res://scenes/main.tscn -- --capture-combo
   godot --path . res://scenes/main.tscn -- --capture-pause-settings
   godot --path . res://scenes/main.tscn -- --capture-rewards
   godot --path . res://scenes/equipment.tscn -- --capture-equipment

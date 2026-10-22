@@ -47,6 +47,12 @@ var _hurt_pulse := 0.0
 var _low_hp := 0.0
 var _bloom_base := 0.78
 var _bloom_boost := 0.0
+var _zoom := 1.0
+var _shock := 0.0
+var _speed_lines := 0.0
+var _speed_color := Color(1.0, 0.82, 0.45)
+var _saturation := 1.0
+var _hitstop_token := 0
 var _flash_tween: Tween
 var _grade_tween: Tween
 var _numbers: Array[Label] = []
@@ -82,11 +88,20 @@ func _process(delta: float) -> void:
 	_warp = maxf(0.0, _warp - delta * 0.55)
 	_hurt_pulse = maxf(0.0, _hurt_pulse - delta * 3.6)
 	_bloom_boost = maxf(0.0, _bloom_boost - delta * 2.8)
+	_zoom = lerpf(_zoom, 1.0, 1.0 - exp(-delta * 12.0))
+	_shock = maxf(0.0, _shock - delta * 2.4)
+	_speed_lines = maxf(0.0, _speed_lines - delta * 1.9)
+	_saturation = lerpf(_saturation, 1.0, 1.0 - exp(-delta * 3.2))
 	if post != null:
 		post.set_shader_parameter("aberration", _ab)
 		post.set_shader_parameter("warp", _warp)
 		post.set_shader_parameter("hurt", maxf(_hurt_pulse, _low_hp * 0.35))
 		post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom else _bloom_base + _bloom_boost)
+		post.set_shader_parameter("zoom", _zoom)
+		post.set_shader_parameter("shock", _shock)
+		post.set_shader_parameter("speed_lines", _speed_lines)
+		post.set_shader_parameter("speed_color", _speed_color)
+		post.set_shader_parameter("saturation", _saturation)
 
 
 func teardown() -> void:
@@ -101,6 +116,7 @@ func teardown() -> void:
 		_flash_tween.kill()
 	if _grade_tween != null and _grade_tween.is_valid():
 		_grade_tween.kill()
+	_hitstop_token += 1
 	Engine.time_scale = 1.0
 
 
@@ -271,6 +287,50 @@ func impact(amount: float = 0.04, warp: float = 0.02, ab: float = 0.012) -> void
 	_ab = maxf(_ab, ab)
 
 
+func screen_shock(strength: float = 0.55, zoom_amount: float = 0.025,
+		line_amount: float = 0.0, color: Color = Color(1.0, 0.82, 0.45)) -> void:
+	_shock = maxf(_shock, strength)
+	_zoom = maxf(_zoom, 1.0 + zoom_amount)
+	_speed_lines = maxf(_speed_lines, line_amount)
+	if line_amount > 0.0:
+		_speed_color = color
+	_saturation = maxf(_saturation, 1.0 + strength * 0.22)
+
+
+func speed_lines(amount: float = 0.55, color: Color = Color(1.0, 0.82, 0.45)) -> void:
+	_speed_lines = maxf(_speed_lines, amount)
+	_speed_color = color
+
+
+func hitstop(duration: float = 0.055, scale: float = 0.08) -> void:
+	_hitstop_token += 1
+	var token := _hitstop_token
+	Engine.time_scale = scale
+	await get_tree().create_timer(duration, true, false, true).timeout
+	if token == _hitstop_token:
+		Engine.time_scale = 1.0
+
+
+func combo_burst(pos: Vector2, combo: int) -> void:
+	var t := clampf(float(combo) / 100.0, 0.0, 1.0)
+	var color := Color(1.0, 0.82, 0.4).lerp(Color(1.0, 0.32, 0.62), t)
+	ring(pos, color, 90.0 + 80.0 * t, 0.55)
+	ring(pos, color.lerp(Color.WHITE, 0.25), 160.0 + 130.0 * t, 0.75, "halo")
+	rune(pos, color, 120.0 + 90.0 * t, 0.9, 0.65)
+	particles(pos, "star", color, 24 + int(22 * t), 0.9, 90, 300 + 160 * t, 0.34, 180, Vector2(0, -30), true, 480)
+	_fade_sprite(pos, "flare", color, 0.8 + t, 2.2 + t, 0.45)
+	flash(color, 0.16 + 0.12 * t, 0.35)
+	grade(color, 0.08 + 0.12 * t, 1.2)
+	boost_bloom(0.45 + t * 0.7)
+	speed_lines(0.35 + t * 0.45, color)
+	screen_shock(0.25 + t * 0.5, 0.012 + t * 0.035, 0.0, color)
+	shake(4.0 + 7.0 * t, 0.25 + 0.3 * t)
+	punch(0.035 + 0.05 * t)
+	if combo >= 50:
+		hitstop(0.035, 0.12)
+	Audio.play("levelup", 1.32 - t * 0.18, -9.0)
+
+
 # ------------------------------------------------------------------ combat fx
 func damage_number(pos: Vector2, amount: float, color: Color, crit: bool = false) -> void:
 	if not Settings.damage_numbers:
@@ -338,6 +398,7 @@ func hit(pos: Vector2, color: Color, crit: bool = false) -> void:
 	if crit:
 		ring(pos, color, 34, 0.25, "halo")
 		shake(2.0, 0.08)
+		screen_shock(0.12, 0.004, 0.0, color)
 
 
 func muzzle(pos: Vector2, angle: float, color: Color) -> void:
@@ -381,6 +442,8 @@ func enemy_death(pos: Vector2, color: Color, big: bool = false) -> void:
 	if big:
 		flash(color, 0.18, 0.3)
 		punch(0.035)
+		screen_shock(0.28, 0.012, 0.15, color)
+		hitstop(0.025, 0.25)
 
 
 func death_decal(pos: Vector2, color: Color) -> void:
@@ -462,6 +525,7 @@ func explosion(pos: Vector2, color: Color, size: float = 1.0) -> void:
 	boost_bloom(0.25)
 	shake(5.0 * size, 0.3)
 	punch(0.04 * size)
+	screen_shock(0.22 * size, 0.009 * size, 0.10, color)
 	death_decal(pos, color)
 
 
@@ -478,6 +542,7 @@ func pulse_fx(pos: Vector2, radius: float, color: Color) -> void:
 	boost_bloom(0.25)
 	shake(4.5, 0.25)
 	punch(0.035)
+	screen_shock(0.30, 0.016, 0.18, color)
 
 
 func laser_fx(start: Vector2, end: Vector2, color: Color, width: float) -> void:
@@ -526,6 +591,7 @@ func laser_fx(start: Vector2, end: Vector2, color: Color, width: float) -> void:
 	boost_bloom(0.45)
 	shake(5.5, 0.22)
 	punch(0.04)
+	screen_shock(0.36, 0.018, 0.22, color)
 	var tw := holder.create_tween()
 	tw.tween_property(holder, "modulate:a", 0.0, 0.24).set_ease(Tween.EASE_IN)
 	tw.tween_callback(holder.queue_free)
@@ -544,6 +610,8 @@ func levelup_burst(pos: Vector2) -> void:
 	boost_bloom(1.2)
 	shake(6.0, 0.4)
 	punch(0.07)
+	screen_shock(0.65, 0.045, 0.55, Color(1.0, 0.86, 0.42))
+	grade(Color(1.0, 0.75, 0.35), 0.16, 1.0)
 
 
 func boss_spawn(pos: Vector2) -> void:
@@ -572,6 +640,7 @@ func boss_spawn(pos: Vector2) -> void:
 	boost_bloom(0.8)
 	shake(11.0, 0.8)
 	punch(0.09)
+	screen_shock(0.62, 0.04, 0.58, Color(0.75, 0.45, 1.0))
 
 
 func boss_death(pos: Vector2) -> void:
@@ -603,3 +672,5 @@ func _boss_death_sequence(pos: Vector2) -> void:
 	boost_bloom(1.8)
 	shake(16.0, 1.3)
 	punch(0.12)
+	screen_shock(1.0, 0.075, 0.9, Color(1.0, 0.82, 0.4))
+	grade(Color(1.0, 0.78, 0.35), 0.3, 2.2)

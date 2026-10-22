@@ -240,6 +240,8 @@ func _try_dash(input: Vector2) -> void:
 	FX.flash(fx_color, 0.035, 0.2)
 	FX.shake(2.2, 0.12)
 	FX.punch(0.02)
+	FX.speed_lines(0.18, fx_color)
+	FX.screen_shock(0.16, 0.007, 0.18, fx_color)
 	_spawn_afterimage()
 
 
@@ -285,6 +287,8 @@ func _try_ultimate() -> void:
 	FX.shake(12.0, 0.8)
 	FX.punch(0.1)
 	FX.grade(fx_color, 0.18, 1.8)
+	FX.screen_shock(0.9, 0.06, 0.9, fx_color)
+	FX.hitstop(0.055, 0.08)
 	if manager != null:
 		manager.damage_circle(center, 470.0, 180.0, 360.0, self)
 		manager.clear_enemy_projectiles()
@@ -305,6 +309,7 @@ func _ultimate_strike(p: Vector2) -> void:
 	var fx_color := character_color.lerp(Color.WHITE, 0.25)
 	FX.laser_fx(p + Vector2(0, -360), p, fx_color, 30.0)
 	FX.explosion(p, fx_color, 0.8)
+	FX.screen_shock(0.22, 0.008, 0.12, fx_color)
 	manager.damage_circle(p, 88.0, 70.0, 160.0, self)
 
 
