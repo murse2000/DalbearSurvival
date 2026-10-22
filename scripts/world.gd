@@ -10,6 +10,7 @@ var actors: Node2D
 var decals: Node2D
 var pickups: Node2D
 var projectiles: Node2D
+var obstacles: Node2D
 var fx_root: Node2D
 var damage_root: Node2D
 var target: Node2D
@@ -47,6 +48,8 @@ func _build_containers() -> void:
 	pickups.z_index = -2
 	projectiles = _node("Projectiles")
 	projectiles.z_index = 5
+	obstacles = _node("Obstacles")
+	obstacles.z_index = -1
 	fx_root = _node("VFX")
 	fx_root.z_index = 8
 	damage_root = _node("Damage")

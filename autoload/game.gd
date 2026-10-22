@@ -34,6 +34,7 @@ var levelup_open := false
 var rerolls := 2
 var banishes := 1
 var boss: Node = null
+var miniboss: Node = null
 var last_boss_killed := false
 
 var stage_id := "forest"
@@ -153,6 +154,7 @@ func _reset() -> void:
 	rerolls = REROLL_MAX
 	banishes = BANISH_MAX
 	boss = null
+	miniboss = null
 	last_boss_killed = false
 	_warned.clear()
 	Engine.time_scale = 1.0
@@ -196,6 +198,14 @@ func save_run_checkpoint(p) -> bool:
 			"hp_ratio": clampf(float(boss.get("hp")) / maxf(1.0, float(boss.get("max_hp"))), 0.01, 1.0),
 		}
 	cfg.set_value("boss", "data", boss_data)
+	var mini_data := {}
+	if miniboss != null and is_instance_valid(miniboss) and not bool(miniboss.get("dead")):
+		mini_data = {
+			"kind": String(miniboss.get("kind")),
+			"position": miniboss.global_position,
+			"hp_ratio": clampf(float(miniboss.get("hp")) / maxf(1.0, float(miniboss.get("max_hp"))), 0.01, 1.0),
+		}
+	cfg.set_value("miniboss", "data", mini_data)
 	var err := cfg.save(RUN_SAVE_TMP)
 	if err != OK:
 		return false
@@ -236,6 +246,9 @@ func load_run_checkpoint() -> Dictionary:
 	var boss_data = cfg.get_value("boss", "data", {})
 	if not boss_data is Dictionary:
 		boss_data = {}
+	var mini_data = cfg.get_value("miniboss", "data", {})
+	if not mini_data is Dictionary:
+		mini_data = {}
 	return {
 		"meta": {
 			"stage": stage,
@@ -262,6 +275,7 @@ func load_run_checkpoint() -> Dictionary:
 			"banned": banned,
 		},
 		"boss": boss_data,
+		"miniboss": mini_data,
 	}
 
 
@@ -348,6 +362,7 @@ func _apply_run_meta(meta: Dictionary) -> void:
 	banishes = clampi(int(meta.get("banishes", BANISH_MAX)), 0, BANISH_MAX)
 	last_boss_killed = false
 	boss = null
+	miniboss = null
 	var warned = meta.get("warned", {})
 	_warned = warned if warned is Dictionary else {}
 
@@ -949,6 +964,7 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 	running = false
 	last_boss_killed = boss_killed
 	boss = null
+	miniboss = null
 	var survived := time
 	record_stage_result(stage_id, difficulty_id, victory, boss_killed, survived, level, kills)
 	if victory:

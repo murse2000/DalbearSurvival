@@ -57,6 +57,8 @@ func tick(delta: float) -> void:
 			var falloff := maxf(0.58, 1.0 - float(i) * 0.075)
 			var roll: Dictionary = player.roll_damage(float(data["damage"]) * falloff)
 			victims[i].take_damage(roll["damage"], roll["crit"], origin_pos, 85.0)
+			player.manager.damage_obstacles_circle(victims[i].global_position, 22.0,
+				float(data["damage"]) * falloff * 0.6)
 		FX.chain_lightning(points, CHAIN_COLOR)
 		arcs += 1
 	if arcs == 0:

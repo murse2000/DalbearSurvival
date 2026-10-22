@@ -70,6 +70,7 @@ func _ready() -> void:
 	_build_player()
 	if not run_snapshot.is_empty():
 		_restore_run(run_snapshot)
+	manager.spawn_stage_obstacles()
 	_build_camera()
 	_build_post()
 	_build_ui()
@@ -154,6 +155,10 @@ func _ready() -> void:
 		_test_new_skills()
 	elif "--test-balance" in _args:
 		_test_balance()
+	elif "--test-world-expansion" in _args:
+		_test_world_expansion()
+	elif "--capture-world-expansion" in _args:
+		_capture_world_expansion()
 	elif "--test-enemy-projectile" in _args:
 		_test_enemy_projectile()
 	elif "--test-background-pause" in _args:
@@ -193,7 +198,7 @@ func _build_player() -> void:
 	player = PLAYER_SCENE.instantiate()
 	world.actors.add_child(player)
 	player.global_position = Vector2.ZERO
-	manager.setup(player, world.actors, world.projectiles, world.pickups)
+	manager.setup(player, world.actors, world.projectiles, world.pickups, world.obstacles)
 	player.setup(manager)
 	world.target = player
 
@@ -210,6 +215,14 @@ func _restore_run(snapshot: Dictionary) -> void:
 			pos = player.global_position + Vector2(260, 0)
 		var ratio := float(boss_data.get("hp_ratio", 1.0))
 		manager.restore_boss(kind, pos, ratio)
+	manager.mark_passed_minibosses(Game.time)
+	var mini_data = snapshot.get("miniboss", {})
+	if mini_data is Dictionary and not mini_data.is_empty():
+		var mini_kind := String(mini_data.get("kind", ""))
+		var mini_pos = mini_data.get("position", player.global_position + Vector2(260, 0))
+		if not mini_pos is Vector2:
+			mini_pos = player.global_position + Vector2(260, 0)
+		manager.restore_miniboss(mini_kind, mini_pos, float(mini_data.get("hp_ratio", 1.0)))
 	_checkpoint_timer = 8.0
 
 
@@ -532,6 +545,65 @@ func _test_balance() -> void:
 		return
 	print("BALANCE TEST OK")
 	get_tree().quit()
+
+
+func _test_world_expansion() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	player.invuln = 999.0
+	manager.spawn_timer = 999.0
+	var obstacles_ok: bool = manager.obstacle_list.size() >= 10
+	var first_obstacle = manager.obstacle_list[0] if obstacles_ok else null
+	var obstacle_hp := 0.0
+	var obstacle_destroyed := false
+	if first_obstacle != null and is_instance_valid(first_obstacle):
+		obstacle_hp = first_obstacle.hp
+		manager.damage_obstacles_circle(first_obstacle.global_position, 10.0, 999.0)
+		await get_tree().create_timer(0.15, true, false, true).timeout
+		obstacle_destroyed = not is_instance_valid(first_obstacle) or first_obstacle.dead
+	var collision_ok := true
+	if not manager.obstacle_list.is_empty():
+		var o = manager.obstacle_list[0]
+		if is_instance_valid(o):
+			var resolved: Vector2 = manager.resolve_obstacles(o.global_position, player.radius)
+			collision_ok = resolved.distance_to(o.global_position) >= o.radius + player.radius - 0.5
+	for kind in ["thorn", "moth", "larva", "sporeling", "crawler", "nullifier"]:
+		manager.spawn_enemy(kind, player.global_position + Vector2(randf_range(-260, 260), randf_range(-200, 200)), false)
+	Game.time = 70.2
+	manager.boss_spawned = true
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var mini_ok: bool = Game.miniboss != null and is_instance_valid(Game.miniboss) and Game.miniboss.miniboss
+	for mini_kind in ["moon_stalker", "spore_mother", "hive_tyrant", "bulwark", "void_reaver"]:
+		manager._spawn_miniboss(mini_kind)
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	var new_enemies := 0
+	for e in manager.enemies:
+		if is_instance_valid(e) and String(e.kind) in ["thorn", "moth", "larva", "sporeling", "crawler", "nullifier"]:
+			new_enemies += 1
+	print("WORLD EXPANSION TEST obstacles=%d hp=%.0f destroyed=%s collision=%s mini=%s new_enemies=%d" % [
+		manager.obstacle_list.size(), obstacle_hp, obstacle_destroyed, collision_ok, mini_ok, new_enemies,
+	])
+	if not obstacles_ok or not obstacle_destroyed or not collision_ok or not mini_ok or new_enemies < 4:
+		push_error("WORLD EXPANSION TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("WORLD EXPANSION TEST OK")
+	get_tree().quit()
+
+
+func _capture_world_expansion() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	player.invuln = 999.0
+	manager.spawn_timer = 999.0
+	for i in 6:
+		var a := TAU * float(i) / 6.0 + 0.2
+		manager.spawn_enemy(["thorn", "moth", "larva", "sporeling", "crawler", "nullifier"][i],
+			player.global_position + Vector2.from_angle(a) * (190.0 + i * 20.0), false)
+	Game.time = 70.2
+	manager.boss_spawned = true
+	await get_tree().create_timer(1.5, true, false, true).timeout
+	if hud != null:
+		hud.warning_panel.visible = false
+	await _capture("world_expansion")
 
 
 func _capture_new_skills() -> void:
@@ -1151,6 +1223,9 @@ func _test_checkpoint_write() -> void:
 		manager.spawn_enemy(boss_kind, player.global_position + Vector2(260, 0), false)
 		if Game.boss != null and is_instance_valid(Game.boss):
 			Game.boss.hp = Game.boss.max_hp * 0.5
+		manager._spawn_miniboss("hive_tyrant")
+		if Game.miniboss != null and is_instance_valid(Game.miniboss):
+			Game.miniboss.hp = Game.miniboss.max_hp * 0.5
 	if "--levelup" in _args:
 		Game.pending_levelups = 1
 		Game.levelup_open = true
@@ -1183,16 +1258,20 @@ func _test_checkpoint_resume() -> void:
 	var overlay_ok: bool = Game.pending_levelups == 0 \
 		or (get_tree().paused and overlay != null and overlay._levelup_visible)
 	var boss_ok := true
+	var mini_ok := true
 	if "--boss" in _args:
 		boss_ok = Game.boss != null and is_instance_valid(Game.boss) \
 			and not bool(Game.boss.get("dead")) \
 			and absf(float(Game.boss.get("hp")) / maxf(1.0, float(Game.boss.get("max_hp"))) - 0.5) < 0.05
-	print("CHECKPOINT RESUME time=%.1f level=%d kills=%d hp=%.1f pos=%s weapons=%s evolutions=%s passives=%s combo=%s levelup=%s boss=%s" % [
+		mini_ok = Game.miniboss != null and is_instance_valid(Game.miniboss) \
+			and bool(Game.miniboss.get("miniboss")) \
+			and absf(float(Game.miniboss.get("hp")) / maxf(1.0, float(Game.miniboss.get("max_hp"))) - 0.5) < 0.05
+	print("CHECKPOINT RESUME time=%.1f level=%d kills=%d hp=%.1f pos=%s weapons=%s evolutions=%s passives=%s combo=%s levelup=%s boss=%s mini=%s" % [
 		Game.time, Game.level, Game.kills, player.hp, player.global_position,
-		player.weapon_levels, player.evolutions, player.passive_levels, combo_ok, overlay_ok, boss_ok,
+		player.weapon_levels, player.evolutions, player.passive_levels, combo_ok, overlay_ok, boss_ok, mini_ok,
 	])
 	Game.clear_run_checkpoint()
-	if not weapons_ok or not passives_ok or not progress_ok or not player_ok or not combo_ok or not overlay_ok or not boss_ok:
+	if not weapons_ok or not passives_ok or not progress_ok or not player_ok or not combo_ok or not overlay_ok or not boss_ok or not mini_ok:
 		push_error("CHECKPOINT RESUME TEST FAILED")
 		get_tree().quit(1)
 		return

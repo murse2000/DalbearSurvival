@@ -70,6 +70,7 @@ func tick(delta: float) -> void:
 		node.rotation = a + PI * 0.5
 		var center: Vector2 = player.global_position + Vector2(0, -14)
 		var world: Vector2 = center + offset
+		player.manager.damage_obstacles_circle(world, 23.0, float(data["damage"]))
 		for enemy in player.manager.query_circle(world, 23.0):
 			if enemy.dead:
 				continue
@@ -119,5 +120,7 @@ func _chain() -> void:
 	for e in victims:
 		var roll: Dictionary = player.roll_damage(float(data["chain_damage"]))
 		e.take_damage(roll["damage"], roll["crit"], origin_pos, 110.0)
+		player.manager.damage_obstacles_circle(e.global_position, 22.0,
+			float(data["chain_damage"]) * 0.5)
 	FX.chain_lightning(chain_points, Color(0.61, 1.0, 0.82))
 	Audio.play("laser", 1.1, -10.0)

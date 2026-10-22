@@ -4,7 +4,7 @@
 > 달빛을 먹고 자란 곰, **달베어**.
 > 외계 함대가 지구를 덮친 밤, 세 개의 전선을 지켜낸다.
 
-**3개 스테이지 × 4분**, **4단계 난이도**, **13종 외계인 + 3종 보스**,
+**3개 스테이지 × 4분**, **4단계 난이도**, **19종 외계인 + 6종 중간 보스 + 3종 최종 보스**,
 **무기 8종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
@@ -172,6 +172,20 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 조건을 충족하면 화면에 진화 힌트가 표시되고, 일시정지 화면에도 규칙이 나옵니다.
 신규 4종(유성 낙하·성운 연쇄·월식 특이점·월광 칼날)은 진화 없이 **6레벨**까지 성장합니다.
 
+### 중간 보스
+- 각 전선 **1분 10초 / 2분 15초**에 맵 전용 중간 보스가 출현합니다.
+- 달빛 숲: **고목 수호자**(슬램) → **월식 추적자**(돌진)
+- 군체 분화구: **포자 모체**(소환·산성) → **군체 폭군**(슬램)
+- 모선 심장부: **격벽 파괴자**(레이저) → **공허 사냥꾼**(순간이동·탄막)
+- 중간 보스는 하단 보스 바에 이름과 체력이 표시되며, 처치 시 다량의 경험치와 회복 아이템을 떨어뜨립니다.
+
+### 파괴 가능 지형
+- 맵마다 **이동을 막는 파괴 가능 오브젝트**가 배치됩니다.
+- 달빛 숲: 고목·바위·외계 수정 / 군체: 알·포자 주머니·산호 / 모선: 캡슐·콘솔·격벽
+- 일반 이동은 지형을 통과하지 못하고, 적도 지형에 막혀 우회합니다.
+- **대시**, 모든 무기, 유성/연쇄/특이점/칼날, 궁극기, 발사체로 파괴할 수 있습니다.
+- 수정·알·캡슐은 파괴 시 주변에 **파편·산성·전격 폭발**을 일으키고 경험치를 떨어뜨립니다.
+
 ### 대시 & 궁극기
 - **대시 (Space / 패드 B)**: 0.16초 동안 빠르게 이동하며 무적. 쿨다운 2초. 잔상과 파티클이 남습니다.
 - **궁극기 (Q / 패드 Y) — 달빛 심판**: 적을 처치할 때마다 충전(킬당 +1.6, 최대 100).
@@ -288,21 +302,23 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![모선 보스전](screenshots/boss.png) | ![최종 엔딩](screenshots/final_clear.png) |
 | ![무기 진화](screenshots/evolution.png) | ![진화 전투](screenshots/evolution_gameplay.png) |
 | ![Lit 2D 조명](screenshots/lighting.png) | ![신규 스킬](screenshots/new_skills.png) |
-| ![게임플레이](screenshots/gameplay.png) | ![50 콤보](screenshots/combo.png) |
-| ![대시·궁극기](screenshots/abilities.png) | ![리롤·밴 카드](screenshots/levelup.png) |
-| ![밴 모드](screenshots/banish.png) | ![연출 설정](screenshots/settings.png) |
-| ![일시정지 설정](screenshots/pause_settings.png) | ![장비 & 인벤토리](screenshots/equipment.png) |
-| ![장비 상세](screenshots/equipment_detail.png) | ![친구 선택](screenshots/characters.png) |
-| ![런 보상](screenshots/rewards.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
-| ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
-| ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
+| ![중간 보스·지형](screenshots/world_expansion.png) | ![게임플레이](screenshots/gameplay.png) |
+| ![50 콤보](screenshots/combo.png) | ![대시·궁극기](screenshots/abilities.png) |
+| ![리롤·밴 카드](screenshots/levelup.png) | ![밴 모드](screenshots/banish.png) |
+| ![연출 설정](screenshots/settings.png) | ![일시정지 설정](screenshots/pause_settings.png) |
+| ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
+| ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
+| ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
+| ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
+| ![이어하기](screenshots/title_continue.png) | ![타이틀](screenshots/title.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
 `screenshots/equipment_detail.png`, `screenshots/characters.png`, `screenshots/rewards.png`,
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
-`screenshots/lighting.png`, `screenshots/combo.png`, `screenshots/title.png`
+`screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
+`screenshots/title.png`
 
 ---
 
@@ -394,7 +410,9 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-evolution
   godot --path . res://scenes/main.tscn -- --capture-abilities
   godot --path . res://scenes/main.tscn -- --capture-lighting
+  godot --path . res://scenes/main.tscn -- --capture-world-expansion
   godot --path . res://scenes/main.tscn -- --capture-new-skills
+  godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-new-skills
   godot --path . res://scenes/main.tscn -- --test-balance
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear

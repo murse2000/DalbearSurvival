@@ -514,12 +514,17 @@ func tick(delta: float) -> void:
 			timer_sub.text = "%s · %s" % [String(st["short"]), String(Game.difficulty_data()["name"])]
 			timer_sub.add_theme_color_override("font_color", UIKit.MUTED)
 	var b = Game.boss
+	var is_miniboss := false
+	if b == null or not is_instance_valid(b) or b.dead:
+		b = Game.miniboss
+		is_miniboss = b != null
 	if b != null and is_instance_valid(b) and not b.dead:
 		boss_panel.visible = true
 		boss_bar.set_values(b.hp, b.max_hp, false)
-		boss_name.text = String(b.display_name)
+		boss_name.text = ("중간 보스 · " if is_miniboss else "") + String(b.display_name)
 		boss_hp_text.text = "%d%%" % int(maxf(0.0, b.hp / b.max_hp) * 100.0)
-		boss_bar.fill_color = Color(1.0, 0.28, 0.3) if b.enraged else Color(0.78, 0.35, 0.9)
+		boss_bar.fill_color = b.color if is_miniboss else (
+			Color(1.0, 0.28, 0.3) if b.enraged else Color(0.78, 0.35, 0.9))
 	else:
 		boss_panel.visible = false
 	# low HP pulse

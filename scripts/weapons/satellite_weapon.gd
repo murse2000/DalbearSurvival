@@ -73,6 +73,7 @@ func tick(delta: float) -> void:
 		node.rotation = a + PI * 0.5
 		var center: Vector2 = player.global_position + Vector2(0, -14)
 		var world: Vector2 = center + offset
+		player.manager.damage_obstacles_circle(world, 22.0, float(data["damage"]))
 		for enemy in player.manager.query_circle(world, 22.0):
 			if enemy.dead:
 				continue

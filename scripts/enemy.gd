@@ -19,8 +19,14 @@ var display_name := ""
 var color := Color.WHITE
 var elite := false
 var boss := false
+var miniboss := false
 var behavior := "chase"
 var boss_style := ""
+var mini_style := ""
+var mini_attack_cd := 2.0
+var mini_summon_cd := 4.5
+var mini_charge_cd := 2.0
+var mini_teleport_cd := 3.0
 var dead := false
 var targetable := true
 var knockback := Vector2.ZERO
@@ -79,9 +85,11 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 	player = manager_ref.player
 	data = GameData.ENEMIES[kind]
 	boss = bool(data.get("boss", false))
+	miniboss = bool(data.get("mini_boss", false))
 	boss_style = String(data.get("style", ""))
+	mini_style = String(data.get("mini_style", ""))
 	behavior = String(data.get("behavior", "chase"))
-	elite = is_elite
+	elite = is_elite and not miniboss
 	display_name = String(data["name"])
 	color = data["color"]
 	var diff := GameData.difficulty(Game.difficulty_id)
@@ -93,6 +101,14 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 		radius = float(data["radius"])
 		height = float(data["height"])
 		visual_scale = float(data.get("scale", 1.0))
+	elif miniboss:
+		max_hp = float(data["hp"]) * float(diff["boss"])
+		damage = float(data["damage"]) * float(diff["damage"])
+		speed = float(data["speed"]) * float(diff["speed"])
+		xp_value = maxi(1, int(round(float(data["xp"]) * float(diff["xp"]))))
+		radius = float(data["radius"])
+		height = float(data["height"])
+		visual_scale = float(data.get("scale", 1.0))
 	else:
 		max_hp = float(data["hp"]) * GameData.enemy_hp_mult(Game.stage_id, Game.time, Game.difficulty_id)
 		damage = float(data["damage"]) * GameData.enemy_damage_mult(Game.stage_id, Game.time, Game.difficulty_id)
@@ -100,14 +116,14 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 		xp_value = maxi(1, int(round(float(data["xp"]) * float(diff["xp"]))))
 		radius = float(data["radius"])
 		height = float(data["height"])
-		visual_scale = 1.0
+		visual_scale = float(data.get("scale", 1.0))
 		if elite:
 			max_hp *= 4.5
 			damage *= 1.2
 			xp_value *= 3
 			radius *= 1.18
 			height *= 1.22
-			visual_scale = 1.28
+			visual_scale *= 1.28
 			display_name += " · 정예"
 		if kind == "blobling":
 			visual_scale = 0.68
@@ -129,21 +145,23 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 			shadow.visible = false
 	if boss:
 		Game.boss = self
+	elif miniboss:
+		Game.miniboss = self
 
 
 func _build_visuals() -> void:
-	var big_shadow := boss or elite
+	var big_shadow := boss or elite or miniboss
 	shadow = Sprite2D.new()
 	shadow.texture = load("res://assets/art/char/shadow_big.png" if big_shadow else "res://assets/art/char/shadow.png")
-	shadow.modulate = Color(1, 1, 1, 0.55 if not boss else 0.45)
-	shadow.scale = Vector2(1.4, 1.1) if boss else Vector2(1.0 if not elite else 1.35, 0.9)
+	shadow.modulate = Color(1, 1, 1, 0.45 if boss or miniboss else 0.55)
+	shadow.scale = Vector2(1.4, 1.1) if boss else Vector2(1.35 if (elite or miniboss) else 1.0, 0.9)
 	add_child(shadow)
 
-	if boss or elite:
+	if boss or elite or miniboss:
 		aura = Sprite2D.new()
 		aura.texture = load("res://assets/art/char/boss_aura.png")
 		aura.modulate = Color(data["color"].r, data["color"].g, data["color"].b, 0.28)
-		aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) if boss else 0.45)
+		aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) if boss else (0.68 if miniboss else 0.45))
 		var am := CanvasItemMaterial.new()
 		am.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 		aura.material = am
@@ -166,6 +184,9 @@ func _build_visuals() -> void:
 	LightRig.make_receiver(sprite)
 	if boss:
 		_light = LightRig.add_point_light(self, color, 245.0, 1.3, false,
+			Vector2(0, -height * visual_scale * 0.4))
+	elif miniboss:
+		_light = LightRig.add_point_light(self, color, 175.0, 0.95, false,
 			Vector2(0, -height * visual_scale * 0.4))
 	elif elite:
 		_light = LightRig.add_point_light(self, color, 92.0, 0.62, false,
@@ -193,6 +214,8 @@ func _process(delta: float) -> void:
 	if boss:
 		_boss_move(delta, dir, dist)
 		_boss_attacks(delta)
+	elif miniboss:
+		_miniboss_behavior(delta, dir, dist)
 	else:
 		match behavior:
 			"spitter":
@@ -210,17 +233,20 @@ func _process(delta: float) -> void:
 			_:
 				_default_move(delta, dir, dist)
 
+	if not boss and not miniboss:
+		global_position = manager.resolve_obstacles(global_position, radius)
 	knockback = knockback.lerp(Vector2.ZERO, 1.0 - exp(-delta * 7.5))
 
 	# visual motion
-	if boss:
-		sprite.position.y = sprite_base_y + sin(age * 1.5) * 9.0
+	if boss or miniboss:
+		sprite.position.y = sprite_base_y + sin(age * 1.5) * (9.0 if boss else 6.0)
 		if boss_style != "queen":
 			sprite.rotation = sin(age * 0.6) * 0.12
 		if aura != null:
-			aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) * (1.0 + sin(age * 2.2) * 0.04))
+			aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) if boss
+				else 0.68) * (1.0 + sin(age * 2.2) * 0.04)
 			aura.modulate.a = 0.22 + sin(age * 3.0) * 0.05
-	elif kind == "drone" or kind == "jelly" or kind == "sentinel":
+	elif kind == "drone" or kind == "jelly" or kind == "sentinel" or kind == "moth" or kind == "sporeling":
 		sprite.position.y = sprite_base_y + sin(age * 4.0 + seeded) * 3.0
 	else:
 		sprite.position.y = sprite_base_y + sin(age * 7.0 + seeded) * 0.8
@@ -228,6 +254,8 @@ func _process(delta: float) -> void:
 	var tint := Color.WHITE
 	if enraged:
 		tint = Color(1.25, 0.75, 0.75) if boss_style == "ship" else Color(0.8, 1.3, 0.8)
+	elif miniboss:
+		tint = Color(1.08, 1.04, 1.14)
 	elif elite:
 		tint = Color(1.08, 1.05, 1.18)
 	sprite.modulate = Color(2.6, 2.6, 2.6) if flash > 0.0 else tint
@@ -410,6 +438,137 @@ func _phase_behavior(delta: float, dir: Vector2, dist: float) -> void:
 		global_position = target_pos
 		FX.rune(global_position, Color(0.75, 0.5, 1.0), 42.0, 0.4)
 		Audio.play("click", 1.4, -8.0)
+
+
+# ---------------------------------------------------------------- mini boss
+func _miniboss_behavior(delta: float, dir: Vector2, dist: float) -> void:
+	if mini_style == "charger":
+		_miniboss_charger(delta, dir, dist)
+		return
+	var keep := 190.0
+	if dist > keep + 55.0:
+		global_position += dir * speed * delta
+	elif dist < keep - 55.0:
+		global_position += -dir * speed * 0.7 * delta
+	else:
+		global_position += Vector2(-dir.y, dir.x) * speed * 0.38 * delta
+	global_position.x = clampf(global_position.x, -GameData.ARENA_HALF + 70.0, GameData.ARENA_HALF - 70.0)
+	global_position.y = clampf(global_position.y, -GameData.ARENA_HALF + 70.0, GameData.ARENA_HALF - 70.0)
+
+	match mini_style:
+		"slam":
+			if slam_charge >= 0.0:
+				slam_charge -= delta
+				if slam_charge <= 0.0:
+					_fire_slam()
+			else:
+				mini_attack_cd -= delta
+				if mini_attack_cd <= 0.0 and dist < 380.0:
+					_start_slam()
+					mini_attack_cd = 4.4
+		"summon":
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0 and dist < 520.0:
+				_acid_fan()
+				mini_attack_cd = 3.3
+			mini_summon_cd -= delta
+			if mini_summon_cd <= 0.0:
+				_miniboss_summon()
+				mini_summon_cd = 7.0
+		"beam":
+			if beam_charge >= 0.0:
+				beam_charge -= delta
+				_update_beam()
+				if beam_charge <= 0.0:
+					_fire_beam()
+			else:
+				mini_attack_cd -= delta
+				if mini_attack_cd <= 0.0 and dist < 620.0:
+					_start_beam("sentinel")
+					mini_attack_cd = 4.6
+		"caster":
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0:
+				_miniboss_nova()
+				mini_attack_cd = 3.1
+			mini_teleport_cd -= delta
+			if mini_teleport_cd <= 0.0 and dist < 520.0:
+				mini_teleport_cd = 4.8
+				_miniboss_blink()
+		_:
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0:
+				_boss_orbs()
+				mini_attack_cd = 3.4
+
+
+func _miniboss_charger(delta: float, dir: Vector2, dist: float) -> void:
+	if charge_state == 1:
+		charge_time -= delta
+		if charge_time <= 0.0:
+			charge_state = 2
+			charge_time = 0.46
+			FX.ring(global_position, color, 58.0, 0.35)
+			Audio.play("pulse", 0.55, -7.0)
+		return
+	if charge_state == 2:
+		charge_time -= delta
+		global_position += charge_dir * speed * 4.2 * delta
+		_clamp_arena()
+		if charge_time <= 0.0:
+			charge_state = 0
+			mini_charge_cd = 3.2
+		return
+	var v := Vector2.ZERO
+	if dist > 230.0:
+		v = dir * speed
+	else:
+		v = Vector2(-dir.y, dir.x) * speed * 0.7
+	global_position += v * delta
+	_clamp_arena()
+	mini_charge_cd -= delta
+	if mini_charge_cd <= 0.0 and dist < 460.0:
+		charge_state = 1
+		charge_time = 0.55
+		charge_dir = dir
+		FX.ring(global_position, color, 52.0, 0.5)
+		FX.float_text(global_position, "추격!", color, 18)
+		Audio.play("click", 0.65, -4.0)
+
+
+func _miniboss_summon() -> void:
+	var kinds := ["larva", "sporeling"] if mini_style == "summon" else ["blob", "grey"]
+	var count := 4
+	for i in count:
+		var a := TAU * float(i) / float(count) + randf() * 0.4
+		var pos := global_position + Vector2.from_angle(a) * 95.0
+		manager.spawn_enemy(kinds[i % kinds.size()], pos, false)
+		FX.rune(pos, color, 42.0, 0.5)
+		FX.particles(pos, "star", color, 6, 0.4, 25, 90, 0.25, 180, Vector2.ZERO, true)
+	FX.ring(global_position, color, 115.0, 0.45)
+	Audio.play("boss", 1.25, -8.0)
+
+
+func _miniboss_nova() -> void:
+	var count := 12
+	var start := global_position + Vector2(0, -height * 0.25)
+	for i in count:
+		var a := TAU * float(i) / float(count) + age * 0.2
+		manager.spawn_enemy_orb(start, Vector2.from_angle(a) * 150.0, damage * 0.42)
+	FX.ring(start, color, 88.0, 0.35)
+	FX.particles(start, "star", color, 14, 0.45, 40, 130, 0.3, 180, Vector2.ZERO, true)
+	Audio.play("pulse", 0.7, -7.0)
+
+
+func _miniboss_blink() -> void:
+	var old := global_position
+	var a := randf() * TAU
+	global_position = player.global_position + Vector2.from_angle(a) * randf_range(130.0, 180.0)
+	_clamp_arena()
+	FX.rune(old, color, 44.0, 0.4)
+	FX.rune(global_position, color, 48.0, 0.4)
+	FX.particles(old, "star", color, 9, 0.45, 30, 100, 0.28, 180, Vector2.ZERO, true)
+	Audio.play("click", 1.3, -7.0)
 
 
 # ---------------------------------------------------------------- boss
@@ -638,6 +797,9 @@ func take_damage(amount: float, crit: bool, source_pos: Vector2, knock: float = 
 	if boss:
 		knockback += (global_position - source_pos).normalized() * knock * 0.06
 		FX.shake(1.2, 0.08)
+	elif miniboss:
+		knockback += (global_position - source_pos).normalized() * knock * 0.18
+		FX.shake(1.8, 0.1)
 	else:
 		var k := 0.35 if behavior == "brute" else 1.0
 		knockback += (global_position - source_pos).normalized() * knock * k
@@ -662,6 +824,7 @@ func _explode() -> void:
 	manager.on_enemy_died(self)
 	Game.add_kill()
 	manager.player_damage_area(global_position, 92.0, damage * 1.35)
+	manager.damage_obstacles_circle(global_position, 92.0, damage * 1.35)
 	FX.explosion(global_position, Color(1.0, 0.6, 0.25), 1.0)
 	Audio.play("kill", 0.75, -2.0)
 	Audio.play("pulse", 0.55, -6.0)
@@ -691,6 +854,19 @@ func _die() -> void:
 		manager.drop_heart(global_position + Vector2(-36, 4))
 		manager.drop_heart(global_position + Vector2(36, -4))
 		manager.on_boss_died(self)
+	elif miniboss:
+		manager.on_miniboss_died(self)
+		Game.warning.emit("%s 격파!" % display_name, 3.2)
+		FX.enemy_death(global_position, color, true)
+		FX.explosion(global_position, color, 1.3)
+		FX.flash(color, 0.2, 0.4)
+		FX.shake(9.0, 0.6)
+		FX.speed_lines(0.5, color)
+		Audio.play("boss", 0.85, -2.0)
+		for i in 7:
+			var a := TAU * float(i) / 7.0
+			manager.drop_xp(global_position + Vector2.from_angle(a) * 38.0, 7, true)
+		manager.drop_heart(global_position + Vector2(0, 8))
 	else:
 		manager.on_enemy_died(self)
 		if behavior == "splitter":

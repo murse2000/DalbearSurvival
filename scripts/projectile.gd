@@ -120,6 +120,11 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 
+	if manager != null and manager.hit_obstacle(global_position, radius,
+			base_damage * (1.0 if friendly else 0.55)):
+		_die()
+		return
+
 	if friendly:
 		if manager == null:
 			return

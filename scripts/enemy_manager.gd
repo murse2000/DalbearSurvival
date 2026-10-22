@@ -5,6 +5,7 @@ extends Node2D
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
 const PROJECTILE_SCRIPT := preload("res://scripts/projectile.gd")
 const PICKUP_SCRIPT := preload("res://scripts/pickup.gd")
+const DESTRUCTIBLE_SCRIPT := preload("res://scripts/destructible.gd")
 const CELL := 72.0
 const MAX_ENEMIES := 340
 
@@ -12,10 +13,13 @@ var player
 var actors: Node2D
 var projectiles: Node2D
 var pickups: Node2D
+var obstacles: Node2D
 var enemies: Array[Node2D] = []
+var obstacle_list: Array[Node2D] = []
 var grid := {}
 var spawn_timer := 1.0
 var boss_spawned := false
+var miniboss_spawned := {}
 var _rng := RandomNumberGenerator.new()
 
 
@@ -23,11 +27,13 @@ func _ready() -> void:
 	_rng.randomize()
 
 
-func setup(p, actors_ref: Node2D, proj_ref: Node2D, pick_ref: Node2D) -> void:
+func setup(p, actors_ref: Node2D, proj_ref: Node2D, pick_ref: Node2D,
+		obstacles_ref: Node2D = null) -> void:
 	player = p
 	actors = actors_ref
 	projectiles = proj_ref
 	pickups = pick_ref
+	obstacles = obstacles_ref
 
 
 func _process(delta: float) -> void:
@@ -36,6 +42,11 @@ func _process(delta: float) -> void:
 	if not boss_spawned and Game.time >= Game.stage_boss_time():
 		boss_spawned = true
 		_spawn_boss()
+	var schedule: Array = Game.stage_data().get("minibosses", [])
+	for i in schedule.size():
+		if not miniboss_spawned.has(i) and Game.time >= float(schedule[i][0]):
+			miniboss_spawned[i] = true
+			_spawn_miniboss(String(schedule[i][1]))
 	spawn_timer -= delta
 	if spawn_timer > 0.0:
 		return
@@ -149,6 +160,58 @@ func restore_boss(kind: String, pos: Vector2, hp_ratio: float) -> void:
 	boss_spawned = true
 
 
+func _spawn_miniboss(kind: String) -> void:
+	if not GameData.ENEMIES.has(kind):
+		return
+	var a := _rng.randf_range(0.0, TAU)
+	var pos: Vector2 = player.global_position + Vector2.from_angle(a) * 320.0
+	pos.x = clampf(pos.x, -GameData.ARENA_HALF + 90.0, GameData.ARENA_HALF - 90.0)
+	pos.y = clampf(pos.y, -GameData.ARENA_HALF + 90.0, GameData.ARENA_HALF - 90.0)
+	var e = _create_miniboss(kind, pos)
+	if e == null:
+		return
+	FX.rune(pos, e.color, 150.0, 0.9, 0.7)
+	FX.ring(pos, e.color, 110.0, 0.7, "halo")
+	FX.flash(e.color, 0.25, 0.6)
+	FX.shake(8.0, 0.6)
+	Audio.play("boss", 0.82, -1.0)
+	Game.warning.emit("중간 보스 · %s 접근!" % e.display_name, 3.6)
+
+
+func _create_miniboss(kind: String, pos: Vector2):
+	if actors == null:
+		return null
+	var e = ENEMY_SCENE.instantiate()
+	actors.add_child(e)
+	e.global_position = pos
+	e.setup(kind, self, false)
+	enemies.append(e)
+	return e
+
+
+func mark_passed_minibosses(t: float) -> void:
+	var schedule: Array = Game.stage_data().get("minibosses", [])
+	for i in schedule.size():
+		if t >= float(schedule[i][0]):
+			miniboss_spawned[i] = true
+
+
+func restore_miniboss(kind: String, pos: Vector2, hp_ratio: float) -> void:
+	if not GameData.ENEMIES.has(kind):
+		return
+	var e = _create_miniboss(kind, pos)
+	if e == null:
+		return
+	e.hp = clampf(e.max_hp * clampf(hp_ratio, 0.01, 1.0), 1.0, e.max_hp)
+	Game.miniboss = e
+
+
+func on_miniboss_died(e: Node2D) -> void:
+	enemies.erase(e)
+	if Game.miniboss == e:
+		Game.miniboss = null
+
+
 func on_enemy_died(e: Node2D) -> void:
 	enemies.erase(e)
 
@@ -246,12 +309,114 @@ func has_enemy_within(pos: Vector2, radius: float) -> bool:
 	return not query_circle(pos, radius).is_empty()
 
 
+func spawn_stage_obstacles() -> void:
+	if obstacles == null or not obstacle_list.is_empty():
+		return
+	var kinds: Array = []
+	var count := 22
+	match Game.stage_id:
+		"hive":
+			kinds = ["hive_egg", "hive_pod", "hive_coral"]
+			count = 24
+		"ship":
+			kinds = ["ship_pod", "ship_console", "ship_wall"]
+			count = 24
+		_:
+			kinds = ["forest_tree", "forest_rock", "forest_crystal"]
+			count = 22
+	for i in count:
+		var placed := false
+		for tries in 28:
+			var a := _rng.randf_range(0.0, TAU)
+			var d := _rng.randf_range(145.0, 205.0) if i < 5 else (
+				_rng.randf_range(260.0, 520.0) if i < 11 else _rng.randf_range(520.0, 1200.0))
+			var pos: Vector2 = player.global_position + Vector2.from_angle(a) * d
+			pos.x = clampf(pos.x, -GameData.ARENA_HALF + 90.0, GameData.ARENA_HALF - 90.0)
+			pos.y = clampf(pos.y, -GameData.ARENA_HALF + 90.0, GameData.ARENA_HALF - 90.0)
+			if pos.distance_to(player.global_position) < 110.0:
+				continue
+			var clear := true
+			for other in obstacle_list:
+				if is_instance_valid(other) and pos.distance_to(other.global_position) < other.radius + 75.0:
+					clear = false
+					break
+			if not clear:
+				continue
+			_spawn_obstacle(String(kinds[i % kinds.size()]), pos)
+			placed = true
+			break
+		if not placed:
+			continue
+
+
+func _spawn_obstacle(kind: String, pos: Vector2) -> void:
+	if obstacles == null:
+		return
+	var o = DESTRUCTIBLE_SCRIPT.new()
+	obstacles.add_child(o)
+	o.global_position = pos
+	o.setup(kind, self)
+	obstacle_list.append(o)
+
+
+func damage_obstacles_circle(pos: Vector2, radius: float, amount: float) -> void:
+	for o in obstacle_list:
+		if not is_instance_valid(o) or o.dead:
+			continue
+		if pos.distance_to(o.global_position) <= radius + o.radius:
+			o.take_damage(amount, pos)
+
+
+func damage_obstacles_line(start: Vector2, end: Vector2, width: float, amount: float) -> void:
+	var hit := {}
+	for o in obstacle_list:
+		if not is_instance_valid(o) or o.dead:
+			continue
+		var id: int = o.get_instance_id()
+		if hit.has(id):
+			continue
+		var closest := Geometry2D.get_closest_point_to_segment(o.global_position, start, end)
+		if o.global_position.distance_to(closest) <= width * 0.5 + o.radius:
+			hit[id] = true
+			o.take_damage(amount, closest)
+
+
+func hit_obstacle(pos: Vector2, radius: float, amount: float) -> bool:
+	for o in obstacle_list:
+		if not is_instance_valid(o) or o.dead:
+			continue
+		if pos.distance_to(o.global_position) <= radius + o.radius:
+			o.take_damage(amount, pos)
+			return true
+	return false
+
+
+func resolve_obstacles(pos: Vector2, body_radius: float) -> Vector2:
+	for o in obstacle_list:
+		if not is_instance_valid(o) or o.dead:
+			continue
+		var delta := pos - o.global_position
+		var min_dist: float = o.radius + body_radius
+		var d := delta.length()
+		if d < min_dist:
+			if d < 0.01:
+				delta = Vector2.RIGHT
+				d = 1.0
+			pos = o.global_position + delta / d * min_dist
+	return pos
+
+
+func on_obstacle_died(o: Node2D) -> void:
+	obstacle_list.erase(o)
+
+
 func damage_circle(pos: Vector2, radius: float, base_damage: float, knock: float, source) -> void:
 	for e in query_circle(pos, radius):
 		if not is_instance_valid(e) or e.dead:
 			continue
 		var roll: Dictionary = source.roll_damage(base_damage)
 		e.take_damage(roll["damage"], roll["crit"], pos, knock)
+	damage_obstacles_circle(pos, radius, base_damage)
 
 
 func damage_line(start: Vector2, end: Vector2, width: float, base_damage: float, source) -> void:
@@ -273,6 +438,7 @@ func damage_line(start: Vector2, end: Vector2, width: float, base_damage: float,
 			hit[id] = true
 			var roll: Dictionary = source.roll_damage(base_damage)
 			e.take_damage(roll["damage"], roll["crit"], start, 120.0)
+	damage_obstacles_line(start, end, width, base_damage)
 
 
 func damage_all(base_damage: float, source) -> void:
@@ -281,3 +447,4 @@ func damage_all(base_damage: float, source) -> void:
 			continue
 		var roll: Dictionary = source.roll_damage(base_damage)
 		e.take_damage(roll["damage"], roll["crit"], player.global_position, 120.0)
+	damage_obstacles_circle(player.global_position, 1800.0, base_damage)

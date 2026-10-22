@@ -190,6 +190,9 @@ func _process(delta: float) -> void:
 		position += dash_dir * DASH_SPEED * delta
 		position.x = clampf(position.x, -GameData.ARENA_HALF + 30.0, GameData.ARENA_HALF - 30.0)
 		position.y = clampf(position.y, -GameData.ARENA_HALF + 30.0, GameData.ARENA_HALF - 30.0)
+		if manager != null:
+			manager.damage_obstacles_circle(position, radius + 34.0, 75.0)
+			position = manager.resolve_obstacles(position, radius)
 		_moving = true
 		look_dir = dash_dir
 		_update_facing(dash_dir)
@@ -204,6 +207,8 @@ func _process(delta: float) -> void:
 		position += input * speed * delta
 		position.x = clampf(position.x, -GameData.ARENA_HALF + 30.0, GameData.ARENA_HALF - 30.0)
 		position.y = clampf(position.y, -GameData.ARENA_HALF + 30.0, GameData.ARENA_HALF - 30.0)
+		if manager != null:
+			position = manager.resolve_obstacles(position, radius)
 		_anim_time += delta * 9.5
 		_update_facing(input)
 	else:

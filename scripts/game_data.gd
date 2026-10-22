@@ -395,6 +395,174 @@ const ENEMIES := {
 		"flying": false,
 		"behavior": "blobling",
 	},
+	"thorn": {
+		"name": "가시 덩굴",
+		"hp": 46.0,
+		"speed": 58.0,
+		"damage": 8.0,
+		"xp": 4,
+		"radius": 12.0,
+		"texture": "res://assets/art/char/enemy_burrower.png",
+		"height": 38.0,
+		"color": Color(0.48, 0.88, 0.48),
+		"flying": false,
+		"behavior": "brute",
+	},
+	"moth": {
+		"name": "달나방",
+		"hp": 16.0,
+		"speed": 104.0,
+		"damage": 5.0,
+		"xp": 2,
+		"radius": 9.0,
+		"texture": "res://assets/art/char/enemy_bat_0.png",
+		"height": 26.0,
+		"color": Color(1.0, 0.78, 0.5),
+		"flying": true,
+		"scale": 0.86,
+	},
+	"larva": {
+		"name": "군체 유충",
+		"hp": 9.0,
+		"speed": 98.0,
+		"damage": 4.0,
+		"xp": 1,
+		"radius": 7.0,
+		"texture": "res://assets/art/char/enemy_slime.png",
+		"height": 19.0,
+		"color": Color(0.9, 0.95, 0.45),
+		"flying": false,
+		"scale": 0.72,
+	},
+	"sporeling": {
+		"name": "포자 사수",
+		"hp": 27.0,
+		"speed": 50.0,
+		"damage": 6.0,
+		"xp": 3,
+		"radius": 10.0,
+		"texture": "res://assets/art/char/enemy_ghost.png",
+		"height": 29.0,
+		"color": Color(0.65, 1.0, 0.55),
+		"flying": true,
+		"behavior": "spitter",
+	},
+	"crawler": {
+		"name": "격벽 크롤러",
+		"hp": 30.0,
+		"speed": 90.0,
+		"damage": 8.0,
+		"xp": 3,
+		"radius": 10.0,
+		"texture": "res://assets/art/char/enemy_burrower.png",
+		"height": 28.0,
+		"color": Color(0.45, 0.88, 0.9),
+		"flying": false,
+		"scale": 0.9,
+	},
+	"nullifier": {
+		"name": "공허 소거자",
+		"hp": 34.0,
+		"speed": 68.0,
+		"damage": 9.0,
+		"xp": 5,
+		"radius": 11.0,
+		"texture": "res://assets/art/char/enemy_phase.png",
+		"height": 36.0,
+		"color": Color(0.68, 0.45, 1.0),
+		"flying": false,
+		"behavior": "phase",
+	},
+	"elder_treant": {
+		"name": "고목 수호자",
+		"hp": 520.0,
+		"speed": 28.0,
+		"damage": 14.0,
+		"xp": 30,
+		"radius": 36.0,
+		"texture": "res://assets/art/char/enemy_brute.png",
+		"height": 82.0,
+		"color": Color(0.45, 0.8, 0.42),
+		"flying": false,
+		"mini_boss": true,
+		"mini_style": "slam",
+		"scale": 1.35,
+	},
+	"moon_stalker": {
+		"name": "월식 추적자",
+		"hp": 460.0,
+		"speed": 62.0,
+		"damage": 13.0,
+		"xp": 28,
+		"radius": 26.0,
+		"texture": "res://assets/art/char/enemy_phase.png",
+		"height": 64.0,
+		"color": Color(0.7, 0.48, 1.0),
+		"flying": false,
+		"mini_boss": true,
+		"mini_style": "charger",
+		"scale": 1.2,
+	},
+	"spore_mother": {
+		"name": "포자 모체",
+		"hp": 560.0,
+		"speed": 28.0,
+		"damage": 15.0,
+		"xp": 32,
+		"radius": 36.0,
+		"texture": "res://assets/art/char/enemy_queen.png",
+		"height": 84.0,
+		"color": Color(0.62, 1.0, 0.5),
+		"flying": false,
+		"mini_boss": true,
+		"mini_style": "summon",
+		"scale": 0.62,
+	},
+	"hive_tyrant": {
+		"name": "군체 폭군",
+		"hp": 700.0,
+		"speed": 34.0,
+		"damage": 17.0,
+		"xp": 36,
+		"radius": 40.0,
+		"texture": "res://assets/art/char/enemy_brute.png",
+		"height": 90.0,
+		"color": Color(0.8, 0.4, 0.62),
+		"flying": false,
+		"mini_boss": true,
+		"mini_style": "slam",
+		"scale": 1.5,
+	},
+	"bulwark": {
+		"name": "격벽 파괴자",
+		"hp": 620.0,
+		"speed": 26.0,
+		"damage": 15.0,
+		"xp": 34,
+		"radius": 38.0,
+		"texture": "res://assets/art/char/enemy_sentinel.png",
+		"height": 80.0,
+		"color": Color(0.35, 0.9, 0.9),
+		"flying": true,
+		"mini_boss": true,
+		"mini_style": "beam",
+		"scale": 1.35,
+	},
+	"void_reaver": {
+		"name": "공허 사냥꾼",
+		"hp": 580.0,
+		"speed": 46.0,
+		"damage": 16.0,
+		"xp": 34,
+		"radius": 30.0,
+		"texture": "res://assets/art/char/enemy_phase.png",
+		"height": 70.0,
+		"color": Color(0.72, 0.4, 1.0),
+		"flying": true,
+		"mini_boss": true,
+		"mini_style": "caster",
+		"scale": 1.25,
+	},
 	"boss_scout": {
 		"name": "정찰 모선",
 		"hp": 900.0,
@@ -452,6 +620,47 @@ const BASE_STATS := {
 	"crit": 0.05,
 	"crit_mult": 1.75,
 	"regen": 0.0,
+}
+
+## Destructible terrain placed on each battlefield. `burst` is the shatter
+## effect family; `drop` is the XP reward for breaking it.
+const DESTRUCTIBLES := {
+	"forest_tree": {
+		"texture": "res://assets/art/world/tree_broad.png", "radius": 30.0,
+		"hp": 230.0, "color": Color(0.55, 0.85, 0.55), "drop": 3, "burst": "",
+	},
+	"forest_rock": {
+		"texture": "res://assets/art/world/rock_1.png", "radius": 24.0,
+		"hp": 165.0, "color": Color(0.7, 0.72, 0.68), "drop": 2, "burst": "",
+	},
+	"forest_crystal": {
+		"texture": "res://assets/art/world/alien_crystal.png", "radius": 18.0,
+		"hp": 90.0, "color": Color(0.4, 0.95, 1.0), "drop": 2, "burst": "shard",
+	},
+	"hive_egg": {
+		"texture": "res://assets/art/world/hive_egg.png", "radius": 22.0,
+		"hp": 115.0, "color": Color(0.55, 1.0, 0.55), "drop": 2, "burst": "acid",
+	},
+	"hive_pod": {
+		"texture": "res://assets/art/world/hive_pod.png", "radius": 26.0,
+		"hp": 165.0, "color": Color(0.72, 0.45, 1.0), "drop": 3, "burst": "acid",
+	},
+	"hive_coral": {
+		"texture": "res://assets/art/world/hive_coral.png", "radius": 28.0,
+		"hp": 235.0, "color": Color(0.82, 0.48, 1.0), "drop": 3, "burst": "",
+	},
+	"ship_pod": {
+		"texture": "res://assets/art/world/ship_pod.png", "radius": 24.0,
+		"hp": 180.0, "color": Color(0.35, 0.92, 0.95), "drop": 3, "burst": "shock",
+	},
+	"ship_console": {
+		"texture": "res://assets/art/world/ship_console.png", "radius": 22.0,
+		"hp": 135.0, "color": Color(0.4, 0.88, 1.0), "drop": 2, "burst": "shock",
+	},
+	"ship_wall": {
+		"texture": "res://assets/art/world/ship_wall.png", "radius": 34.0,
+		"hp": 330.0, "color": Color(0.55, 0.78, 0.82), "drop": 4, "burst": "",
+	},
 }
 
 ## Weapon evolutions: base weapon at level 6 + its partner passive at level 3.
@@ -517,8 +726,9 @@ const STAGES := {
 		"duration": 240.0,
 		"boss_time": 170.0,
 		"boss": "boss_scout",
-		"enemies": ["blob", "drone", "jelly", "grey", "mech"],
-		"enemy_icons": ["blob", "drone", "jelly"],
+		"enemies": ["blob", "drone", "jelly", "grey", "mech", "moth", "thorn"],
+		"enemy_icons": ["moth", "blob", "thorn"],
+		"minibosses": [[70.0, "elder_treant"], [135.0, "moon_stalker"]],
 		"hp_scale": 1.0,
 		"music_pitch": 1.0,
 		"tint": Color(0.86, 0.94, 1.06),
@@ -536,8 +746,9 @@ const STAGES := {
 		"duration": 240.0,
 		"boss_time": 170.0,
 		"boss": "boss_queen",
-		"enemies": ["spitter", "bomber", "burrower", "brute", "blob"],
-		"enemy_icons": ["spitter", "bomber", "brute"],
+		"enemies": ["spitter", "bomber", "burrower", "brute", "blob", "larva", "sporeling"],
+		"enemy_icons": ["larva", "sporeling", "spitter"],
+		"minibosses": [[70.0, "spore_mother"], [135.0, "hive_tyrant"]],
 		"hp_scale": 1.16,
 		"music_pitch": 0.9,
 		"tint": Color(0.97, 0.84, 1.06),
@@ -555,8 +766,9 @@ const STAGES := {
 		"duration": 240.0,
 		"boss_time": 170.0,
 		"boss": "boss_final",
-		"enemies": ["sentinel", "phase", "splitter", "mech", "drone"],
-		"enemy_icons": ["sentinel", "phase", "splitter"],
+		"enemies": ["sentinel", "phase", "splitter", "mech", "drone", "crawler", "nullifier"],
+		"enemy_icons": ["crawler", "nullifier", "phase"],
+		"minibosses": [[70.0, "bulwark"], [135.0, "void_reaver"]],
 		"hp_scale": 1.32,
 		"music_pitch": 1.08,
 		"tint": Color(0.84, 0.97, 1.04),
@@ -677,7 +889,9 @@ static func spawn_batch(t: float, duration: float = 240.0) -> int:
 static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
 	match stage_id:
 		"hive":
-			var w := {"spitter": 4.2, "blob": maxf(2.0, 8.0 - t / 50.0)}
+			var w := {"spitter": 4.2, "blob": maxf(2.0, 8.0 - t / 50.0), "larva": 3.0}
+			if t > 35.0:
+				w["sporeling"] = 2.4
 			if t > 25.0:
 				w["bomber"] = 3.0
 			if t > 60.0:
@@ -688,7 +902,9 @@ static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
 				w["drone"] = 1.6
 			return w
 		"ship":
-			var w := {"drone": 4.0, "grey": 3.0}
+			var w := {"drone": 4.0, "grey": 3.0, "crawler": 3.0}
+			if t > 55.0:
+				w["nullifier"] = 2.2
 			if t > 25.0:
 				w["splitter"] = 3.2
 			if t > 55.0:
@@ -699,7 +915,9 @@ static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
 				w["mech"] = 1.6
 			return w
 		_:
-			var w := {"blob": maxf(2.0, 10.0 - t / 40.0)}
+			var w := {"blob": maxf(2.0, 10.0 - t / 40.0), "moth": 2.0}
+			if t > 55.0:
+				w["thorn"] = 2.2
 			if t > 45.0:
 				w["drone"] = 3.5
 			if t > 80.0:
