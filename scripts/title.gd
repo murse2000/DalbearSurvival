@@ -179,7 +179,8 @@ func _build() -> void:
 	credits.position = Vector2(96, 690)
 	add_child(credits)
 	_credits = credits
-	var version := UIKit.label("v1.1  ·  MOONLIT EARTH", 12, Color(0.5, 0.58, 0.66))
+	var version_text := String(ProjectSettings.get_setting("application/config/version", "1.0"))
+	var version := UIKit.label("v%s  ·  MOONLIT EARTH" % version_text, 12, Color(0.5, 0.58, 0.66))
 	version.position = Vector2(1030, 690)
 	version.size = Vector2(220, 20)
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

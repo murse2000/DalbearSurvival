@@ -22,6 +22,7 @@ var canvas_mod: CanvasModulate
 
 var _end_shown := false
 var _levelup_pending := false
+var _backgrounded := false
 var _fade: ColorRect
 var _args: PackedStringArray
 
@@ -125,6 +126,10 @@ func _ready() -> void:
 		_capture_abilities()
 	elif "--test-abilities" in _args:
 		_test_abilities()
+	elif "--test-enemy-projectile" in _args:
+		_test_enemy_projectile()
+	elif "--test-background-pause" in _args:
+		_test_background_pause()
 	for a in _args:
 		if a.begins_with("--evolution-test="):
 			_test_evolution(a.substr(17))
@@ -242,6 +247,62 @@ func _build_fade() -> void:
 
 func _exit_tree() -> void:
 	FX.teardown()
+	_set_master_muted(false)
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_PAUSED:
+			_on_app_background()
+		NOTIFICATION_APPLICATION_RESUMED:
+			_on_app_foreground()
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			if OS.has_feature("mobile"):
+				_on_app_background()
+		NOTIFICATION_APPLICATION_FOCUS_IN:
+			if OS.has_feature("mobile"):
+				_on_app_foreground()
+
+
+func _on_app_background() -> void:
+	if _backgrounded:
+		return
+	_backgrounded = true
+	_set_master_muted(true)
+	if not Game.running or player == null or overlay == null:
+		return
+	if _levelup_pending or _end_shown or overlay.is_blocking():
+		return
+	if get_tree().paused:
+		return
+	# Cancel hitstop/boss slow-motion before freezing so a resumed app never
+	# comes back at a reduced time scale.
+	Engine.time_scale = 1.0
+	if touch_controls != null and is_instance_valid(touch_controls):
+		touch_controls._reset()
+		touch_controls.visible = false
+	overlay.toggle_pause()
+
+
+func _on_app_foreground() -> void:
+	if not _backgrounded:
+		return
+	_backgrounded = false
+	_set_master_muted(false)
+	if not Game.running or overlay == null:
+		return
+	# Returning from the home screen must not spend the player's pause buffer
+	# or auto-run the fight. Keep the pause menu up until they choose continue.
+	if overlay.is_blocking() or get_tree().paused:
+		if overlay._pause_visible:
+			get_tree().paused = true
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _set_master_muted(muted: bool) -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	if bus >= 0:
+		AudioServer.set_bus_mute(bus, muted)
 
 
 func _process(delta: float) -> void:
@@ -775,6 +836,107 @@ func _test_touch() -> void:
 	print("TOUCH TEST OK moved=%.1f floating=%s dash_cd=%.2f ultimate_charge=%.1f" % [
 		moved, floating_ok, player.dash_cd, player.ultimate_charge,
 	])
+	get_tree().quit()
+
+
+func _test_enemy_projectile() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	manager.spawn_timer = 999.0
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	await get_tree().create_timer(0.1, true, false, true).timeout
+	player.global_position = Vector2.ZERO
+	player.invuln = 0.0
+	player.hp = player.max_hp
+	var before_static: float = player.hp
+	manager.spawn_enemy_orb(player.global_position + Vector2(0, -12), Vector2.ZERO, 7.0)
+	await get_tree().create_timer(0.25, true, false, true).timeout
+	var static_damage: float = before_static - player.hp
+	await get_tree().create_timer(0.9, true, false, true).timeout
+	player.invuln = 0.0
+	player.hp = player.max_hp
+	var before_moving: float = player.hp
+	manager.spawn_enemy_orb(player.global_position + Vector2(-120, -12), Vector2(205, 0), 7.0)
+	await get_tree().create_timer(0.85, true, false, true).timeout
+	var moving_damage: float = before_moving - player.hp
+	await get_tree().create_timer(0.9, true, false, true).timeout
+	player.invuln = 0.0
+	player.hp = player.max_hp
+	var before_fast: float = player.hp
+	manager.spawn_enemy_orb(player.global_position + Vector2(-120, -12), Vector2(4000, 0), 7.0)
+	await get_tree().create_timer(0.18, true, false, true).timeout
+	var fast_damage: float = before_fast - player.hp
+	# A projectile that touches the player during i-frames must not vanish
+	# without ever dealing damage.
+	await get_tree().create_timer(0.9, true, false, true).timeout
+	player.invuln = 999.0
+	player.hp = player.max_hp
+	var before_blocked: int = manager.projectiles.get_child_count()
+	manager.spawn_enemy_orb(player.global_position + Vector2(0, -12), Vector2.ZERO, 7.0)
+	await get_tree().create_timer(0.2, true, false, true).timeout
+	var blocked_ok: bool = player.hp >= player.max_hp - 0.01 \
+		and manager.projectiles.get_child_count() > before_blocked
+	for p in manager.projectiles.get_children():
+		if is_instance_valid(p) and p.get("friendly") == false:
+			p.queue_free()
+	player.invuln = 0.0
+	for w in player.weapons.values():
+		if is_instance_valid(w):
+			w.set_process(false)
+			w.set_physics_process(false)
+	await get_tree().create_timer(0.9, true, false, true).timeout
+	player.invuln = 0.0
+	player.hp = player.max_hp
+	var before_spitter: float = player.hp
+	manager.spawn_enemy("spitter", player.global_position + Vector2(260, 0), false)
+	await get_tree().create_timer(3.4, true, false, true).timeout
+	var spitter_damage: float = before_spitter - player.hp
+	print("ENEMY PROJECTILE TEST static=%.1f moving=%.1f fast=%.1f spitter=%.1f blocked=%s hp=%.1f" % [
+		static_damage, moving_damage, fast_damage, spitter_damage, blocked_ok, player.hp,
+	])
+	if static_damage < 1.0 or moving_damage < 1.0 or fast_damage < 1.0 or spitter_damage < 1.0 or not blocked_ok:
+		push_error("ENEMY PROJECTILE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("ENEMY PROJECTILE TEST OK")
+	get_tree().quit()
+
+
+func _test_background_pause() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	manager.spawn_timer = 999.0
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	player.invuln = 999.0
+	var time_before: float = Game.time
+	_notification(NOTIFICATION_APPLICATION_PAUSED)
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	var bus := AudioServer.get_bus_index("Master")
+	var paused_after_home: bool = get_tree().paused and overlay._pause_visible
+	var muted_in_background: bool = bus >= 0 and AudioServer.is_bus_mute(bus)
+	var time_frozen: bool = absf(Game.time - time_before) < 0.05
+	_notification(NOTIFICATION_APPLICATION_RESUMED)
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	var still_paused_on_return: bool = get_tree().paused and overlay._pause_visible
+	var unmuted_on_return: bool = bus < 0 or not AudioServer.is_bus_mute(bus)
+	if overlay._pause_visible:
+		overlay._resume()
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	var resumed: bool = not get_tree().paused and not overlay._pause_visible
+	print("BACKGROUND PAUSE TEST pause=%s frozen=%s muted=%s return_paused=%s unmuted=%s resume=%s" % [
+		paused_after_home, time_frozen, muted_in_background, still_paused_on_return,
+		unmuted_on_return, resumed,
+	])
+	if not paused_after_home or not time_frozen or not muted_in_background \
+			or not still_paused_on_return or not unmuted_on_return or not resumed:
+		push_error("BACKGROUND PAUSE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("BACKGROUND PAUSE TEST OK")
 	get_tree().quit()
 
 

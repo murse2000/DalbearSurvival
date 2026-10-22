@@ -602,9 +602,9 @@ func roll_damage(base: float) -> Dictionary:
 	return {"damage": dmg, "crit": is_crit}
 
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float) -> bool:
 	if dead or invuln > 0.0 or not Game.running:
-		return
+		return false
 	var dmg := maxf(1.0, amount - armor)
 	hp = maxf(0.0, hp - dmg)
 	invuln = 0.75
@@ -616,6 +616,7 @@ func take_damage(amount: float) -> void:
 	FX.set_low_hp(hp < max_hp * 0.3)
 	if hp <= 0.0:
 		_die()
+	return true
 
 
 func heal(amount: float, show_fx: bool = true) -> void:

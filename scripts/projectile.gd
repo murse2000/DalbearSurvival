@@ -108,6 +108,7 @@ func _process(delta: float) -> void:
 	if age > life:
 		queue_free()
 		return
+	var previous_position := global_position
 	global_position += velocity * delta
 	_trail.add_point(global_position, 0)
 	while _trail.get_point_count() > 10:
@@ -138,12 +139,21 @@ func _process(delta: float) -> void:
 				_die()
 				return
 	else:
-		if player != null and not player.dead:
-			if global_position.distance_to(player.global_position + Vector2(0, -12)) < 18.0:
-				player.take_damage(base_damage)
-				FX.hit(global_position, color, false)
-				_die()
-				return
+		if player != null and is_instance_valid(player) and not player.dead:
+			# Swept collision: low frame rates must not let a fast orb tunnel
+			# through the player between two rendered positions.
+			var target: Vector2 = player.global_position + Vector2(0, -12)
+			var closest: Vector2 = Geometry2D.get_closest_point_to_segment(
+				target, previous_position, global_position
+			)
+			var hit_radius: float = radius + float(player.radius) + 2.0
+			if target.distance_to(closest) <= hit_radius:
+				# Keep the orb alive through i-frames so it cannot vanish
+				# without ever applying damage.
+				if player.take_damage(base_damage):
+					FX.hit(closest, color, false)
+					_die()
+					return
 
 
 func _die() -> void:

@@ -77,6 +77,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 조이스틱은 멀티터치를 지원해 이동하면서 대시·궁극기를 동시에 누를 수 있습니다.
 - 대시/궁극기 버튼에는 각각 **쿨다운·충전량**이 링과 퍼센트로 표시됩니다.
 - 타이틀·전선 선택·레벨업·장비·친구·설정 화면은 터치 입력을 그대로 지원합니다.
+- **홈 화면/백그라운드 전환 시 자동 일시정지**됩니다. 복귀하면 일시정지 메뉴가 유지되며, `계속하기`를 눌러야 전투가 재개됩니다. 백그라운드 동안 타이머·적·발사체가 진행되지 않고 오디오도 음소거됩니다.
 - 데스크톱에서 터치 UI를 확인하려면 `--touch` 인자를 사용합니다.
 - Android 설정: 가로 모드, 1280×720 기준 `canvas_items` 스트레치, ETC2/ASTC 텍스처 임포트, arm64-v8a.
 - Android 빌드에는 Godot 4.7.1 Android export template, Android SDK, JDK, 디버그 키스토어가 필요합니다.
@@ -382,6 +383,8 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --touch --test-touch
   godot --path . -- --capture-settings
   godot --path . res://scenes/main.tscn -- --test-reroll-banish
+  godot --path . res://scenes/main.tscn -- --test-enemy-projectile
+  godot --path . res://scenes/main.tscn -- --test-background-pause
   godot --path . res://scenes/main.tscn -- --test-settings-effects
   godot --path . res://scenes/main.tscn -- --test-equipment-run
   godot --path . res://scenes/equipment.tscn -- --test-equipment
@@ -392,6 +395,7 @@ DalbearSurvival/
 - **기록 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_save.cfg`
   (기록 · 장비 인벤토리 · 장착 슬롯 · 달빛 조각 · 장비 레벨 · 선택한 친구가 함께 저장됩니다)
 - **연출 설정 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_settings.cfg`
+- **Android 생명주기**: 홈/백그라운드 진입 시 자동 일시정지, 복귀 시 일시정지 유지. 적 발사체는 이동 경로 기반 연속 충돌 판정을 사용합니다.
 - **Android 산출물**: `build/DALBEAR.apk` (디버그 서명 · minSdk 24 · targetSdk 36 · arm64-v8a)
 - Android 빌드 환경: Godot 4.7.1 Android export templates, Android SDK(platform 34+), JDK 17+, 디버그 키스토어. Godot Editor Settings의 `export/android/android_sdk_path`와 `java_sdk_path`를 설정해야 합니다.
 - **화면비**: `canvas_items` + `expand`. HUD/터치/오버레이는 viewport 크기 변경에 반응하고, 메뉴는 중앙 안전 영역 + 풀블리드 블러 배경을 사용합니다.
