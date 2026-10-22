@@ -801,6 +801,103 @@ func _clear_incompatible_character_gear() -> void:
 			equipped.erase(slot)
 
 
+func _item_usable(item: Dictionary) -> bool:
+	var owner := EquipmentData.item_character(item)
+	return owner == "" or owner == selected_character
+
+
+func _sort_items_by_power(a: Dictionary, b: Dictionary) -> bool:
+	var pa := EquipmentData.item_power(a)
+	var pb := EquipmentData.item_power(b)
+	if not is_equal_approx(pa, pb):
+		return pa > pb
+	return String(a.get("uid", "")) < String(b.get("uid", ""))
+
+
+## Equips the strongest usable item in every slot (distinct weapon types, best
+## two rings, best piece per armor/accessory slot) in one call.
+func auto_equip_best() -> Dictionary:
+	var changes := 0
+	var weapons: Array = []
+	for item in inventory:
+		if item is Dictionary and String(item.get("slot", "")) == "weapon" and _item_usable(item):
+			weapons.append(item)
+	weapons.sort_custom(_sort_items_by_power)
+	var picked_weapons: Array = []
+	var used_types := {}
+	for w in weapons:
+		var wid := String(w.get("weapon_id", ""))
+		if used_types.has(wid):
+			continue
+		used_types[wid] = true
+		picked_weapons.append(w)
+		if picked_weapons.size() >= EquipmentData.WEAPON_SLOTS.size():
+			break
+	if not picked_weapons.is_empty():
+		var changed_weapons := false
+		for i in picked_weapons.size():
+			var slot := String(EquipmentData.WEAPON_SLOTS[i])
+			if String(equipped.get(slot, "")) != String(picked_weapons[i].get("uid", "")):
+				changed_weapons = true
+		if changed_weapons:
+			for slot in EquipmentData.WEAPON_SLOTS:
+				equipped.erase(slot)
+			for i in picked_weapons.size():
+				equipped[String(EquipmentData.WEAPON_SLOTS[i])] = String(picked_weapons[i].get("uid", ""))
+			changes += picked_weapons.size()
+
+	var rings: Array = []
+	for item in inventory:
+		if item is Dictionary and String(item.get("slot", "")) == "ring" and _item_usable(item):
+			rings.append(item)
+	rings.sort_custom(_sort_items_by_power)
+	if not rings.is_empty():
+		var top_rings: Array = rings.slice(0, mini(rings.size(), EquipmentData.RING_SLOTS.size()))
+		var changed_rings := false
+		for i in top_rings.size():
+			if String(equipped.get(EquipmentData.RING_SLOTS[i], "")) != String(top_rings[i].get("uid", "")):
+				changed_rings = true
+		if changed_rings:
+			for slot in EquipmentData.RING_SLOTS:
+				equipped.erase(slot)
+			for i in top_rings.size():
+				equipped[EquipmentData.RING_SLOTS[i]] = String(top_rings[i].get("uid", ""))
+			changes += top_rings.size()
+
+	for slot in EquipmentData.SLOT_ORDER:
+		if slot in EquipmentData.WEAPON_SLOTS or slot in EquipmentData.RING_SLOTS:
+			continue
+		var best: Dictionary = {}
+		var best_power := -1.0
+		for item in inventory:
+			if not item is Dictionary or String(item.get("slot", "")) != slot:
+				continue
+			if not _item_usable(item):
+				continue
+			var power := EquipmentData.item_power(item)
+			if power > best_power:
+				best = item
+				best_power = power
+		if best.is_empty():
+			continue
+		var uid := String(best.get("uid", ""))
+		if String(equipped.get(slot, "")) == uid:
+			continue
+		if best_power > _slot_power(slot):
+			equipped[slot] = uid
+			changes += 1
+
+	if changes > 0:
+		equipment_initialized = true
+		save_settings()
+		equipment_changed.emit()
+	return {
+		"ok": changes > 0,
+		"changes": changes,
+		"message": ("최적 장비 %d개를 장착했습니다." % changes) if changes > 0 else "이미 최적 장비입니다.",
+	}
+
+
 func _slot_power(slot: String) -> float:
 	var item := equipped_item(slot)
 	if item.is_empty():

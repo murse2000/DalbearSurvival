@@ -307,6 +307,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 방어구와 악세서리는 체력·방어·피해·공격 대기·이동·치명타·자력·재생 등을 올립니다.
 - **전용 장비**(친구 서명 장비)는 일반 장비보다 강한 고유 능력치를 가지며, 지정된 친구만 장착할 수 있습니다.
 - 장비 화면 상단의 **친구들** 버튼 또는 `C`로 친구를 바꿀 수 있습니다.
+- 인벤토리 아이템을 **슬롯 위로 끌어다 놓아 장착**할 수 있습니다. 마우스 드래그와 터치 스와이프 모두 지원하며, 캐릭터 위에 놓으면 알맞은 빈 슬롯에 자동으로 들어갑니다.
+- 인벤토리 상단의 **최적 장착** 버튼 하나로 보유한 가장 강한 장비를 11개 슬롯에 자동 장착합니다. (전용 장비는 해당 친구만, 같은 무기 종류 중복 없음)
 
 ### 등급과 레벨
 
@@ -494,6 +496,7 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-rewards
   godot --path . res://scenes/equipment.tscn -- --capture-equipment
   godot --path . res://scenes/equipment.tscn -- --capture-equipment-detail
+  godot --path . res://scenes/equipment.tscn -- --test-drag
   godot --path . res://scenes/characters.tscn -- --capture-characters
   godot --path . res://scenes/main.tscn -- --friend=star --capture-game
   godot --path . res://scenes/main.tscn -- --touch --capture-game

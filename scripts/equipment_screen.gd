@@ -54,6 +54,19 @@ var _portrait := false
 var _paper_pos := PAPER_PANEL_POS
 var _inv_pos := INV_PANEL_POS
 var _reloading := false
+var _best_btn: Button
+var _paper_frame: Panel
+var _drag_layer: CanvasLayer
+var _drag_ghost: TextureRect
+var _drag_uid := ""
+var _drag_start := Vector2.ZERO
+var _drag_moved := 0.0
+var _drag_hover_slot := ""
+var _inv_cells: Array = []
+var _press_uid := ""
+var _press_pos := Vector2.ZERO
+var _press_scroll := 0
+var _press_active := false
 
 
 func _is_portrait() -> bool:
@@ -77,6 +90,7 @@ func _ready() -> void:
 	_build()
 	UIFit.wrap_menu(self, "res://assets/art/ui/menu_backdrop.png",
 		UIFit.PORTRAIT if _portrait else UIFit.DESIGN)
+	_build_drag_layer()
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_refresh_all()
 	if "--capture-equipment" in _args:
@@ -85,6 +99,21 @@ func _ready() -> void:
 		_capture_detail()
 	if "--test-equipment" in _args:
 		_test_equipment.call_deferred()
+	if "--test-drag" in _args:
+		_test_drag.call_deferred()
+
+
+func _build_drag_layer() -> void:
+	_drag_layer = CanvasLayer.new()
+	_drag_layer.layer = 60
+	add_child(_drag_layer)
+	_drag_ghost = TextureRect.new()
+	_drag_ghost.visible = false
+	_drag_ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_drag_ghost.stretch_mode = TextureRect.STRETCH_SCALE
+	_drag_ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drag_layer.add_child(_drag_ghost)
 
 
 func _on_viewport_resized() -> void:
@@ -206,6 +235,7 @@ func _build_character_frame(parent: Control) -> void:
 	UIKit.place(frame, 184, 44, 300, 350)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(frame)
+	_paper_frame = frame
 
 	var corner := ColorRect.new()
 	corner.color = Color(0.85, 0.68, 0.35, 0.25)
@@ -260,7 +290,7 @@ func _build_character_frame(parent: Control) -> void:
 	sub.size = Vector2(300, 16)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	frame.add_child(sub)
-	_paper_hint = UIKit.label("장비를 클릭해 관리", 10, UIKit.MUTED)
+	_paper_hint = UIKit.label("장비를 슬롯으로 끌어 장착", 10, UIKit.MUTED)
 	_paper_hint.position = Vector2(0, 302)
 	_paper_hint.size = Vector2(300, 16)
 	_paper_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -328,10 +358,16 @@ func _build_inventory_panel() -> void:
 	title.position = Vector2(16, 8)
 	panel.add_child(title)
 	_inventory_count = UIKit.label("", 11, UIKit.MUTED)
-	_inventory_count.position = Vector2(340, 11)
-	_inventory_count.size = Vector2(164, 20)
+	_inventory_count.position = Vector2(240, 11)
+	_inventory_count.size = Vector2(150, 20)
 	_inventory_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	panel.add_child(_inventory_count)
+
+	_best_btn = UIKit.button("최적 장착", Vector2(104, 26))
+	_best_btn.position = Vector2(400, 5)
+	_best_btn.add_theme_font_size_override("font_size", 11)
+	_best_btn.pressed.connect(_on_best_pressed)
+	panel.add_child(_best_btn)
 
 	var filters := HBoxContainer.new()
 	filters.position = Vector2(16, 38)
@@ -483,9 +519,9 @@ func _update_paper_profile() -> void:
 					EquipmentData.item_name(item), int(item.get("level", 1)),
 				]
 			else:
-				_paper_hint.text = "장비를 클릭해 관리"
+				_paper_hint.text = "장비를 슬롯으로 끌어 장착"
 		else:
-			_paper_hint.text = "장비를 클릭해 관리 · %d/11" % equipped_count
+			_paper_hint.text = "장비를 슬롯으로 끌어 장착 · %d/11" % equipped_count
 
 
 func _on_slot_hover(slot: String, hovered: bool) -> void:
@@ -555,6 +591,7 @@ func _on_filter_pressed(group: String) -> void:
 func _build_inventory() -> void:
 	if _inv_grid == null:
 		return
+	_inv_cells.clear()
 	for child in _inv_grid.get_children():
 		_inv_grid.remove_child(child)
 		child.queue_free()
@@ -579,7 +616,9 @@ func _build_inventory() -> void:
 	if _inventory_count != null:
 		_inventory_count.text = "%d개" % items.size()
 	for item in items:
-		_inv_grid.add_child(_make_inventory_cell(item))
+		var cell := _make_inventory_cell(item)
+		_inv_grid.add_child(cell)
+		_inv_cells.append({"uid": String(item.get("uid", "")), "cell": cell})
 	var filled := maxi(24, items.size())
 	for i in range(items.size(), filled):
 		_inv_grid.add_child(_make_empty_cell())
@@ -596,7 +635,7 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 		Color(0.09, 0.13, 0.18, 0.98) if selected else Color(0.055, 0.082, 0.115, 0.96),
 		UIKit.GOLD if selected else accent.darkened(0.2), 2)
 	cell.custom_minimum_size = Vector2(INV_CELL, INV_CELL)
-	cell.mouse_filter = Control.MOUSE_FILTER_STOP
+	cell.mouse_filter = Control.MOUSE_FILTER_PASS
 	cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 	var icon := UIKit.icon(EquipmentData.item_icon(item), 42)
@@ -835,6 +874,14 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _drag_uid != "":
+		if event is InputEventMouseMotion:
+			_drag_move(event.position)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			_drag_release(event.position)
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
 			_go_back()
@@ -842,6 +889,126 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_C:
 			_open_characters()
 			get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			var uid := _cell_uid_at(event.position)
+			if uid != "":
+				# Do not take the press: the scroll container may still scroll.
+				# The drag starts only once the pointer moves without scrolling.
+				_press_active = true
+				_press_uid = uid
+				_press_pos = event.position
+				_press_scroll = _scroll.scroll_vertical if _scroll != null else 0
+		else:
+			_press_active = false
+		return
+	if event is InputEventMouseMotion and _press_active and _drag_uid == "":
+		var scrolled: bool = _scroll != null and _scroll.scroll_vertical != _press_scroll
+		if scrolled:
+			_press_active = false
+			return
+		if event.position.distance_to(_press_pos) > 14.0:
+			_drag_begin(_press_uid, _press_pos)
+			if _drag_uid != "":
+				_drag_move(event.position)
+				get_viewport().set_input_as_handled()
+			else:
+				_press_active = false
+
+
+func _cell_uid_at(pos: Vector2) -> String:
+	for entry in _inv_cells:
+		var cell: Control = entry.get("cell")
+		if is_instance_valid(cell) and cell.is_visible_in_tree() and cell.get_global_rect().has_point(pos):
+			return String(entry.get("uid", ""))
+	return ""
+
+
+func _slot_at(pos: Vector2) -> String:
+	for slot in _slot_cards.keys():
+		var card: Control = _slot_cards[slot]["root"]
+		if is_instance_valid(card) and card.get_global_rect().has_point(pos):
+			return String(slot)
+	return ""
+
+
+func _drag_begin(uid: String, pos: Vector2) -> void:
+	var item := Game.item_by_uid(uid)
+	if item.is_empty():
+		return
+	if EquipmentData.is_signature(item) and EquipmentData.item_character(item) != Game.selected_character:
+		_show_message("다른 친구 전용 장비입니다.", UIKit.CORAL)
+		return
+	_drag_uid = uid
+	_drag_start = pos
+	_drag_moved = 0.0
+	_drag_hover_slot = ""
+	_drag_ghost.texture = load(EquipmentData.item_icon(item))
+	_drag_ghost.size = Vector2(64, 64)
+	_drag_ghost.position = pos - Vector2(32, 32)
+	_drag_ghost.visible = true
+
+
+func _drag_move(pos: Vector2) -> void:
+	_drag_moved = maxf(_drag_moved, pos.distance_to(_drag_start))
+	_drag_ghost.position = pos - _drag_ghost.size * 0.5
+	var slot := _slot_at(pos)
+	if slot != _drag_hover_slot:
+		if _drag_hover_slot != "":
+			_on_slot_hover(_drag_hover_slot, false)
+		_drag_hover_slot = slot
+		if slot != "":
+			_on_slot_hover(slot, true)
+
+
+func _drag_release(pos: Vector2) -> void:
+	var uid := _drag_uid
+	var moved := _drag_moved
+	_drag_uid = ""
+	_drag_ghost.visible = false
+	if _drag_hover_slot != "":
+		_on_slot_hover(_drag_hover_slot, false)
+		_drag_hover_slot = ""
+	if moved < 12.0:
+		_select_item(uid)
+		return
+	var item := Game.item_by_uid(uid)
+	if item.is_empty():
+		_refresh_all()
+		return
+	var slot := _slot_at(pos)
+	var target := ""
+	if _paper_frame != null and _paper_frame.get_global_rect().has_point(pos):
+		target = ""
+	elif slot != "":
+		var item_slot := String(item.get("slot", ""))
+		if item_slot == "weapon" and slot in EquipmentData.WEAPON_SLOTS:
+			target = slot
+		elif item_slot == "ring" and slot in EquipmentData.RING_SLOTS:
+			target = slot
+		elif item_slot == slot:
+			target = slot
+		else:
+			_show_message("이 슬롯에는 장착할 수 없습니다.", UIKit.CORAL)
+			_refresh_all()
+			return
+	else:
+		_show_message("슬롯 위에 놓아주세요.", UIKit.MUTED)
+		_refresh_all()
+		return
+	var result := Game.equip_item(uid, target)
+	Audio.play_click()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.CORAL)
+	_refresh_all()
+
+
+func _on_best_pressed() -> void:
+	var result := Game.auto_equip_best()
+	Audio.play_click()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.MUTED)
+	_confirm_dismantle_uid = ""
+	_refresh_all()
 
 
 func _open_characters() -> void:
@@ -880,6 +1047,67 @@ func _capture_detail() -> void:
 	img.save_png(dir + "/" + shot + ".png")
 	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()
+
+
+func _send_button(pos: Vector2, pressed: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = pressed
+	e.position = pos
+	e.global_position = pos
+	get_viewport().push_input(e, true)
+
+
+func _send_motion(pos: Vector2) -> void:
+	var e := InputEventMouseMotion.new()
+	e.position = pos
+	e.global_position = pos
+	get_viewport().push_input(e, true)
+
+
+func _test_drag() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var helmet := Game.add_item(EquipmentData.make_item("helmet", "legendary", 3), false)
+	var uid := String(helmet.get("uid", ""))
+	_refresh_all()
+	await get_tree().process_frame
+	var errors: Array = []
+	var from := Vector2.ZERO
+	var found := false
+	for entry in _inv_cells:
+		if String(entry.get("uid", "")) == uid:
+			var cell: Control = entry["cell"]
+			from = cell.get_global_rect().get_center()
+			found = true
+			break
+	if not found:
+		errors.append("helmet cell not found")
+	else:
+		var slot_card: Control = _slot_cards["helmet"]["root"]
+		var to := slot_card.get_global_rect().get_center()
+		_send_button(from, true)
+		await get_tree().process_frame
+		_send_motion((from + to) * 0.5)
+		_send_motion(to)
+		await get_tree().process_frame
+		_send_button(to, false)
+		await get_tree().process_frame
+		if String(Game.equipped.get("helmet", "")) != uid:
+			errors.append("drag equip failed: %s" % String(Game.equipped.get("helmet", "")))
+	var power_before := Game.equipment_power()
+	var result := Game.auto_equip_best()
+	var power_after := Game.equipment_power()
+	if power_after < power_before:
+		errors.append("best gear lowered power %d -> %d" % [power_before, power_after])
+	print("DRAG TEST power %d -> %d changes=%d errors=%s" % [
+		power_before, power_after, int(result.get("changes", 0)), errors,
+	])
+	if errors.is_empty():
+		print("DRAG TEST OK")
+		get_tree().quit()
+	else:
+		push_error("DRAG TEST FAILED: %s" % str(errors))
+		get_tree().quit(1)
 
 
 func _test_equipment() -> void:
