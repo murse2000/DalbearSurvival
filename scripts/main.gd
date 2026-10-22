@@ -18,7 +18,7 @@ var hud
 var overlay
 var touch_controls
 var post_mat: ShaderMaterial
-var canvas_mod: CanvasModulate
+var canvas_mod: Node
 
 var _end_shown := false
 var _levelup_pending := false
@@ -94,6 +94,8 @@ func _ready() -> void:
 		_capture_game()
 	elif "--capture-base" in _args:
 		_capture_base()
+	elif "--capture-lighting" in _args:
+		_capture_lighting()
 	elif "--capture-boss" in _args or "--capture-final" in _args:
 		_capture_boss()
 	elif "--capture-queen" in _args:
@@ -176,9 +178,15 @@ func _build_world() -> void:
 	manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(manager)
 
-	canvas_mod = CanvasModulate.new()
-	canvas_mod.color = Game.stage_data()["tint"]
-	add_child(canvas_mod)
+	canvas_mod = LightRig.create_ambient(self, _ambient_color(0.0))
+	if LightRig.lit_enabled():
+		# A faint cool moon fill keeps silhouettes readable while the moving
+		# point lights do the dramatic work.
+		var moon := LitDirectionalLight2D.new()
+		moon.color = Color(0.38, 0.48, 0.82)
+		moon.energy = 0.24
+		moon.height = 80.0
+		add_child(moon)
 
 
 func _build_player() -> void:
@@ -360,12 +368,26 @@ func _set_master_muted(muted: bool) -> void:
 		AudioServer.set_bus_mute(bus, muted)
 
 
+func _ambient_color(progress: float) -> Color:
+	var base: Color = Game.stage_data()["tint"]
+	if LightRig.lit_enabled():
+		var night := Color(0.20, 0.23, 0.32)
+		var dawn := Color(0.58, 0.49, 0.39)
+		var amb := night.lerp(dawn, pow(clampf(progress, 0.0, 1.0), 2.8))
+		return Color(amb.r * base.r, amb.g * base.g, amb.b * base.b, 1.0)
+	# Native GL fallback needs a little more ambient because its point lights
+	# are additive and capped, but still keeps the lantern-lit night mood.
+	var native_night := Color(0.10, 0.13, 0.20)
+	var native_dawn := Color(0.58, 0.50, 0.40)
+	var native_amb := native_night.lerp(native_dawn, pow(clampf(progress, 0.0, 1.0), 2.8))
+	return Color(native_amb.r * base.r, native_amb.g * base.g, native_amb.b * base.b, 1.0)
+
+
 func _process(delta: float) -> void:
 	if player != null and is_instance_valid(player):
 		var st := Game.stage_data()
 		var p := clampf(Game.time / float(st["duration"]), 0.0, 1.0)
-		var base: Color = st["tint"]
-		canvas_mod.color = base.lerp(Color(1.14, 1.0, 0.86), pow(p, 2.8) * 0.4)
+		canvas_mod.color = _ambient_color(p)
 		if hud != null and hud.has_method("tick"):
 			hud.tick(delta)
 		if Game.running and not _dev_mode and not get_tree().paused:
@@ -646,6 +668,21 @@ func _capture_base() -> void:
 		manager.spawn_enemy(kinds[i], player.global_position + Vector2.from_angle(a) * d, false)
 	await get_tree().create_timer(1.6, true, false, true).timeout
 	await _capture("base")
+
+
+func _capture_lighting() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	player.invuln = 999.0
+	Game.time = 66.0
+	var kinds := ["blob", "drone", "grey", "jelly", "spitter", "bomber"]
+	for i in 18:
+		var a := TAU * float(i) / 18.0 + 0.13
+		var d := 150.0 + float(i % 5) * 42.0
+		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * d, i % 7 == 0)
+	await get_tree().create_timer(1.7, true, false, true).timeout
+	if hud != null:
+		hud.warning_panel.visible = false
+	await _capture("lighting")
 
 
 func _capture_boss() -> void:

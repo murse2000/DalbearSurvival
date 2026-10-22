@@ -17,6 +17,7 @@ var stage_id := "forest"
 
 var _fog: Array[Sprite2D] = []
 var _fireflies: Array[CPUParticles2D] = []
+var _lights: Array = []
 var _rng := RandomNumberGenerator.new()
 var _time := 0.0
 
@@ -92,6 +93,7 @@ func _build_ground() -> void:
 	outer.modulate = _outer_tint()
 	outer.z_index = -22
 	add_child(outer)
+	LightRig.make_receiver(outer)
 
 	var g := Sprite2D.new()
 	g.name = "Ground"
@@ -103,6 +105,7 @@ func _build_ground() -> void:
 	g.position = Vector2(-HALF, -HALF)
 	g.z_index = -20
 	add_child(g)
+	LightRig.make_receiver(g)
 
 
 func _build_decals() -> void:
@@ -120,6 +123,7 @@ func _build_decals() -> void:
 	spawn_circle.scale = Vector2(2.2, 2.2)
 	spawn_circle.modulate = center_tint
 	decals.add_child(spawn_circle)
+	LightRig.make_receiver(spawn_circle)
 
 	var count := 7 if stage_id == "forest" else 9
 	for i in count:
@@ -136,6 +140,7 @@ func _build_decals() -> void:
 			_:
 				s.modulate = Color(1, 1, 1, _rng.randf_range(0.28, 0.5))
 		decals.add_child(s)
+		LightRig.make_receiver(s)
 	for i in 10:
 		var s := Sprite2D.new()
 		s.texture = load(A + "world/scorch_%d.png" % (i % 2))
@@ -144,6 +149,7 @@ func _build_decals() -> void:
 		s.scale = Vector2.ONE * _rng.randf_range(0.7, 1.8)
 		s.modulate = Color(0.7, 0.6, 0.9, 0.55) if stage_id == "hive" else Color(1, 1, 1, 0.5)
 		decals.add_child(s)
+		LightRig.make_receiver(s)
 
 
 func _build_decor() -> void:
@@ -200,6 +206,7 @@ func _multimesh(parent: Node2D, tex_path: String, count: int, smin: float, smax:
 	mmi.multimesh = mm
 	mmi.texture = tex
 	parent.add_child(mmi)
+	LightRig.make_receiver(mmi)
 
 
 func _add_sprite(parent: Node2D, tex_path: String, pos: Vector2, scale_f: float = 1.0,
@@ -213,6 +220,7 @@ func _add_sprite(parent: Node2D, tex_path: String, pos: Vector2, scale_f: float 
 	s.rotation = rot
 	s.modulate = tint
 	parent.add_child(s)
+	LightRig.make_receiver(s)
 	return s
 
 
@@ -343,6 +351,12 @@ func _build_props() -> void:
 				tint = Color(0.9, 0.78, 1.0, 1.0)
 			var s := _add_sprite(actors, A + "world/" + prop_name + ".png", pos,
 				sc * _rng.randf_range(0.85, 1.15), 0.0, tint)
+			var tex_size := Vector2(s.texture.get_width(), s.texture.get_height())
+			if prop_name in ["crashed_saucer", "crate", "barricade", "fallen_log",
+					"rock_0", "rock_1", "hive_pillar", "hive_coral", "ship_wall",
+					"ship_pod", "ship_console"]:
+				LightRig.add_occluder(s, tex_size, Vector2(0, -tex_size.y * 0.5))
+			_add_prop_light(s, prop_name, i, tex_size)
 			if prop_name == "crashed_saucer":
 				var glow := Sprite2D.new()
 				glow.texture = load(A + "fx/glow_green.png")
@@ -373,6 +387,71 @@ func _build_props() -> void:
 				mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 				glow.material = mat
 				s.add_child(glow)
+
+
+func _add_prop_light(s: Sprite2D, prop_name: String, index: int, tex_size: Vector2) -> void:
+	if _lights.size() >= 18:
+		return
+	var color := Color.WHITE
+	var light_range := 150.0
+	var energy := 0.7
+	match prop_name:
+		"crashed_saucer":
+			color = Color(0.45, 1.0, 0.7)
+			light_range = 260.0
+			energy = 1.15
+		"alien_crystal":
+			if index % 3 != 0:
+				return
+			color = Color(0.35, 0.9, 1.0)
+			light_range = 180.0
+			energy = 0.72
+		"hive_egg":
+			if index % 4 != 0:
+				return
+			color = Color(0.55, 1.0, 0.55)
+			light_range = 160.0
+			energy = 0.82
+		"hive_pod":
+			if index % 3 != 0:
+				return
+			color = Color(0.68, 0.42, 1.0)
+			light_range = 175.0
+			energy = 0.76
+		"hive_coral":
+			if index % 5 != 0:
+				return
+			color = Color(0.82, 0.45, 1.0)
+			light_range = 135.0
+			energy = 0.58
+		"ship_pod":
+			if index % 3 != 0:
+				return
+			color = Color(0.3, 0.92, 0.95)
+			light_range = 190.0
+			energy = 0.8
+		"ship_console":
+			if index % 4 != 0:
+				return
+			color = Color(0.35, 0.88, 1.0)
+			light_range = 150.0
+			energy = 0.62
+		"ship_pylon":
+			if index % 3 != 0:
+				return
+			color = Color(0.35, 0.95, 0.9)
+			light_range = 170.0
+			energy = 0.7
+		_:
+			return
+	var light := LightRig.add_point_light(s, color, light_range, energy, false,
+		Vector2(0, -tex_size.y * 0.5))
+	if light == null:
+		return
+	_lights.append({
+		"node": light, "base": energy, "range": light_range,
+		"phase": _rng.randf() * TAU, "speed": _rng.randf_range(1.2, 2.8),
+	})
 
 
 func _build_fog() -> void:
@@ -433,6 +512,14 @@ func _make_fireflies(parent: Node2D, color: Color) -> CPUParticles2D:
 
 func _process(delta: float) -> void:
 	_time += delta
+	for entry in _lights:
+		var light = entry["node"]
+		if light == null or not is_instance_valid(light):
+			continue
+		var base: float = float(entry["base"])
+		var phase: float = float(entry["phase"])
+		var speed: float = float(entry["speed"])
+		light.energy = base * (0.82 + 0.18 * absf(sin(_time * speed + phase)))
 	if target != null and is_instance_valid(target):
 		for i in _fog.size():
 			var f := _fog[i]

@@ -194,6 +194,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - **모선**: 방사형 탄막, 나선 탄막, 소환, 조준 레이저, 40% 이하 폭주
 
 ### 화려한 이펙트
+- **Lit - 2D Lighting Engine** 기반 2D 광원: 플레이어 **후광/림라이트**, 적·보스 조명, 맵 오브젝트의 색 광원, 폭발·궁극기 라이트 버스트
+- **캐릭터 자기 발광 분리**: 플레이어 라이트는 주변/적만 비추고 캐릭터는 뒤에서 비추는 실루엣·림으로 처리해 얼굴이 하얗게 날아가지 않음
 - 풀스크린 **블룸**, 색수차, 임팩트 왜곡, 필름 그레인, 비네트 (커스텀 셰이더)
 - 적중/사망/폭발/픽업/레벨 업마다 **파티클 폭발 + 충격파 + 플래시**
 - 투사체 빛 궤적, 레이저 전격 아크, 보스 등장 빔, 보스 사망 연쇄 폭발 + 슬로우 모션
@@ -285,22 +287,22 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![모선 심장부](screenshots/stage_ship.png) | ![군체 여왕](screenshots/queen.png) |
 | ![모선 보스전](screenshots/boss.png) | ![최종 엔딩](screenshots/final_clear.png) |
 | ![무기 진화](screenshots/evolution.png) | ![진화 전투](screenshots/evolution_gameplay.png) |
-| ![신규 스킬](screenshots/new_skills.png) | ![게임플레이](screenshots/gameplay.png) |
-| ![대시·궁극기](screenshots/abilities.png) | ![50 콤보 연출](screenshots/combo.png) |
-| ![리롤·밴 카드](screenshots/levelup.png) | ![밴 모드](screenshots/banish.png) |
-| ![연출 설정](screenshots/settings.png) | ![일시정지 설정](screenshots/pause_settings.png) |
-| ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
-| ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
-| ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
-| ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
-| ![이어하기](screenshots/title_continue.png) | ![타이틀](screenshots/title.png) |
+| ![Lit 2D 조명](screenshots/lighting.png) | ![신규 스킬](screenshots/new_skills.png) |
+| ![게임플레이](screenshots/gameplay.png) | ![50 콤보](screenshots/combo.png) |
+| ![대시·궁극기](screenshots/abilities.png) | ![리롤·밴 카드](screenshots/levelup.png) |
+| ![밴 모드](screenshots/banish.png) | ![연출 설정](screenshots/settings.png) |
+| ![일시정지 설정](screenshots/pause_settings.png) | ![장비 & 인벤토리](screenshots/equipment.png) |
+| ![장비 상세](screenshots/equipment_detail.png) | ![친구 선택](screenshots/characters.png) |
+| ![런 보상](screenshots/rewards.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
+| ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
+| ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
 `screenshots/equipment_detail.png`, `screenshots/characters.png`, `screenshots/rewards.png`,
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
-`screenshots/combo.png`, `screenshots/title.png`
+`screenshots/lighting.png`, `screenshots/combo.png`, `screenshots/title.png`
 
 ---
 
@@ -333,6 +335,7 @@ DalbearSurvival/
 │  ├─ settings.gd                # 블룸/화면 흔들림/데미지 숫자 설정 저장
 │  ├─ audio.gd                   # SFX 풀, BGM 루프/덕킹/피치
 │  └─ fx.gd                      # 파티클, 충격파, 빔, 화면 효과
+├─ addons/lit/                   # Lit - 2D Lighting Engine (MIT)
 ├─ assets/
 │  ├─ art/                       # 캐릭터/친구 5종, 외계인, 환경, UI, 타이틀 원화
 │  ├─ particles/                 # Kenney CC0 파티클 (라이선스 포함)
@@ -352,12 +355,13 @@ DalbearSurvival/
 |---|---|---|
 | VFX 파티클 | [Kenney Particle Pack](https://kenney.nl/assets/particle-pack) | **CC0 1.0** |
 | 한국어 픽셀 폰트 | [Galmuri11](https://github.com/quiple/galmuri) by Lee Minseo | **SIL OFL 1.1** |
+| 2D 조명 | [Lit - 2D Lighting Engine](https://github.com/shawndeprey/lit) by Fading Lantern Games | **MIT** |
 | 캐릭터/외계인/군체/모선/UI/타이틀 아트 | 이 프로젝트를 위해 직접 생성 | 원작 |
 | BGM/효과음 | 이 프로젝트를 위해 절차적으로 생성 | 원작 |
 | 엔진 | Godot Engine 4.7.1 | MIT |
 
 전체 라이선스 원문은 `assets/particles/LICENSE_kenney.txt`, `assets/fonts/OFL.md`,
-`THIRD_PARTY_NOTICES.md`에 있습니다.
+`addons/lit/LICENSE`, `THIRD_PARTY_NOTICES.md`에 있습니다.
 
 ---
 
@@ -389,6 +393,7 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-boss
   godot --path . res://scenes/main.tscn -- --capture-evolution
   godot --path . res://scenes/main.tscn -- --capture-abilities
+  godot --path . res://scenes/main.tscn -- --capture-lighting
   godot --path . res://scenes/main.tscn -- --capture-new-skills
   godot --path . res://scenes/main.tscn -- --test-new-skills
   godot --path . res://scenes/main.tscn -- --test-balance
@@ -423,6 +428,7 @@ DalbearSurvival/
   (기록 · 장비 인벤토리 · 장착 슬롯 · 달빛 조각 · 장비 레벨 · 선택한 친구가 함께 저장됩니다)
 - **연출 설정 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_settings.cfg`
 - **Android 생명주기**: 홈/백그라운드 진입 시 자동 일시정지 + 체크포인트 저장, 복귀 시 일시정지 유지. 프로세스가 종료되어도 타이틀에서 이어하기가 가능합니다. 적 발사체는 이동 경로 기반 연속 충돌 판정을 사용합니다.
+- **렌더러**: Windows는 **Forward+ + Lit 2D Lighting**, Android는 **GL Compatibility + 네이티브 CanvasModulate/PointLight2D 폴백**을 사용합니다.
 - **Android 산출물**: `build/DALBEAR.apk` (디버그 서명 · minSdk 24 · targetSdk 36 · arm64-v8a)
 - Android 빌드 환경: Godot 4.7.1 Android export templates, Android SDK(platform 34+), JDK 17+, 디버그 키스토어. Godot Editor Settings의 `export/android/android_sdk_path`와 `java_sdk_path`를 설정해야 합니다.
 - **화면비**: `canvas_items` + `expand`. HUD/터치/오버레이는 viewport 크기 변경에 반응하고, 메뉴는 중앙 안전 영역 + 풀블리드 블러 배경을 사용합니다.

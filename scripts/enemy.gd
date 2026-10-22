@@ -32,6 +32,7 @@ var seeded := 0.0
 var sprite: Sprite2D
 var shadow: Sprite2D
 var aura: Sprite2D
+var _light: Node2D
 var sprite_base_y := 0.0
 var visual_scale := 1.0
 
@@ -162,6 +163,13 @@ func _build_visuals() -> void:
 		sprite_base_y = sprite.position.y
 	add_child(sprite)
 	sprite.z_index = 1
+	LightRig.make_receiver(sprite)
+	if boss:
+		_light = LightRig.add_point_light(self, color, 245.0, 1.3, false,
+			Vector2(0, -height * visual_scale * 0.4))
+	elif elite:
+		_light = LightRig.add_point_light(self, color, 92.0, 0.62, false,
+			Vector2(0, -height * visual_scale * 0.4))
 	if elite:
 		sprite.modulate = Color(1.08, 1.05, 1.18)
 	var target_scale := Vector2.ONE * visual_scale

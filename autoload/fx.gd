@@ -53,6 +53,7 @@ var _speed_lines := 0.0
 var _speed_color := Color(1.0, 0.82, 0.45)
 var _saturation := 1.0
 var _hitstop_token := 0
+var _light_burst_count := 0
 var _flash_tween: Tween
 var _grade_tween: Tween
 var _numbers: Array[Label] = []
@@ -302,6 +303,26 @@ func speed_lines(amount: float = 0.55, color: Color = Color(1.0, 0.82, 0.45)) ->
 	_speed_color = color
 
 
+func light_burst(pos: Vector2, color: Color, light_range: float = 180.0,
+		energy: float = 1.4, duration: float = 0.3) -> void:
+	if fx_root == null or not is_instance_valid(fx_root):
+		return
+	var cap := 14 if LightRig.lit_enabled() else 6
+	if _light_burst_count >= cap:
+		return
+	var light := LightRig.add_point_light(fx_root, color, light_range, energy, false, pos)
+	if light == null:
+		return
+	_light_burst_count += 1
+	var tw := light.create_tween()
+	tw.tween_property(light, "energy", 0.0, duration).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		_light_burst_count = maxi(0, _light_burst_count - 1)
+		if is_instance_valid(light):
+			light.queue_free()
+	)
+
+
 func hitstop(duration: float = 0.055, scale: float = 0.08) -> void:
 	_hitstop_token += 1
 	var token := _hitstop_token
@@ -321,6 +342,7 @@ func combo_burst(pos: Vector2, combo: int) -> void:
 	_fade_sprite(pos, "flare", color, 0.8 + t, 2.2 + t, 0.45)
 	flash(color, 0.16 + 0.12 * t, 0.35)
 	grade(color, 0.08 + 0.12 * t, 1.2)
+	light_burst(pos, color, 220.0 + 120.0 * t, 1.8 + t, 0.5)
 	boost_bloom(0.45 + t * 0.7)
 	speed_lines(0.35 + t * 0.45, color)
 	screen_shock(0.25 + t * 0.5, 0.012 + t * 0.035, 0.0, color)
@@ -526,6 +548,7 @@ func explosion(pos: Vector2, color: Color, size: float = 1.0) -> void:
 	shake(5.0 * size, 0.3)
 	punch(0.04 * size)
 	screen_shock(0.22 * size, 0.009 * size, 0.10, color)
+	light_burst(pos, color, 155.0 * size, 1.35 * size, 0.32)
 	death_decal(pos, color)
 
 
@@ -611,6 +634,7 @@ func levelup_burst(pos: Vector2) -> void:
 	shake(6.0, 0.4)
 	punch(0.07)
 	screen_shock(0.65, 0.045, 0.55, Color(1.0, 0.86, 0.42))
+	light_burst(pos, Color(1.0, 0.86, 0.42), 380.0, 2.6, 0.7)
 	grade(Color(1.0, 0.75, 0.35), 0.16, 1.0)
 
 
@@ -641,6 +665,7 @@ func boss_spawn(pos: Vector2) -> void:
 	shake(11.0, 0.8)
 	punch(0.09)
 	screen_shock(0.62, 0.04, 0.58, Color(0.75, 0.45, 1.0))
+	light_burst(pos, Color(0.75, 0.45, 1.0), 420.0, 2.2, 0.75)
 
 
 func boss_death(pos: Vector2) -> void:
@@ -660,6 +685,7 @@ func _boss_death_sequence(pos: Vector2) -> void:
 			break
 		var offset := Vector2(_rng.randf_range(-70, 70), _rng.randf_range(-60, 50))
 		enemy_death(pos + offset, Color(1.0, 0.6 - i * 0.03, 0.25 + i * 0.04), true)
+		light_burst(pos + offset, Color(1.0, 0.62, 0.28), 230.0, 1.8, 0.55)
 		flash(Color(1.0, 0.75, 0.4), 0.22, 0.35)
 		shake(8.0, 0.3)
 		await get_tree().create_timer(0.13, true, false, false).timeout
@@ -669,6 +695,7 @@ func _boss_death_sequence(pos: Vector2) -> void:
 	flash(Color(1.0, 1.0, 0.92), 0.9, 1.2)
 	ring(pos, Color(1.0, 0.9, 0.6), 520, 1.4)
 	particles(pos, "star", Color(1.0, 0.85, 0.5), 90, 2.0, 100, 480, 0.45, 180, Vector2(0, 120), true, 500)
+	light_burst(pos, Color(1.0, 0.82, 0.42), 620.0, 3.4, 1.2)
 	boost_bloom(1.8)
 	shake(16.0, 1.3)
 	punch(0.12)

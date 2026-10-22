@@ -50,6 +50,17 @@
 
 ---
 
+## 2D 조명
+
+### Lit - 2D Lighting Engine (MIT License)
+- 제작: Shawn Deprey / Fading Lantern Games · [github.com/shawndeprey/lit](https://github.com/shawndeprey/lit)
+- 위치: `addons/lit/`
+- 라이선스 전문: `addons/lit/LICENSE`
+- Windows Forward+ 빌드의 광원·그림자·라이트 버스트에 사용했습니다.
+- Android GL Compatibility 빌드는 엔진 내장 `CanvasModulate`/`PointLight2D` 폴백을 사용합니다.
+
+---
+
 ## 사운드
 
 - **BGM**: 90 BPM, A minor, 64초 seamless loop. Python/NumPy로 합성, ffmpeg로 OGG 인코딩.

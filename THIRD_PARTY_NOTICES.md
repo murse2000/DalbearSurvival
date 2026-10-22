@@ -36,7 +36,20 @@ reserved font name(s) of the original are not modified.
 - License: MIT
 - The exported game embeds the Godot runtime. See the Godot license for details.
 
-## 4. Project-original assets
+## 4. Lit - 2D Lighting Engine 1.1.7 — MIT License
+
+- Author: Shawn Deprey (Fading Lantern Games)
+- Source: https://github.com/shawndeprey/lit
+- Godot Asset Library: https://godotengine.org/asset-library/asset/5303
+- License: MIT
+- Local license: `addons/lit/LICENSE`
+- Use: Forward+ desktop 2D lighting, shadows and light bursts.
+- Modifications: integrated as a runtime dependency; no source changes to the addon.
+
+The addon is used under the MIT license. The Android build uses the game's native
+`CanvasModulate` / `PointLight2D` fallback because Lit requires Forward+.
+
+## 5. Project-original assets
 
 All other art, audio, game code and text were created for this project
 (2026, dalbear.com) and are original works. They are not derived from any

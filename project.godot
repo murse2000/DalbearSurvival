@@ -1,14 +1,20 @@
 ; Engine configuration file.
-; DALBEAR: Earth Defense
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
 
 config/name="DALBEAR: Earth Defense"
 config/description="달빛의 곰 '달베어'가 외계 함대로부터 지구를 지키는 2D 로그라이트 서바이벌."
-config/version="1.3.0"
+config/version="1.4.0"
 run/main_scene="res://scenes/title.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/features=PackedStringArray("4.7")
 boot_splash/bg_color=Color(0.035, 0.055, 0.09, 1)
 boot_splash/show_image=false
 config/icon="res://icon.png"
@@ -19,6 +25,7 @@ Settings="*res://autoload/settings.gd"
 Game="*res://autoload/game.gd"
 Audio="*res://autoload/audio.gd"
 FX="*res://autoload/fx.gd"
+LitManager="*res://addons/lit/runtime/lit_manager.gd"
 
 [display]
 
@@ -28,33 +35,181 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=0
 
-[input_devices]
+[editor_plugins]
 
-pointing/emulate_touch_from_mouse=true
-pointing/emulate_mouse_from_touch=true
-pointing/android/enable_long_press_as_right_click=false
+enabled=PackedStringArray("res://addons/lit/plugin.cfg")
 
 [gui]
 
 theme/custom="res://assets/ui_theme.tres"
 
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[lit]
+
+startup/precompile_shaders=false
+
 [physics]
 
-common/physics_ticks_per_second=60
 2d/default_gravity=0.0
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.035, 0.055, 0.09, 1)
-anti_aliasing/quality/msaa_2d=0
 
-[audio]
+[shader_globals]
 
-driver/enable_input=false
-
+lit_light_data={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_light_count={
+"type": "int",
+"value": 0
+}
+lit_viewport_size={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+lit_canvas_scale={
+"type": "float",
+"value": 1.0
+}
+lit_world_sdf={
+"filter": "linear",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_wsdf_basis={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_wsdf_origin={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+lit_ambient_color={
+"type": "color",
+"value": Color(1, 1, 1, 1)
+}
+lit_ambient_energy={
+"type": "float",
+"value": 1.0
+}
+lit_shadow_steps_max={
+"type": "int",
+"value": 64
+}
+lit_shadow_step_scaling={
+"type": "bool",
+"value": false
+}
+lit_tile_size={
+"type": "int",
+"value": 64
+}
+lit_tile_grid={
+"type": "ivec2",
+"value": Vector2i(0, 0)
+}
+lit_directional_count={
+"type": "int",
+"value": 0
+}
+lit_lighting_model={
+"type": "int",
+"value": 0
+}
+lit_tile_headers={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_tile_indices={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_cookie_atlas={
+"filter": "linear",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_ysort_enabled={
+"type": "bool",
+"value": false
+}
+lit_ysort_band={
+"type": "float",
+"value": 12.0
+}
+lit_occ_data={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_occ_headers={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_occ_indices={
+"filter": "nearest",
+"repeat": "disable",
+"type": "sampler2D",
+"value": ""
+}
+lit_gx_count={
+"type": "int",
+"value": 0
+}
+lit_gx_rect0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_gx_rect1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_gx_rect2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_gx_rect3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_ramp_count={
+"type": "int",
+"value": 0
+}
+lit_ramp_rect0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_ramp_rect1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_ramp_rect2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+lit_ramp_rect3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

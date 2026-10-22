@@ -65,7 +65,12 @@ var _last_kills := 0
 var _afterimage_timer := 0.0
 
 var _sprite: Sprite2D
+var _rim: Sprite2D
+var _silhouette: Sprite2D
 var _aura: Sprite2D
+var _backlight: Sprite2D
+var _light: Node2D
+var _fill_light: Node2D
 var _holder: Node2D
 var _row := 0
 var _flip := false
@@ -87,11 +92,54 @@ func _ready() -> void:
 	_sprite.texture = load(CharacterData.sheet(Game.selected_character))
 	_sprite.hframes = 4
 	_sprite.vframes = 3
+	_rim = Sprite2D.new()
+	_rim.texture = _sprite.texture
+	_rim.hframes = 4
+	_rim.vframes = 3
+	_rim.position = _sprite.position
+	_rim.scale = Vector2(1.07, 1.07)
+	_rim.z_index = 11
+	var rim_mat := ShaderMaterial.new()
+	rim_mat.shader = load("res://assets/shaders/player_rim.gdshader")
+	rim_mat.set_shader_parameter("rim_color", character_color.lightened(0.25))
+	_rim.material = rim_mat
+	add_child(_rim)
+	_silhouette = Sprite2D.new()
+	_silhouette.texture = _sprite.texture
+	_silhouette.hframes = 4
+	_silhouette.vframes = 3
+	_silhouette.position = _sprite.position + Vector2(0, -4)
+	_silhouette.scale = Vector2(1.09, 1.09)
+	_silhouette.z_index = 10
+	_silhouette.modulate = Color(character_color.r, character_color.g, character_color.b, 0.30)
+	var silhouette_mat := CanvasItemMaterial.new()
+	silhouette_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_silhouette.material = silhouette_mat
+	add_child(_silhouette)
 	dash_cd_max = float(character.get("dash_cd", DASH_COOLDOWN))
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_aura.material = mat
 	_aura.modulate = Color(character_color.r, character_color.g, character_color.b, 0.16)
+	_backlight = Sprite2D.new()
+	_backlight.texture = load("res://assets/art/fx/glow_gold.png")
+	_backlight.position = Vector2(0, -38)
+	_backlight.scale = Vector2(2.6, 2.6)
+	_backlight.z_index = -1
+	_backlight.modulate = Color(character_color.r, character_color.g, character_color.b, 0.36)
+	_backlight.material = mat
+	add_child(_backlight)
+	# The bear's own light is a back light: it only reaches the world/enemies
+	# (mask 2), never the player's own receiver (mask 1), so the sprite keeps
+	# its colours instead of blowing out to white.
+	LightRig.make_receiver(_sprite, 0.0, 5)
+	_light = LightRig.add_point_light(self, Color(1.0, 0.78, 0.46), 460.0, 1.9,
+		true, Vector2(0, -95), 2)
+	# A restrained front fill keeps the bear readable without blowing the
+	# sprite out; the strong light above/behind does the rim work.
+	var fill_energy := 0.30 if LightRig.lit_enabled() else 0.65
+	_fill_light = LightRig.add_point_light(self, Color(0.86, 0.82, 0.72), 155.0, fill_energy,
+		false, Vector2(0, -22), 4)
 	max_hp = 0.0
 	hp = 0.0
 	recalc_stats()
@@ -168,9 +216,21 @@ func _process(delta: float) -> void:
 	_sprite.frame = _row * 4 + col
 	_sprite.flip_h = _flip
 	_sprite.position.y = -18.0 + sin(_time * 2.2) * 0.6
+	if _rim != null and is_instance_valid(_rim):
+		_rim.frame = _sprite.frame
+		_rim.flip_h = _sprite.flip_h
+		_rim.position.y = _sprite.position.y
+		_rim.modulate.a = _sprite.modulate.a * 0.9
+	if _silhouette != null and is_instance_valid(_silhouette):
+		_silhouette.frame = _sprite.frame
+		_silhouette.flip_h = _sprite.flip_h
+		_silhouette.position.y = _sprite.position.y - 4.0
+		_silhouette.modulate.a = _sprite.modulate.a * 0.30
 	var aura_color := character_color
 	aura_color.a = 0.10 + sin(_time * 2.6) * 0.03
 	_aura.modulate = aura_color
+	if _light != null and is_instance_valid(_light):
+		_light.energy = 1.88 + sin(_time * 2.6) * 0.12
 
 	# damage blink / flash
 	var a := 1.0
@@ -711,6 +771,12 @@ func _die() -> void:
 	FX.shake(12.0, 0.7)
 	_sprite.visible = false
 	_aura.visible = false
+	if _rim != null:
+		_rim.visible = false
+	if _silhouette != null:
+		_silhouette.visible = false
+	if _backlight != null:
+		_backlight.visible = false
 	set_process(false)
 	died.emit()
 

@@ -57,6 +57,7 @@ func setup(p, pos: Vector2, k: String, v: int, toss: Vector2) -> void:
 		if variant == 2:
 			_sprite.scale = Vector2.ONE * 1.15
 	_glow.scale = Vector2.ONE * (0.55 if kind == "heart" else 0.5)
+	LightRig.make_receiver(_sprite, 0.65)
 
 
 func _process(delta: float) -> void:
