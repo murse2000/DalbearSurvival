@@ -4,10 +4,10 @@
 > 달빛을 먹고 자란 곰, **달베어**.
 > 외계 함대가 지구를 덮친 밤, 세 개의 전선을 지켜낸다.
 
-**3개 스테이지 × 4분**, **4단계 난이도**, **19종 외계인 + 6종 중간 보스 + 3종 최종 보스**,
+**5개 스테이지 × 4분**, **4단계 난이도**, **23종 외계인 + 10종 중간 보스 + 5종 최종 보스**,
 **무기 8종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
-**자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
+**8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
 
 ![타이틀](screenshots/title.png)
@@ -101,19 +101,21 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 ---
 
-## 캠페인: 세 개의 전선
+## 캠페인: 다섯 개의 전선
 
 | | 전선 | 테마 | 보스 | 새로운 위협 |
 |---|---|---|---|---|
 | 1 | **달빛 숲** | 달빛이 내려앉은 지구의 숲 | 정찰 모선 | 젤리 침입자, 정찰 드론, 회색 침략자, 플라즈마 해파리, 전투 로봇 |
 | 2 | **군체 분화구** | 추락한 함선과 외계 군체 | **군체 여왕** | 산성 사수(원거리), 자폭 벌레, 땅굴 포식자, 군체 약탈자 |
 | 3 | **모선 심장부** | 달을 삼킨 자의 배 | **모선 '달을 삼킨 자'** | 격벽 포탑(레이저), 위상 사냥꾼(순간이동), 분열체, 전투 로봇 |
+| 4 | **잿빛 균열** | 재와 용암이 흐르는 균열 | **재의 레비아탄** | 마그마 포식자, 잿불 사수, 용암 거인, 잿빛 마녀 |
+| 5 | **달의 뒷면** | 빛이 닿지 않는 월식 | **월식의 군주** | 균열 망령, 심연 나방, 균열 추적자, 별을 삼키는 자 |
 
 - 각 전선은 **4분(240초)** 동안 이어집니다. **2분 50초**에 보스가 강림합니다.
 - 보스를 격추하면 **즉시 전선 확보**. 시간이 끝날 때까지 버텨도 전선을 지켜냅니다.
-- 보스를 격추하면 더 좋은 기록(보스 격추)이 저장됩니다.
-- 3번 전선의 모선을 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
-- 다음 전선은 같은 난이도로 바로 이어서 도전할 수 있습니다.
+- **다음 전선은 이전 전선을 클리어한 경우에만 개방**됩니다. 전선 선택 화면에 LOCK으로 표시됩니다.
+- 4·5전선은 HP·피해량·출현 밀도가 더 높아지고, 보스 체력도 단계적으로 상승합니다.
+- 5번 전선의 월식의 군주를 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
 
 ### 난이도
 
@@ -185,6 +187,15 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 일반 이동은 지형을 통과하지 못하고, 적도 지형에 막혀 우회합니다.
 - **대시**, 모든 무기, 유성/연쇄/특이점/칼날, 궁극기, 발사체로 파괴할 수 있습니다.
 - 수정·알·캡슐은 파괴 시 주변에 **파편·산성·전격 폭발**을 일으키고 경험치를 떨어뜨립니다.
+
+### 크리티컬 & 콤보
+- 크리티컬 발생 시 **대형 붉은 CRIT! 텍스트, 붉은 충격파·파티클·화면 플래시·라이트 버스트**가 터집니다.
+- 콤보 카운터는 화면 상단이 아니라 **캐릭터 바로 위/옆을 따라다니며**, 처치할 때마다 **팍팍 튀는 스케일 애니메이션**과 작은 링 파티클이 발생합니다.
+- 10/25/50/100 콤보 마일스톤은 캐릭터 인근에서 배너와 대형 버스트로 표시됩니다.
+
+### 8방향 모션
+- 정면·후면·좌우에 더해 **정면 대각선·후면 대각선** 스프라이트를 추가했습니다.
+- 대각선 이동 시 3/4 시점 프레임과 좌우 반전을 사용해 8방향 이동이 자연스럽게 보입니다.
 
 ### 대시 & 궁극기
 - **대시 (Space / 패드 B)**: 0.16초 동안 빠르게 이동하며 무적. 쿨다운 2초. 잔상과 파티클이 남습니다.
@@ -303,14 +314,15 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![무기 진화](screenshots/evolution.png) | ![진화 전투](screenshots/evolution_gameplay.png) |
 | ![Lit 2D 조명](screenshots/lighting.png) | ![신규 스킬](screenshots/new_skills.png) |
 | ![중간 보스·지형](screenshots/world_expansion.png) | ![게임플레이](screenshots/gameplay.png) |
-| ![50 콤보](screenshots/combo.png) | ![대시·궁극기](screenshots/abilities.png) |
-| ![리롤·밴 카드](screenshots/levelup.png) | ![밴 모드](screenshots/banish.png) |
-| ![연출 설정](screenshots/settings.png) | ![일시정지 설정](screenshots/pause_settings.png) |
-| ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
-| ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
-| ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
-| ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
-| ![이어하기](screenshots/title_continue.png) | ![타이틀](screenshots/title.png) |
+| ![크리티컬](screenshots/crit.png) | ![잿빛 균열](screenshots/stage_crater.png) |
+| ![달의 뒷면](screenshots/stage_void.png) | ![50 콤보](screenshots/combo.png) |
+| ![대시·궁극기](screenshots/abilities.png) | ![리롤·밴 카드](screenshots/levelup.png) |
+| ![밴 모드](screenshots/banish.png) | ![연출 설정](screenshots/settings.png) |
+| ![일시정지 설정](screenshots/pause_settings.png) | ![장비 & 인벤토리](screenshots/equipment.png) |
+| ![장비 상세](screenshots/equipment_detail.png) | ![친구 선택](screenshots/characters.png) |
+| ![런 보상](screenshots/rewards.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
+| ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
+| ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
@@ -318,6 +330,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
 `screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
+`screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
 `screenshots/title.png`
 
 ---
@@ -397,6 +410,7 @@ DalbearSurvival/
   python gen_equipment_icons.py
   python gen_friends.py
   python gen_menu_backdrop.py
+  python gen_new_stages.py
   python gen_audio.py
   ```
   `Pillow`, `numpy`, `ffmpeg`가 필요합니다.
@@ -411,8 +425,10 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-abilities
   godot --path . res://scenes/main.tscn -- --capture-lighting
   godot --path . res://scenes/main.tscn -- --capture-world-expansion
+  godot --path . res://scenes/main.tscn -- --capture-crit
   godot --path . res://scenes/main.tscn -- --capture-new-skills
   godot --path . res://scenes/main.tscn -- --test-world-expansion
+  godot --path . res://scenes/main.tscn -- --test-progression
   godot --path . res://scenes/main.tscn -- --test-new-skills
   godot --path . res://scenes/main.tscn -- --test-balance
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear

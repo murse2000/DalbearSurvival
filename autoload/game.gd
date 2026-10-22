@@ -1018,6 +1018,22 @@ func has_cleared(stage: String) -> bool:
 	return false
 
 
+func is_stage_unlocked(stage: String) -> bool:
+	var idx := GameData.STAGE_ORDER.find(stage)
+	if idx < 0:
+		return false
+	if idx == 0:
+		return true
+	return has_cleared(GameData.STAGE_ORDER[idx - 1])
+
+
+func first_unlocked_stage() -> String:
+	for id in GameData.STAGE_ORDER:
+		if not is_stage_unlocked(id):
+			return GameData.STAGE_ORDER[maxi(0, GameData.STAGE_ORDER.find(id) - 1)]
+	return GameData.STAGE_ORDER[GameData.STAGE_ORDER.size() - 1]
+
+
 func go_title() -> void:
 	clear_run_checkpoint()
 	running = false

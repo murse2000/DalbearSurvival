@@ -792,7 +792,7 @@ func take_damage(amount: float, crit: bool, source_pos: Vector2, knock: float = 
 	hp -= amount
 	flash = 0.08
 	var above := global_position + Vector2(0, -height * visual_scale * 0.72)
-	FX.damage_number(above, amount, Color(1.0, 0.86, 0.45) if crit else Color(0.97, 0.95, 0.9), crit)
+	FX.damage_number(above, amount, Color(1.0, 0.18, 0.2) if crit else Color(0.97, 0.95, 0.9), crit)
 	FX.hit(global_position + Vector2(0, -height * visual_scale * 0.4), color, crit)
 	if boss:
 		knockback += (global_position - source_pos).normalized() * knock * 0.06

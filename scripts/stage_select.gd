@@ -24,6 +24,8 @@ func _ready() -> void:
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
 	_selected_stage = Game.selected_stage if GameData.STAGES.has(Game.selected_stage) else "forest"
+	if not Game.is_stage_unlocked(_selected_stage):
+		_selected_stage = Game.first_unlocked_stage()
 	_selected_diff = Game.selected_difficulty if GameData.DIFFICULTIES.has(Game.selected_difficulty) else "normal"
 	Game.select_stage(_selected_stage, _selected_diff)
 	_build()
@@ -59,7 +61,7 @@ func _build() -> void:
 	var title := UIKit.label("전선 선택", 52, UIKit.GOLD, 7)
 	title.position = Vector2(52, 48)
 	add_child(title)
-	var sub := UIKit.label("세 개의 전선, 네 개의 난이도 · 모든 전선이 개방되어 있습니다.", 18, UIKit.CREAM)
+	var sub := UIKit.label("다섯 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
 	sub.position = Vector2(56, 112)
 	add_child(sub)
 	var back_top := UIKit.button("← 타이틀", Vector2(140, 42))
@@ -124,7 +126,7 @@ func _build() -> void:
 	var domain := UIKit.label("dalbear.com", 13, UIKit.GOLD)
 	domain.position = Vector2(56, 690)
 	add_child(domain)
-	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  ESC 타이틀  ·  1/2/3 전선", 10, UIKit.MUTED)
+	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  ESC 타이틀  ·  1~5 전선", 10, UIKit.MUTED)
 	ver.position = Vector2(600, 698)
 	ver.size = Vector2(624, 18)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -137,7 +139,7 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	var info: Dictionary = GameData.STAGES[id]
 	var accent: Color = info["accent"]
 	var root := UIKit.panel(Color(0.045, 0.07, 0.105, 0.94), UIKit.BORDER, 2)
-	UIKit.place(root, 52 + index * 404, 158, 372, 366)
+	UIKit.place(root, 26 + index * 246, 158, 236, 366)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	root.clip_contents = true
@@ -145,67 +147,76 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	var stripe := ColorRect.new()
 	stripe.color = accent
 	stripe.position = Vector2(2, 2)
-	stripe.size = Vector2(368, 4)
+	stripe.size = Vector2(232, 4)
 	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(stripe)
 
 	var img := TextureRect.new()
 	img.texture = load(String(info["thumb"]))
-	# expand_mode must be set before size, otherwise the texture's minimum
-	# size (480x270) clamps the rect and spills out of the card.
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	img.custom_minimum_size = Vector2.ZERO
 	img.position = Vector2(16, 16)
-	img.size = Vector2(340, 175)
+	img.size = Vector2(204, 118)
 	img.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(img)
 
-	var num := UIKit.label("%02d" % int(info["num"]), 12, UIKit.INK)
+	var num := UIKit.label("%02d" % int(info["num"]), 11, UIKit.INK)
 	num.position = Vector2(0, 1)
-	num.size = Vector2(44, 22)
+	num.size = Vector2(38, 20)
 	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var num_bg := UIKit.panel(accent, accent, 1)
-	UIKit.place(num_bg, 24, 24, 44, 24)
+	UIKit.place(num_bg, 24, 24, 38, 22)
 	num_bg.add_child(num)
 	root.add_child(num_bg)
 
-	var name_label := UIKit.label("%s · %s" % [String(info["name"]), String(info["short"])], 22, UIKit.CREAM, 3)
-	name_label.position = Vector2(16, 199)
-	name_label.size = Vector2(340, 30)
+	var name_label := UIKit.label(String(info["short"]), 18, UIKit.CREAM, 3)
+	name_label.position = Vector2(16, 142)
+	name_label.size = Vector2(204, 26)
 	root.add_child(name_label)
 
-	var desc := UIKit.label(String(info["desc"]), 14, Color(0.78, 0.82, 0.86))
-	desc.position = Vector2(16, 228)
-	desc.size = Vector2(340, 24)
+	var desc := UIKit.label(String(info["subtitle"]), 12, Color(0.78, 0.82, 0.86))
+	desc.position = Vector2(16, 168)
+	desc.size = Vector2(204, 22)
 	desc.autowrap_mode = TextServer.AUTOWRAP_OFF
 	root.add_child(desc)
 
-	var icon_label := UIKit.label("출현", 12, UIKit.MUTED)
-	icon_label.position = Vector2(16, 275)
+	var icon_label := UIKit.label("출현", 11, UIKit.MUTED)
+	icon_label.position = Vector2(16, 199)
 	root.add_child(icon_label)
 	for i in 3:
 		var enemy_id: String = info["enemy_icons"][i]
 		var enemy_info: Dictionary = GameData.ENEMIES[enemy_id]
-		var icon := UIKit.icon(String(enemy_info["texture"]), 30)
-		icon.position = Vector2(58 + i * 38, 267)
+		var icon := UIKit.icon(String(enemy_info["texture"]), 25)
+		icon.position = Vector2(56 + i * 34, 194)
 		root.add_child(icon)
 
-	var boss := UIKit.label("%s · BOSS  %s" % [GameData.format_time(float(info["duration"])), String(GameData.ENEMIES[info["boss"]]["name"])], 13, accent)
-	boss.position = Vector2(16, 306)
-	boss.size = Vector2(340, 20)
+	var boss := UIKit.label("%s · BOSS" % GameData.format_time(float(info["duration"])), 11, accent)
+	boss.position = Vector2(16, 230)
+	boss.size = Vector2(204, 18)
 	root.add_child(boss)
+	var boss_name := UIKit.label(String(GameData.ENEMIES[info["boss"]]["name"]), 11, accent)
+	boss_name.position = Vector2(16, 248)
+	boss_name.size = Vector2(204, 18)
+	root.add_child(boss_name)
 
-	var rec := UIKit.label("", 13, UIKit.MINT)
-	rec.position = Vector2(16, 332)
-	rec.size = Vector2(340, 18)
+	var rec := UIKit.label("", 11, UIKit.MINT)
+	rec.position = Vector2(16, 276)
+	rec.size = Vector2(204, 18)
 	root.add_child(rec)
+
+	var lock := UIKit.label("LOCK · 이전 전선 클리어", 12, Color(1.0, 0.72, 0.35), 3)
+	lock.position = Vector2(16, 54)
+	lock.size = Vector2(204, 24)
+	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lock.visible = false
+	root.add_child(lock)
 
 	root.gui_input.connect(_on_stage_input.bind(id))
 	root.mouse_entered.connect(_on_stage_hover.bind(root, accent, true))
 	root.mouse_exited.connect(_on_stage_hover.bind(root, accent, false))
-	return {"root": root, "stripe": stripe, "record": rec, "accent": accent}
+	return {"root": root, "stripe": stripe, "record": rec, "accent": accent, "lock": lock}
 
 
 func _make_diff_chip(id: String, index: int) -> Dictionary:
@@ -265,6 +276,11 @@ func _on_diff_input(event: InputEvent, id: String) -> void:
 
 
 func _select_stage(id: String) -> void:
+	if not Game.is_stage_unlocked(id):
+		if _stage_hint != null:
+			_stage_hint.visible = true
+			_stage_hint.text = "이전 전선을 클리어해야 다음 전선이 열립니다."
+		return
 	_selected_stage = id
 	Game.select_stage(_selected_stage, _selected_diff)
 	_refresh()
@@ -282,13 +298,16 @@ func _refresh() -> void:
 	for id in _cards:
 		var card: Dictionary = _cards[id]
 		var accent: Color = card["accent"]
+		var unlocked := Game.is_stage_unlocked(id)
 		var selected: bool = id == _selected_stage
+		card["root"].modulate = Color(1, 1, 1, 1) if unlocked else Color(0.62, 0.62, 0.68, 1)
+		card["lock"].visible = not unlocked
 		card["root"].add_theme_stylebox_override("panel", UIKit.style(
 			Color(0.075, 0.11, 0.155, 0.98) if selected else Color(0.045, 0.07, 0.105, 0.94),
 			accent if selected else UIKit.BORDER,
 			3 if selected else 2, 0))
-		card["record"].text = "기록  " + Game.stage_record_text(id, _selected_diff)
-		card["record"].add_theme_color_override("font_color", accent if selected else UIKit.MINT)
+		card["record"].text = ("기록  " + Game.stage_record_text(id, _selected_diff)) if unlocked else "이전 전선 클리어 필요"
+		card["record"].add_theme_color_override("font_color", accent if selected else (UIKit.MINT if unlocked else UIKit.CORAL))
 	for id in _diff_chips:
 		var chip: Dictionary = _diff_chips[id]
 		var accent: Color = chip["accent"]
@@ -307,6 +326,11 @@ func _refresh() -> void:
 
 func _start() -> void:
 	if _starting:
+		return
+	if not Game.is_stage_unlocked(_selected_stage):
+		if _stage_hint != null:
+			_stage_hint.visible = true
+			_stage_hint.text = "이전 전선을 클리어해야 다음 전선이 열립니다."
 		return
 	_starting = true
 	Audio.play_click()
@@ -354,6 +378,12 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_3:
 			_select_stage("ship")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_4:
+			_select_stage("crater")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_5:
+			_select_stage("void")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
 			var idx := maxi(0, GameData.DIFFICULTY_ORDER.find(_selected_diff) - 1)

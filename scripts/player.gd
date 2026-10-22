@@ -91,11 +91,11 @@ func _ready() -> void:
 	character_color = character.get("color", Color(1.0, 0.82, 0.45))
 	_sprite.texture = load(CharacterData.sheet(Game.selected_character))
 	_sprite.hframes = 4
-	_sprite.vframes = 3
+	_sprite.vframes = 5
 	_rim = Sprite2D.new()
 	_rim.texture = _sprite.texture
 	_rim.hframes = 4
-	_rim.vframes = 3
+	_rim.vframes = 5
 	_rim.position = _sprite.position
 	_rim.scale = Vector2(1.07, 1.07)
 	_rim.z_index = 11
@@ -107,7 +107,7 @@ func _ready() -> void:
 	_silhouette = Sprite2D.new()
 	_silhouette.texture = _sprite.texture
 	_silhouette.hframes = 4
-	_silhouette.vframes = 3
+	_silhouette.vframes = 5
 	_silhouette.position = _sprite.position + Vector2(0, -4)
 	_silhouette.scale = Vector2(1.09, 1.09)
 	_silhouette.z_index = 10
@@ -255,14 +255,20 @@ func _process(delta: float) -> void:
 
 
 func _update_facing(input: Vector2) -> void:
-	if absf(input.x) >= absf(input.y) * 0.75:
-		_row = 1
+	var ax := absf(input.x)
+	var ay := absf(input.y)
+	# Sheet rows: 0 front, 1 front diagonal, 2 side, 3 back diagonal, 4 back.
+	if ax > 0.25 and ay > 0.25:
+		_row = 1 if input.y > 0.0 else 3
+		_flip = input.x < 0.0
+	elif ax >= ay * 0.75:
+		_row = 2
 		_flip = input.x < 0.0
 	elif input.y > 0.0:
 		_row = 0
 		_flip = false
 	else:
-		_row = 2
+		_row = 4
 		_flip = false
 
 

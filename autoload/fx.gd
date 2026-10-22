@@ -332,6 +332,15 @@ func hitstop(duration: float = 0.055, scale: float = 0.08) -> void:
 		Engine.time_scale = 1.0
 
 
+func combo_tick(pos: Vector2, combo: int, color: Color) -> void:
+	if combo < 3:
+		return
+	var t := clampf(float(combo) / 80.0, 0.0, 1.0)
+	ring(pos + Vector2(0, -12), color, 18.0 + 22.0 * t, 0.2, "halo")
+	particles(pos + Vector2(0, -14), "star", color, 3 + int(3 * t), 0.25,
+		35, 110 + 80 * t, 0.2, 180, Vector2(0, -20), true, 180)
+
+
 func combo_burst(pos: Vector2, combo: int) -> void:
 	var t := clampf(float(combo) / 100.0, 0.0, 1.0)
 	var color := Color(1.0, 0.82, 0.4).lerp(Color(1.0, 0.32, 0.62), t)
@@ -367,15 +376,15 @@ func damage_number(pos: Vector2, amount: float, color: Color, crit: bool = false
 	l.text = ("%d!" % int(round(amount))) if crit else str(int(round(amount)))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.size = Vector2(160, 34)
-	l.position = pos + Vector2(-80 + _rng.randf_range(-10, 10), -18)
-	l.scale = Vector2(0.5, 0.5) * (1.35 if crit else 1.0)
-	l.pivot_offset = Vector2(80, 17)
+	l.size = Vector2(190, 42)
+	l.position = pos + Vector2(-95 + _rng.randf_range(-10, 10), -22)
+	l.scale = Vector2(0.5, 0.5) * (1.65 if crit else 1.0)
+	l.pivot_offset = Vector2(95, 21)
 	l.add_theme_font_override("font", _font)
-	l.add_theme_font_size_override("font_size", 28 if crit else 21)
-	l.add_theme_color_override("font_color", color)
-	l.add_theme_color_override("font_outline_color", Color(0.03, 0.04, 0.07, 1.0))
-	l.add_theme_constant_override("outline_size", 6)
+	l.add_theme_font_size_override("font_size", 36 if crit else 21)
+	l.add_theme_color_override("font_color", Color(1.0, 0.14, 0.18) if crit else color)
+	l.add_theme_color_override("font_outline_color", Color(0.18, 0.01, 0.03, 1.0) if crit else Color(0.03, 0.04, 0.07, 1.0))
+	l.add_theme_constant_override("outline_size", 8 if crit else 6)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	damage_root.add_child(l)
 	_numbers.append(l)
@@ -412,15 +421,33 @@ func float_text(pos: Vector2, text: String, color: Color, size: int = 20) -> voi
 	tw.chain().tween_callback(l.queue_free)
 
 
+func crit_burst(pos: Vector2, amount: float = 0.0) -> void:
+	var red := Color(1.0, 0.08, 0.13)
+	var hot := Color(1.0, 0.52, 0.22)
+	ring(pos, red, 62.0, 0.42, "ring")
+	ring(pos, hot, 112.0, 0.52, "halo")
+	rune(pos, red, 92.0, 0.55, 0.7)
+	particles(pos, "star", red, 22, 0.55, 100, 360, 0.38, 180, Vector2(0, 110), true, 460)
+	_fade_sprite(pos, "flare", red, 0.75, 1.9, 0.3)
+	flash(Color(1.0, 0.06, 0.10), 0.12, 0.22)
+	grade(Color(1.0, 0.08, 0.12), 0.16, 0.55)
+	light_burst(pos, red, 280.0, 2.5, 0.4)
+	screen_shock(0.34, 0.025, 0.24, red)
+	shake(5.5, 0.22)
+	float_text(pos + Vector2(0, -38), "CRIT!", hot, 32)
+	if amount >= 20.0:
+		hitstop(0.025, 0.18)
+	Audio.play("hit", 0.72, -1.0)
+
+
 func hit(pos: Vector2, color: Color, crit: bool = false) -> void:
 	if fx_root == null:
 		return
 	particles(pos, "star", color, 4 if not crit else 8, 0.3, 50, 150, 0.24, 180, Vector2(0, 90), true, 300)
 	_fade_sprite(pos, "flare", color, 0.25 if not crit else 0.4, 0.5, 0.12)
 	if crit:
-		ring(pos, color, 34, 0.25, "halo")
-		shake(2.0, 0.08)
-		screen_shock(0.12, 0.004, 0.0, color)
+		ring(pos, Color(1.0, 0.1, 0.14), 38, 0.3, "halo")
+		crit_burst(pos)
 
 
 func muzzle(pos: Vector2, angle: float, color: Color) -> void:

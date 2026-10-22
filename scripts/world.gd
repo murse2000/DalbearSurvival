@@ -67,9 +67,9 @@ func _node(node_name: String) -> Node2D:
 
 func _ground_path() -> String:
 	match stage_id:
-		"hive":
+		"hive", "crater":
 			return A + "world/ground_hive.png"
-		"ship":
+		"ship", "void":
 			return A + "world/ground_ship.png"
 	return A + "world/ground.png"
 
@@ -80,6 +80,10 @@ func _outer_tint() -> Color:
 			return Color(0.56, 0.42, 0.66, 1.0)
 		"ship":
 			return Color(0.42, 0.52, 0.62, 1.0)
+		"crater":
+			return Color(0.78, 0.38, 0.28, 1.0)
+		"void":
+			return Color(0.38, 0.30, 0.62, 1.0)
 	return Color(0.52, 0.64, 0.62, 1.0)
 
 
@@ -121,6 +125,12 @@ func _build_decals() -> void:
 		"ship":
 			center_tex = A + "world/crop_circle_1.png"
 			center_tint = Color(0.45, 0.9, 0.9, 0.22)
+		"crater":
+			center_tex = A + "world/crop_circle_1.png"
+			center_tint = Color(1.0, 0.48, 0.28, 0.38)
+		"void":
+			center_tex = A + "world/crop_circle_1.png"
+			center_tint = Color(0.62, 0.4, 1.0, 0.32)
 	var spawn_circle := Sprite2D.new()
 	spawn_circle.texture = load(center_tex)
 	spawn_circle.scale = Vector2(2.2, 2.2)
@@ -140,6 +150,10 @@ func _build_decals() -> void:
 				s.modulate = Color(0.8, 0.5, 1.0, _rng.randf_range(0.18, 0.34))
 			"ship":
 				s.modulate = Color(0.5, 0.95, 0.95, _rng.randf_range(0.10, 0.22))
+			"crater":
+				s.modulate = Color(1.0, 0.42, 0.24, _rng.randf_range(0.16, 0.30))
+			"void":
+				s.modulate = Color(0.62, 0.42, 1.0, _rng.randf_range(0.14, 0.28))
 			_:
 				s.modulate = Color(1, 1, 1, _rng.randf_range(0.28, 0.5))
 		decals.add_child(s)
@@ -169,6 +183,16 @@ func _build_decor() -> void:
 			_multimesh(decor, A + "world/ship_bolt.png", 280, 0.8, 1.3, Color(0.85, 0.9, 1.0, 0.8))
 			_multimesh(decor, A + "world/ship_cable.png", 150, 0.8, 1.4, Color(0.7, 1.0, 1.0, 0.8))
 			_multimesh(decor, A + "world/ship_grate.png", 120, 0.8, 1.4, Color(0.8, 0.9, 1.0, 0.8))
+		"crater":
+			_multimesh(decor, A + "world/hive_spore.png", 240, 0.9, 1.6, Color(1.0, 0.55, 0.3, 0.8))
+			_multimesh(decor, A + "world/hive_bone.png", 160, 0.8, 1.4, Color(1.0, 0.72, 0.5, 0.7))
+			_multimesh(decor, A + "world/rock_0.png", 180, 0.6, 1.2, Color(0.8, 0.42, 0.28, 0.8))
+			_multimesh(decor, A + "world/scorch_0.png", 55, 0.8, 1.5, Color(1.0, 0.4, 0.2, 0.5))
+		"void":
+			_multimesh(decor, A + "world/ship_light.png", 170, 0.9, 1.4, Color(0.7, 0.55, 1.0, 0.85))
+			_multimesh(decor, A + "world/ship_bolt.png", 250, 0.8, 1.3, Color(0.55, 0.4, 0.9, 0.8))
+			_multimesh(decor, A + "world/alien_crystal.png", 90, 0.5, 1.0, Color(0.55, 0.35, 1.0, 0.8))
+			_multimesh(decor, A + "world/ship_grate.png", 100, 0.8, 1.4, Color(0.6, 0.5, 0.9, 0.7))
 		_:
 			_multimesh(decor, A + "world/grass_tuft_0.png", 720, 0.8, 1.4, Color(0.9, 1.0, 0.92, 0.85))
 			_multimesh(decor, A + "world/grass_tuft_1.png", 560, 0.8, 1.3, Color(0.92, 1.0, 0.9, 0.8))
@@ -229,9 +253,9 @@ func _add_sprite(parent: Node2D, tex_path: String, pos: Vector2, scale_f: float 
 
 func _build_border() -> void:
 	match stage_id:
-		"hive":
+		"hive", "crater":
 			_build_hive_border()
-		"ship":
+		"ship", "void":
 			_build_ship_border()
 		_:
 			_build_forest()
@@ -322,6 +346,18 @@ func _build_props() -> void:
 				["ship_vent", 10, 1.1], ["ship_pylon", 8, 1.0], ["crate", 6, 1.0],
 				["barricade", 4, 1.0], ["ship_wall", 3, 0.9],
 			]
+		"crater":
+			props = [
+				["hive_egg", 14, 1.1], ["hive_coral", 18, 1.2], ["hive_pod", 12, 1.1],
+				["rock_0", 16, 1.3], ["rock_1", 16, 1.2], ["alien_crystal", 10, 1.0],
+				["crashed_saucer", 2, 1.25], ["scorch_0", 8, 1.0],
+			]
+		"void":
+			props = [
+				["ship_console", 12, 1.1], ["ship_pod", 10, 1.1], ["ship_pylon", 10, 1.1],
+				["alien_crystal", 14, 1.1], ["ship_wall", 5, 0.9], ["crashed_saucer", 2, 1.2],
+				["barricade", 4, 1.0], ["ship_vent", 10, 1.0],
+			]
 		_:
 			props = [
 				["crashed_saucer", 2, 1.35], ["crate", 7, 1.0], ["alien_crystal", 12, 1.0],
@@ -352,6 +388,10 @@ func _build_props() -> void:
 				tint = Color(0.8, 0.92, 1.0, 1.0)
 			elif stage_id == "hive":
 				tint = Color(0.9, 0.78, 1.0, 1.0)
+			elif stage_id == "crater":
+				tint = Color(1.0, 0.66, 0.46, 1.0)
+			elif stage_id == "void":
+				tint = Color(0.7, 0.58, 1.0, 1.0)
 			var s := _add_sprite(actors, A + "world/" + prop_name + ".png", pos,
 				sc * _rng.randf_range(0.85, 1.15), 0.0, tint)
 			var tex_size := Vector2(s.texture.get_width(), s.texture.get_height())
@@ -465,6 +505,10 @@ func _build_fog() -> void:
 		tint = Color(0.8, 0.45, 0.9, 0.13)
 	elif stage_id == "ship":
 		tint = Color(0.4, 0.9, 0.95, 0.10)
+	elif stage_id == "crater":
+		tint = Color(1.0, 0.42, 0.2, 0.12)
+	elif stage_id == "void":
+		tint = Color(0.55, 0.35, 1.0, 0.13)
 	for i in 4:
 		var s := Sprite2D.new()
 		s.texture = tex
@@ -484,6 +528,10 @@ func _build_fireflies() -> void:
 			colors = [Color(0.65, 1.0, 0.55, 0.75), Color(0.95, 0.5, 1.0, 0.6)]
 		"ship":
 			colors = [Color(0.45, 1.0, 0.95, 0.8), Color(1.0, 0.55, 0.9, 0.55)]
+		"crater":
+			colors = [Color(1.0, 0.55, 0.24, 0.85), Color(1.0, 0.28, 0.16, 0.6)]
+		"void":
+			colors = [Color(0.6, 0.42, 1.0, 0.8), Color(0.9, 0.4, 1.0, 0.55)]
 	for c in colors:
 		_fireflies.append(_make_fireflies(root, c))
 

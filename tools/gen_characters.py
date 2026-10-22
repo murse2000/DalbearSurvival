@@ -169,11 +169,32 @@ def bear_frame(direction: str, f: int) -> Image.Image:
     return A.finish(img, PLAYER_W, PLAYER_H)
 
 
+def diagonal_frame(direction: str, f: int) -> Image.Image:
+    """A 3/4 view derived from the front/back silhouette.
+
+    The slight shear turns the shoulders and head toward the movement
+    diagonal.  It keeps the same four-frame walk cycle and palette, so the
+    other friend sheets pick the new rows up automatically.
+    """
+    base = bear_frame("front" if direction == "front_diag" else "back", f)
+    shear = 0.20 if direction == "front_diag" else -0.20
+    # Keep the sprite centered on the 32px cell while shearing around y=18.
+    return base.transform(
+        (PLAYER_W, PLAYER_H),
+        Image.AFFINE,
+        (1.0, shear, -shear * 18.0, 0.0, 1.0, 0.0),
+        resample=Image.NEAREST,
+    )
+
+
 def player_sheet():
     rows = []
-    for direction in ("front", "side", "back"):
+    for direction in ("front", "front_diag", "side", "back_diag", "back"):
         for f in range(4):
-            rows.append(bear_frame(direction, f))
+            if direction in ("front_diag", "back_diag"):
+                rows.append(diagonal_frame(direction, f))
+            else:
+                rows.append(bear_frame(direction, f))
     return A.make_sheet(rows, PLAYER_W, PLAYER_H, cols=4)
 
 

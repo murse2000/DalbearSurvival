@@ -157,8 +157,12 @@ func _ready() -> void:
 		_test_balance()
 	elif "--test-world-expansion" in _args:
 		_test_world_expansion()
+	elif "--test-progression" in _args:
+		_test_progression()
 	elif "--capture-world-expansion" in _args:
 		_capture_world_expansion()
+	elif "--capture-crit" in _args:
+		_capture_crit()
 	elif "--test-enemy-projectile" in _args:
 		_test_enemy_projectile()
 	elif "--test-background-pause" in _args:
@@ -604,6 +608,59 @@ func _capture_world_expansion() -> void:
 	if hud != null:
 		hud.warning_panel.visible = false
 	await _capture("world_expansion")
+
+
+func _test_progression() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	Game.stage_records.clear()
+	var forest_open := Game.is_stage_unlocked("forest")
+	var hive_locked := not Game.is_stage_unlocked("hive")
+	Game.record_stage_result("forest", "normal", true, false, 200.0, 10, 100)
+	var hive_open := Game.is_stage_unlocked("hive")
+	var ship_locked := not Game.is_stage_unlocked("ship")
+	Game.record_stage_result("hive", "normal", true, false, 200.0, 12, 120)
+	Game.record_stage_result("ship", "normal", true, false, 200.0, 14, 140)
+	Game.record_stage_result("crater", "normal", true, false, 200.0, 16, 160)
+	var void_open := Game.is_stage_unlocked("void")
+	var sheet: Texture2D = load(CharacterData.sheet(Game.selected_character))
+	var diagonal_ok := sheet.get_height() / 36 == 5
+	player._update_facing(Vector2(1, 1))
+	diagonal_ok = diagonal_ok and player._row == 1
+	player._update_facing(Vector2(-1, 1))
+	diagonal_ok = diagonal_ok and player._row == 1 and player._flip
+	player._update_facing(Vector2(1, -1))
+	diagonal_ok = diagonal_ok and player._row == 3
+	var content_ok := GameData.STAGE_ORDER.size() == 5 \
+		and GameData.ENEMIES.has("boss_leviathan") \
+		and GameData.ENEMIES.has("boss_eclipse") \
+		and GameData.ENEMIES.has("magma_titan") \
+		and GameData.ENEMIES.has("rift_hunter")
+	print("PROGRESSION TEST forest=%s hive_locked=%s hive=%s ship_locked=%s void=%s diagonal=%s content=%s" % [
+		forest_open, hive_locked, hive_open, ship_locked, void_open, diagonal_ok, content_ok,
+	])
+	if not forest_open or not hive_locked or not hive_open or not ship_locked \
+			or not void_open or not diagonal_ok or not content_ok:
+		push_error("PROGRESSION TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("PROGRESSION TEST OK")
+	get_tree().quit()
+
+
+func _capture_crit() -> void:
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	player.invuln = 999.0
+	manager.spawn_timer = 999.0
+	manager.spawn_enemy("grey", player.global_position + Vector2(150, -10), false)
+	await get_tree().create_timer(0.1, true, false, true).timeout
+	if not manager.enemies.is_empty():
+		var e = manager.enemies.back()
+		if is_instance_valid(e):
+			e.take_damage(999.0, true, player.global_position, 10.0)
+	await get_tree().create_timer(0.18, true, false, true).timeout
+	if hud != null:
+		hud.warning_panel.visible = false
+	await _capture("crit")
 
 
 func _capture_new_skills() -> void:

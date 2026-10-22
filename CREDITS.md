@@ -13,11 +13,12 @@
 ### 이 프로젝트를 위해 직접 제작
 - 플레이어 곰 '달베어' 스프라이트 및 애니메이션
 - 달베어 친구 4종(별곰, 서리곰, 불꽃곰, 그림자곰) 팔레트 변형 스프라이트
-- 외계인 19종 (기존 13종 + 가시 덩굴, 달나방, 군체 유충, 포자 사수, 격벽 크롤러, 공허 소거자)
-- 중간 보스 6종 (고목 수호자, 월식 추적자, 포자 모체, 군체 폭군, 격벽 파괴자, 공허 사냥꾼)
-- 보스 3종 (정찰 모선, 군체 여왕, 모선 '달을 삼킨 자'), 보스 오라/빔, 에너지 오브
+- 외계인 23종 (기존 19종 + 마그마 포식자, 잿불 사수, 균열 망령, 심연 나방)
+- 중간 보스 10종 (숲·군체·모선 6종 + 용암 거인, 잿빛 마녀, 균열 추적자, 별을 삼키는 자)
+- 보스 5종 (정찰 모선, 군체 여왕, 모선 '달을 삼킨 자', 재의 레비아탄, 월식의 군주)
+- 8방향 플레이어 시트(정면·정면 대각·측면·후면 대각·후면)
 - 파괴 가능 지형 9종 (고목·바위·수정·알·포자 주머니·산호·캡슐·콘솔·격벽)
-- 3개 전선 환경: 달빛 숲, 군체 분화구(포자·군체·알·산호), 모선 심장부(격벽·콘솔·캡슐·회로)
+- 5개 전선 환경: 달빛 숲, 군체 분화구, 모선 심장부, 잿빛 균열, 달의 뒷면
 - 월드 타일, 수목, 바위, 외계 크리스탈, 크레이터/작물 원, 잔해, 표지판, 군체/모선 프롭
 - 투사체/젬/하트/충격파/레벨 업 링 등 VFX 텍스처, 산성탄
 - HUD/강화 카드 아이콘 30종 (진화 무기 4종 + 대시/궁극기 + 장비 8종 포함)
@@ -29,7 +30,8 @@
 
 생성 스크립트: `tools/gen_characters.py`, `tools/gen_aliens.py`, `tools/gen_expansion.py`,
 `tools/gen_world.py`, `tools/gen_fx_ui.py`, `tools/gen_evo_icons.py`, `tools/gen_ability_icons.py`,
-`tools/gen_equipment_icons.py`, `tools/gen_friends.py`, `tools/gen_menu_backdrop.py`, `tools/gen_icon.py`
+`tools/gen_equipment_icons.py`, `tools/gen_friends.py`, `tools/gen_new_stages.py`,
+`tools/gen_menu_backdrop.py`, `tools/gen_icon.py`
 (Python + Pillow로 절차 생성, 결과물은 `assets/art/`)
 
 ### Kenney Particle Pack (CC0 1.0)

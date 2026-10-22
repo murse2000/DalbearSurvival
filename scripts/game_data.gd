@@ -5,7 +5,7 @@ extends RefCounted
 
 const ARENA_HALF := 1700.0
 const DEFAULT_DURATION := 240.0
-const STAGE_ORDER := ["forest", "hive", "ship"]
+const STAGE_ORDER := ["forest", "hive", "ship", "crater", "void"]
 
 const WEAPONS := {
 	"moon_shot": {
@@ -473,6 +473,58 @@ const ENEMIES := {
 		"flying": false,
 		"behavior": "phase",
 	},
+	"magma": {
+		"name": "마그마 포식자",
+		"hp": 190.0,
+		"speed": 34.0,
+		"damage": 18.0,
+		"xp": 18,
+		"radius": 22.0,
+		"texture": "res://assets/art/char/enemy_brute.png",
+		"height": 58.0,
+		"color": Color(1.0, 0.42, 0.18),
+		"flying": false,
+		"behavior": "brute",
+	},
+	"cinder": {
+		"name": "잿불 사수",
+		"hp": 34.0,
+		"speed": 52.0,
+		"damage": 8.0,
+		"xp": 5,
+		"radius": 11.0,
+		"texture": "res://assets/art/char/enemy_spitter.png",
+		"height": 36.0,
+		"color": Color(1.0, 0.55, 0.24),
+		"flying": false,
+		"behavior": "spitter",
+	},
+	"riftling": {
+		"name": "균열 망령",
+		"hp": 44.0,
+		"speed": 78.0,
+		"damage": 11.0,
+		"xp": 6,
+		"radius": 11.0,
+		"texture": "res://assets/art/char/enemy_phase.png",
+		"height": 38.0,
+		"color": Color(0.72, 0.38, 1.0),
+		"flying": false,
+		"behavior": "phase",
+	},
+	"void_moth": {
+		"name": "심연 나방",
+		"hp": 20.0,
+		"speed": 112.0,
+		"damage": 6.0,
+		"xp": 3,
+		"radius": 9.0,
+		"texture": "res://assets/art/char/enemy_bat_0.png",
+		"height": 26.0,
+		"color": Color(0.75, 0.5, 1.0),
+		"flying": true,
+		"scale": 0.86,
+	},
 	"elder_treant": {
 		"name": "고목 수호자",
 		"hp": 520.0,
@@ -563,6 +615,66 @@ const ENEMIES := {
 		"mini_style": "caster",
 		"scale": 1.25,
 	},
+	"magma_titan": {
+		"name": "용암 거인",
+		"hp": 760.0,
+		"speed": 30.0,
+		"damage": 18.0,
+		"xp": 38,
+		"radius": 42.0,
+		"texture": "res://assets/art/char/enemy_brute.png",
+		"height": 94.0,
+		"color": Color(1.0, 0.35, 0.14),
+		"flying": false,
+		"mini_boss": true,
+		"mini_style": "slam",
+		"scale": 1.55,
+	},
+	"ash_witch": {
+		"name": "잿빛 마녀",
+		"hp": 640.0,
+		"speed": 34.0,
+		"damage": 16.0,
+		"xp": 36,
+		"radius": 32.0,
+		"texture": "res://assets/art/char/enemy_queen.png",
+		"height": 76.0,
+		"color": Color(1.0, 0.52, 0.28),
+		"flying": true,
+		"mini_boss": true,
+		"mini_style": "caster",
+		"scale": 0.58,
+	},
+	"rift_hunter": {
+		"name": "균열 추적자",
+		"hp": 690.0,
+		"speed": 70.0,
+		"damage": 19.0,
+		"xp": 38,
+		"radius": 30.0,
+		"texture": "res://assets/art/char/enemy_phase.png",
+		"height": 70.0,
+		"color": Color(0.7, 0.35, 1.0),
+		"flying": true,
+		"mini_boss": true,
+		"mini_style": "charger",
+		"scale": 1.25,
+	},
+	"star_eater": {
+		"name": "별을 삼키는 자",
+		"hp": 860.0,
+		"speed": 30.0,
+		"damage": 21.0,
+		"xp": 42,
+		"radius": 40.0,
+		"texture": "res://assets/art/char/enemy_boss.png",
+		"height": 88.0,
+		"color": Color(0.55, 0.25, 0.95),
+		"flying": true,
+		"mini_boss": true,
+		"mini_style": "summon",
+		"scale": 0.62,
+	},
 	"boss_scout": {
 		"name": "정찰 모선",
 		"hp": 900.0,
@@ -607,6 +719,36 @@ const ENEMIES := {
 		"boss": true,
 		"style": "ship",
 		"scale": 1.0,
+	},
+	"boss_leviathan": {
+		"name": "재의 레비아탄",
+		"hp": 3400.0,
+		"speed": 25.0,
+		"damage": 25.0,
+		"xp": 110,
+		"radius": 64.0,
+		"texture": "res://assets/art/char/enemy_boss.png",
+		"height": 120.0,
+		"color": Color(1.0, 0.38, 0.18),
+		"flying": true,
+		"boss": true,
+		"style": "ship",
+		"scale": 1.08,
+	},
+	"boss_eclipse": {
+		"name": "월식의 군주",
+		"hp": 4400.0,
+		"speed": 28.0,
+		"damage": 30.0,
+		"xp": 135,
+		"radius": 70.0,
+		"texture": "res://assets/art/char/enemy_boss.png",
+		"height": 126.0,
+		"color": Color(0.58, 0.24, 1.0),
+		"flying": true,
+		"boss": true,
+		"style": "ship",
+		"scale": 1.18,
 	},
 }
 
@@ -777,6 +919,50 @@ const STAGES := {
 		"goal": "탈출까지",
 		"warnings": [[50.0, "격벽이 닫힌다"], [118.0, "경비 병력이 깨어난다"]],
 	},
+	"crater": {
+		"num": 4,
+		"name": "제4전선",
+		"short": "잿빛 균열",
+		"subtitle": "재와 용암이 흐른다",
+		"desc": "잿빛 균열. 재의 레비아탄을 막아라.",
+		"duration": 240.0,
+		"boss_time": 170.0,
+		"boss": "boss_leviathan",
+		"enemies": ["magma", "cinder", "spitter", "brute", "bomber", "sporeling"],
+		"enemy_icons": ["magma", "cinder", "brute"],
+		"minibosses": [[70.0, "magma_titan"], [135.0, "ash_witch"]],
+		"hp_scale": 1.55,
+		"damage_scale": 1.20,
+		"spawn_scale": 0.94,
+		"music_pitch": 0.82,
+		"tint": Color(1.12, 0.78, 0.70),
+		"accent": Color(1.0, 0.46, 0.24),
+		"thumb": "res://assets/art/ui/stage_crater.png",
+		"goal": "균열 봉쇄까지",
+		"warnings": [[50.0, "용암이 솟구친다"], [118.0, "재의 군단이 깨어난다"]],
+	},
+	"void": {
+		"num": 5,
+		"name": "제5전선",
+		"short": "달의 뒷면",
+		"subtitle": "빛이 닿지 않는 곳",
+		"desc": "달의 뒷면. 월식의 군주를 쓰러뜨려라.",
+		"duration": 240.0,
+		"boss_time": 170.0,
+		"boss": "boss_eclipse",
+		"enemies": ["riftling", "void_moth", "phase", "nullifier", "sentinel", "splitter"],
+		"enemy_icons": ["riftling", "void_moth", "phase"],
+		"minibosses": [[70.0, "rift_hunter"], [135.0, "star_eater"]],
+		"hp_scale": 1.90,
+		"damage_scale": 1.45,
+		"spawn_scale": 0.84,
+		"music_pitch": 1.18,
+		"tint": Color(0.78, 0.72, 1.12),
+		"accent": Color(0.62, 0.42, 1.0),
+		"thumb": "res://assets/art/ui/stage_void.png",
+		"goal": "월식 종결까지",
+		"warnings": [[50.0, "달빛이 꺼진다"], [118.0, "공허가 열린다"]],
+	},
 }
 
 const DIFFICULTY_ORDER := ["moon", "normal", "dark", "abyss"]
@@ -870,7 +1056,7 @@ static func enemy_damage_mult(stage_id: String, t: float, diff_id: String) -> fl
 	var st := stage(stage_id)
 	var d := difficulty(diff_id)
 	var p := clampf(t / float(st["duration"]), 0.0, 1.0)
-	return (1.0 + p * 0.6) * float(d["damage"])
+	return (1.0 + p * 0.6) * float(d["damage"]) * float(st.get("damage_scale", 1.0))
 
 
 static func spawn_interval(stage_id: String, t: float, diff_id: String) -> float:
@@ -878,7 +1064,7 @@ static func spawn_interval(stage_id: String, t: float, diff_id: String) -> float
 	var d := difficulty(diff_id)
 	var p := clampf(t / float(st["duration"]), 0.0, 1.0)
 	# 1.5x the original spawn cadence while keeping difficulty multipliers.
-	return lerpf(1.05, 0.34, p) * float(d["spawn"]) / 1.5
+	return lerpf(1.05, 0.34, p) * float(d["spawn"]) / 1.5 * float(st.get("spawn_scale", 1.0))
 
 
 static func spawn_batch(t: float, duration: float = 240.0) -> int:
@@ -913,6 +1099,28 @@ static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
 				w["phase"] = 2.8
 			if t > 125.0:
 				w["mech"] = 1.6
+			return w
+		"crater":
+			var w := {"magma": 3.0, "cinder": 3.5, "spitter": 2.5, "blob": 3.0}
+			if t > 35.0:
+				w["bomber"] = 3.0
+			if t > 70.0:
+				w["brute"] = 2.2
+			if t > 105.0:
+				w["sporeling"] = 2.6
+			if t > 140.0:
+				w["mech"] = 1.6
+			return w
+		"void":
+			var w := {"riftling": 3.4, "void_moth": 2.8, "phase": 2.6, "drone": 2.8}
+			if t > 35.0:
+				w["nullifier"] = 2.8
+			if t > 70.0:
+				w["sentinel"] = 2.4
+			if t > 105.0:
+				w["splitter"] = 2.6
+			if t > 140.0:
+				w["mech"] = 2.0
 			return w
 		_:
 			var w := {"blob": maxf(2.0, 10.0 - t / 40.0), "moth": 2.0}

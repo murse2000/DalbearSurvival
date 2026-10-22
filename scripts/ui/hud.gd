@@ -138,16 +138,15 @@ func _build() -> void:
 	kills_label.size = Vector2(92, 26)
 	kills_panel.add_child(kills_label)
 
-	# combo label / milestone banner (centered under the timer)
-	_combo_label = UIKit.label("", 24, UIKit.GOLD, 5)
-	_combo_label.position = Vector2(0, 106)
-	_combo_label.size = Vector2(1280, 36)
+	# combo label / milestone banner follows the bear instead of sitting at
+	# the top of the screen.
+	_combo_label = UIKit.label("", 26, UIKit.GOLD, 6)
+	_combo_label.size = Vector2(360, 40)
 	_combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_combo_label.visible = false
 	root.add_child(_combo_label)
-	_combo_banner = UIKit.label("", 30, UIKit.GOLD, 7)
-	_combo_banner.position = Vector2(0, 146)
-	_combo_banner.size = Vector2(1280, 44)
+	_combo_banner = UIKit.label("", 32, UIKit.GOLD, 8)
+	_combo_banner.size = Vector2(440, 48)
 	_combo_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_combo_banner.visible = false
 	root.add_child(_combo_banner)
@@ -345,13 +344,24 @@ func _fit_ui() -> void:
 	if _ult_root != null:
 		_ult_root.position = Vector2(vp.x * 0.5 + 220.0, vp.y - 70.0)
 	if _combo_label != null:
-		_combo_label.position = Vector2(vp.x * 0.5 - 300.0, 106)
-		_combo_label.size = Vector2(600, 36)
-		_combo_label.pivot_offset = Vector2(300, 18)
+		_combo_label.size = Vector2(360, 40)
+		_combo_label.pivot_offset = Vector2(180, 20)
 	if _combo_banner != null:
-		_combo_banner.position = Vector2(vp.x * 0.5 - 300.0, 146)
-		_combo_banner.size = Vector2(600, 44)
-		_combo_banner.pivot_offset = Vector2(300, 22)
+		_combo_banner.size = Vector2(440, 48)
+		_combo_banner.pivot_offset = Vector2(220, 24)
+	_update_combo_anchor()
+
+
+func _update_combo_anchor() -> void:
+	if _combo_label == null or player == null or not is_instance_valid(player):
+		return
+	var screen: Vector2 = player.get_global_transform_with_canvas().origin
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var x := clampf(screen.x, 200.0, maxf(200.0, vp.x - 200.0))
+	var y := clampf(screen.y, 150.0, maxf(150.0, vp.y - 190.0))
+	_combo_label.position = Vector2(x - 180.0, y - 102.0)
+	if _combo_banner != null:
+		_combo_banner.position = Vector2(x - 220.0, y - 154.0)
 
 
 func set_touch_mode(enabled: bool) -> void:
@@ -394,6 +404,8 @@ func _on_kills(kills: int) -> void:
 	_combo += gained
 	_combo_timer = 2.4
 	_update_combo_label()
+	if player != null and is_instance_valid(player):
+		FX.combo_tick(player.global_position, _combo, _combo_color())
 	var milestones := [10, 25, 50, 100, 150, 200, 300, 400]
 	var crossed := 0
 	for m in milestones:
@@ -424,13 +436,14 @@ func _update_combo_label() -> void:
 	_combo_label.visible = true
 	_combo_label.text = "%d COMBO" % _combo
 	_combo_label.add_theme_color_override("font_color", _combo_color())
-	var pulse_scale := 1.28 if _combo < 50 else 1.45
+	_update_combo_anchor()
+	var pulse_scale := 1.55 if _combo < 50 else 1.8
 	_combo_label.scale = Vector2(pulse_scale, pulse_scale)
 	if _combo_tw != null and _combo_tw.is_valid():
 		_combo_tw.kill()
 	_combo_tw = create_tween()
 	_combo_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_combo_tw.tween_property(_combo_label, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_combo_tw.tween_property(_combo_label, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _show_combo_banner(milestone: int) -> void:
@@ -439,7 +452,8 @@ func _show_combo_banner(milestone: int) -> void:
 	_combo_banner.visible = true
 	_combo_banner.text = "%d COMBO!" % milestone
 	_combo_banner.add_theme_color_override("font_color", _combo_color())
-	_combo_banner.scale = Vector2(1.6, 1.6)
+	_update_combo_anchor()
+	_combo_banner.scale = Vector2(1.75, 1.75)
 	_combo_banner.modulate.a = 1.0
 	if _combo_banner_tw != null and _combo_banner_tw.is_valid():
 		_combo_banner_tw.kill()
@@ -492,6 +506,7 @@ func _refresh_skills() -> void:
 
 func tick(delta: float) -> void:
 	_time += delta
+	_update_combo_anchor()
 	if _combo_timer > 0.0:
 		_combo_timer = maxf(0.0, _combo_timer - delta)
 		if _combo_timer <= 0.0:
