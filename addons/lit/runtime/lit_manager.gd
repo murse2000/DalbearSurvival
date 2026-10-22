@@ -175,6 +175,11 @@ func sample_receiver_luminance(world_pos: Vector2, receiver_mask: int,
 
 
 func _process(_delta: float) -> void:
+	# Mobile uses native CanvasItem lights, so the Lit gather/pack pass has no
+	# work to do. Skipping it keeps hundreds of enemies from re-scanning the
+	# tree every frame on Android.
+	if not LightRig.lit_enabled():
+		return
 	_registry.refresh(get_tree(), get_viewport(), get_tree().root, self)
 
 func _reload_settings() -> void:

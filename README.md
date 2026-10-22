@@ -80,7 +80,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 타이틀·전선 선택·레벨업·장비·친구·설정 화면은 터치 입력을 그대로 지원합니다.
 - **홈 화면/백그라운드 전환 시 자동 일시정지**됩니다. 복귀하면 일시정지 메뉴가 유지되며, `계속하기`를 눌러야 전투가 재개됩니다. 백그라운드 동안 타이머·적·발사체가 진행되지 않고 오디오도 음소거됩니다.
 - 데스크톱에서 터치 UI를 확인하려면 `--touch` 인자를 사용합니다.
-- Android 설정: 가로 모드, 1280×720 기준 `canvas_items` 스트레치, ETC2/ASTC 텍스처 임포트, arm64-v8a.
+- Android 설정: **가로·세로 자동 회전(센서)**, 1280×720 기준 `canvas_items` 스트레치, ETC2/ASTC 텍스처 임포트, arm64-v8a.
+- 기기를 돌리면 화면이 따라 회전합니다. 전투 HUD·카메라·전선 선택 화면은 새 방향에 맞춰 다시 배치됩니다.
 - Android 빌드에는 Godot 4.7.1 Android export template, Android SDK, JDK, 디버그 키스토어가 필요합니다.
 
 ### 저장 & 이어하기
@@ -98,6 +99,17 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 전선 선택·장비·친구 화면은 **1280×720 안전 영역**을 중앙에 두고, 남는 영역은 **풀블리드 블러 배경**으로 채워 검은 레터박스가 생기지 않습니다.
 - 일시정지·레벨업·결과 화면은 화면 전체를 어둡게 덮고 패널을 중앙에 배치합니다.
 - 폴드 폰의 외부/내부 화면 전환 시 viewport 크기 변경을 감지해 HUD·터치·메뉴 레이아웃을 다시 계산합니다.
+- **세로 모드**에서는 전투 카메라와 HUD가 세로 화면을 그대로 사용하고, 전선 선택은 **한 화면에 한 전선씩 보이는 대형 카드 캐러셀**로 재배치됩니다.
+- 장비·친구처럼 정보가 많은 화면은 1280×720 안전 영역을 유지한 채 중앙에 배치됩니다.
+
+### 성능
+- 적이 많아질수록 무거워지던 구간을 모바일 기준으로 다시 손봤습니다.
+- 화면 밖(플레이어 기준 560px 밖)의 적은 추격 이동만 계산하고, 분리·지형 충돌·공격·애니메이션은 **화면에 들어올 때** 시작합니다.
+- 적 분리 계산을 **공간 해시 직접 순회**로 바꿔 프레임마다 배열을 새로 만들지 않습니다.
+- 공간 해시는 **2프레임마다** 재구축하고, 발사체 궤적은 **2프레임마다** 갱신합니다.
+- Android에서는 **블룸 후처리 생략**, 일반 적 그림자·발사체 글로우·정예 포인트 라이트를 끄고, FX/데미지 숫자 상한을 낮췄습니다.
+- Android 적 동시 수 상한은 280, 데스크톱은 340입니다. (화면에 보이는 밀도는 거의 같습니다.)
+- `--bench-enemies=340`으로 340마리 기준 FPS를 측정할 수 있습니다. (예: `godot --path . res://scenes/main.tscn --rendering-method gl_compatibility -- --stage=dawn --bench-enemies=340`)
 
 ---
 
@@ -341,6 +353,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![심연 해구](screenshots/stage_trench.png) | ![태양 흑점](screenshots/stage_sunspot.png) |
 | ![성운 미궁](screenshots/stage_maze.png) | ![종말 궤도](screenshots/stage_orbit.png) |
 | ![새벽의 문](screenshots/stage_dawn.png) | ![사막의 스콜피온](screenshots/boss_dunes.png) |
+| ![세로 타이틀](screenshots/title_portrait.png) | ![세로 전선 선택](screenshots/stage_select_portrait.png) |
+| ![세로 전투](screenshots/stage_dunes_portrait.png) | ![가로 전투](screenshots/gameplay_wide.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
@@ -458,6 +472,10 @@ DalbearSurvival/
   godot --path . res://scenes/stage_select.tscn -- --capture-select
   godot --path . res://scenes/stage_select.tscn -- --capture-select-late
   godot --path . res://scenes/stage_select.tscn -- --test-swipe
+  godot --path . --resolution 720x1280 res://scenes/title.tscn -- --capture-title
+  godot --path . --resolution 720x1280 res://scenes/stage_select.tscn -- --capture-select
+  godot --path . --resolution 720x1280 res://scenes/main.tscn -- --stage=dunes --capture-game
+  godot --path . res://scenes/main.tscn --rendering-method gl_compatibility -- --stage=dawn --bench-enemies=340
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression
   godot --path . res://scenes/main.tscn -- --test-late-balance

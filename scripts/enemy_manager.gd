@@ -8,6 +8,8 @@ const PICKUP_SCRIPT := preload("res://scripts/pickup.gd")
 const DESTRUCTIBLE_SCRIPT := preload("res://scripts/destructible.gd")
 const CELL := 72.0
 const MAX_ENEMIES := 340
+const MAX_ENEMIES_MOBILE := 280
+var _max_enemies := MAX_ENEMIES_MOBILE if OS.has_feature("mobile") else MAX_ENEMIES
 
 var player
 var actors: Node2D
@@ -20,6 +22,7 @@ var grid := {}
 var spawn_timer := 1.0
 var boss_spawned := false
 var miniboss_spawned := {}
+var _grid_tick := 0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -52,7 +55,7 @@ func _process(delta: float) -> void:
 		return
 	var stage := Game.stage_data()
 	spawn_timer = GameData.spawn_interval(Game.stage_id, Game.time, Game.difficulty_id)
-	if enemies.size() >= MAX_ENEMIES:
+	if enemies.size() >= _max_enemies:
 		return
 	var batch := GameData.spawn_batch(Game.time, float(stage["duration"]))
 	for i in batch:
@@ -60,6 +63,15 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	_grid_tick += 1
+	# Rebuilding the spatial hash every other physics tick is enough: enemies
+	# move only a couple of pixels between ticks, while the rebuild itself is
+	# one of the hottest loops once hundreds of units are alive.
+	if _grid_tick % 2 == 0:
+		_rebuild_grid()
+
+
+func _rebuild_grid() -> void:
 	grid.clear()
 	for e in enemies:
 		if not is_instance_valid(e) or e.dead:
@@ -88,7 +100,7 @@ func _spawn_random() -> void:
 
 
 func spawn_enemy(kind: String, pos: Vector2, elite: bool = false) -> void:
-	if actors == null or enemies.size() >= MAX_ENEMIES:
+	if actors == null or enemies.size() >= _max_enemies:
 		return
 	if not GameData.ENEMIES.has(kind):
 		return
@@ -286,6 +298,39 @@ func nearest(pos: Vector2, max_range: float):
 			best_d = d
 			best = e
 	return best
+
+
+func separation_push(pos: Vector2, self_ref: Node2D, body_radius: float) -> Vector2:
+	# Allocation-free version of the old query_circle + distance loop, used by
+	# every enemy each frame. Returns the push-out vector from up to 6
+	# overlapping neighbours.
+	var push := Vector2.ZERO
+	var count := 0
+	var reach := body_radius + 16.0
+	var minx := floori((pos.x - reach) / CELL)
+	var maxx := floori((pos.x + reach) / CELL)
+	var miny := floori((pos.y - reach) / CELL)
+	var maxy := floori((pos.y + reach) / CELL)
+	for cx in range(minx, maxx + 1):
+		for cy in range(miny, maxy + 1):
+			var arr: Array = grid.get(Vector2i(cx, cy), [])
+			for e in arr:
+				if e == self_ref or not is_instance_valid(e) or e.dead:
+					continue
+				var dx: float = pos.x - e.global_position.x
+				var dy: float = pos.y - e.global_position.y
+				var min_dist: float = body_radius + float(e.radius)
+				var d2 := dx * dx + dy * dy
+				if d2 >= min_dist * min_dist or d2 < 0.0001:
+					continue
+				var d := sqrt(d2)
+				var scale := (min_dist - d) / d * 5.0
+				push.x += dx * scale
+				push.y += dy * scale
+				count += 1
+				if count >= 6:
+					return push
+	return push
 
 
 func query_circle(pos: Vector2, radius: float) -> Array:

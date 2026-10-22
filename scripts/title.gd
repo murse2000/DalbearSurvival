@@ -426,9 +426,13 @@ func _test_title_resume() -> void:
 func _capture() -> void:
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	await get_tree().process_frame
+	var shot := "title"
+	var view := get_viewport_rect().size
+	if view.y > view.x:
+		shot += "_portrait"
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/title.png")
-	print("CAPTURED: ", dir + "/title.png")
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()

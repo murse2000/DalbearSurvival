@@ -1,15 +1,18 @@
 extends Control
 
 ## Campaign hub: choose one of fifteen fronts and a difficulty.
-## Fronts sit on a horizontal page carousel: swipe / drag left-right, mouse
-## wheel, Q/E, the edge arrows or the 1-0 keys. No scrollbar.
+## Landscape: 5 cards per page. Portrait: one large card per page.
+## Swipe / drag left-right, mouse wheel, Q/E, edge arrows or the 1-0 keys.
 
 const CARD_W := 230.0
+const CARD_H := 366.0
 const CARD_GAP := 10.0
 const PAGE_W := 1228.0
+const PAGE_W_PORTRAIT := 680.0
 const PAGE_SIZE := 5
 const SWIPE_DIST := 64.0
 const SWIPE_SPEED := 520.0
+const PORTRAIT_SCALE := 1.55
 
 var _cards := {}
 var _diff_chips := {}
@@ -35,6 +38,13 @@ var _selected_stage := "forest"
 var _selected_diff := "normal"
 var _args: PackedStringArray
 var _starting := false
+var _portrait := false
+var _stride := PAGE_W
+var _carousel_h := 370.0
+var _card_scale := 1.0
+var _card_left := 19.0
+var _card_top := 0.0
+var _reloading := false
 
 
 func _ready() -> void:
@@ -46,6 +56,8 @@ func _ready() -> void:
 	_args = OS.get_cmdline_user_args()
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
+	_portrait = _is_portrait()
+	_apply_layout_metrics()
 	_selected_stage = Game.selected_stage if GameData.STAGES.has(Game.selected_stage) else "forest"
 	var marketing := "--capture-select" in _args or "--capture-select-late" in _args
 	if marketing:
@@ -66,10 +78,13 @@ func _ready() -> void:
 		_selected_stage = Game.first_unlocked_stage()
 	_selected_diff = Game.selected_difficulty if GameData.DIFFICULTIES.has(Game.selected_difficulty) else "normal"
 	Game.select_stage(_selected_stage, _selected_diff)
-	_page_count = maxi(1, int(ceil(float(GameData.STAGE_ORDER.size()) / float(PAGE_SIZE))))
+	_page_count = maxi(1, int(ceil(float(GameData.STAGE_ORDER.size()) / float(PAGE_SIZE)))) if not _portrait \
+		else GameData.STAGE_ORDER.size()
 	_build()
 	_ensure_page(_selected_stage, false)
-	UIFit.wrap_menu(self)
+	UIFit.wrap_menu(self, "res://assets/art/ui/menu_backdrop.png",
+		UIFit.PORTRAIT if _portrait else UIFit.DESIGN)
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	if "--capture-select-late" in _args:
 		_capture("stage_select_late")
 	elif "--capture-select" in _args:
@@ -80,15 +95,51 @@ func _ready() -> void:
 		_start.call_deferred()
 
 
+func _is_portrait() -> bool:
+	var size := get_viewport_rect().size
+	return size.y > size.x
+
+
+func _apply_layout_metrics() -> void:
+	if _portrait:
+		_stride = PAGE_W_PORTRAIT
+		_carousel_h = 620.0
+		_card_scale = PORTRAIT_SCALE
+		_card_left = (PAGE_W_PORTRAIT - CARD_W * _card_scale) * 0.5
+		_card_top = 20.0
+	else:
+		_stride = PAGE_W
+		_carousel_h = 370.0
+		_card_scale = 1.0
+		_card_left = 19.0
+		_card_top = 0.0
+
+
+func _on_viewport_resized() -> void:
+	if _reloading or _starting:
+		return
+	var portrait := _is_portrait()
+	if portrait == _portrait:
+		return
+	_reloading = true
+	Game.select_stage(_selected_stage, _selected_diff)
+	get_tree().reload_current_scene.call_deferred()
+
+
 func _build() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := TextureRect.new()
 	bg.texture = load("res://assets/art/ui/title_bg.png")
-	bg.position = Vector2(-26, -14)
-	bg.size = Vector2(1332, 748)
+	if _portrait:
+		bg.position = Vector2(-180, -14)
+		bg.size = Vector2(1080, 1308)
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	else:
+		bg.position = Vector2(-26, -14)
+		bg.size = Vector2(1332, 748)
+		bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -99,6 +150,21 @@ func _build() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
 
+	if _portrait:
+		_build_header_portrait()
+		_build_carousel()
+		_build_chips_portrait()
+		_build_footer_portrait()
+	else:
+		_build_header_landscape()
+		_build_carousel()
+		_build_chips_landscape()
+		_build_footer_landscape()
+
+	_refresh()
+
+
+func _build_header_landscape() -> void:
 	var over := UIKit.label("CAMPAIGN MAP  ·  DALBEAR.COM", 13, UIKit.MINT)
 	over.position = Vector2(56, 30)
 	add_child(over)
@@ -118,34 +184,77 @@ func _build() -> void:
 	back_top.add_theme_font_size_override("font_size", 18)
 	back_top.pressed.connect(_go_title)
 	add_child(back_top)
-
 	_shards_label = UIKit.label("", 15, UIKit.GOLD)
 	_shards_label.position = Vector2(820, 40)
 	_shards_label.size = Vector2(248, 26)
 	_shards_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_shards_label)
-
 	_character_btn = UIKit.button("", Vector2(144, 36))
 	_character_btn.position = Vector2(666, 34)
 	_character_btn.add_theme_font_size_override("font_size", 13)
 	_character_btn.pressed.connect(_open_characters)
 	add_child(_character_btn)
 
-	_build_carousel()
 
-	# difficulty chips
+func _build_header_portrait() -> void:
+	var over := UIKit.label("CAMPAIGN MAP  ·  DALBEAR.COM", 11, UIKit.MINT)
+	over.position = Vector2(24, 20)
+	add_child(over)
+	var title := UIKit.label("전선 선택", 42, UIKit.GOLD, 6)
+	title.position = Vector2(22, 38)
+	add_child(title)
+	var sub := UIKit.label("열다섯 개의 전선 · 이전 전선을 클리어하면 다음이 열립니다.", 12, UIKit.CREAM)
+	sub.position = Vector2(24, 98)
+	sub.size = Vector2(560, 20)
+	add_child(sub)
+	_page_label = UIKit.label("", 12, UIKit.MUTED)
+	_page_label.position = Vector2(24, 130)
+	_page_label.size = Vector2(420, 18)
+	add_child(_page_label)
+	_shards_label = UIKit.label("", 12, UIKit.GOLD)
+	_shards_label.position = Vector2(470, 22)
+	_shards_label.size = Vector2(226, 20)
+	_shards_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(_shards_label)
+	_character_btn = UIKit.button("", Vector2(140, 34))
+	_character_btn.position = Vector2(420, 52)
+	_character_btn.add_theme_font_size_override("font_size", 12)
+	_character_btn.pressed.connect(_open_characters)
+	add_child(_character_btn)
+	var back_top := UIKit.button("← 타이틀", Vector2(130, 34))
+	back_top.position = Vector2(568, 52)
+	back_top.add_theme_font_size_override("font_size", 13)
+	back_top.pressed.connect(_go_title)
+	add_child(back_top)
+
+
+func _build_chips_landscape() -> void:
 	for i in GameData.DIFFICULTY_ORDER.size():
 		var id: String = GameData.DIFFICULTY_ORDER[i]
 		var chip := _make_diff_chip(id, i)
 		add_child(chip["root"])
 		_diff_chips[id] = chip
-
 	_diff_desc = UIKit.label("", 15, UIKit.MUTED)
 	_diff_desc.position = Vector2(0, 601)
 	_diff_desc.size = Vector2(1280, 24)
 	_diff_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_diff_desc)
 
+
+func _build_chips_portrait() -> void:
+	for i in GameData.DIFFICULTY_ORDER.size():
+		var id: String = GameData.DIFFICULTY_ORDER[i]
+		var chip := _make_diff_chip(id, i)
+		add_child(chip["root"])
+		_diff_chips[id] = chip
+	_diff_desc = UIKit.label("", 12, UIKit.MUTED)
+	_diff_desc.position = Vector2(0, 1030)
+	_diff_desc.size = Vector2(720, 20)
+	_diff_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_diff_desc)
+
+
+func _build_footer_landscape() -> void:
 	var start := UIKit.button("출격", Vector2(220, 58))
 	start.position = Vector2(500, 636)
 	start.add_theme_font_size_override("font_size", 26)
@@ -160,14 +269,12 @@ func _build() -> void:
 	back.position = Vector2(916, 636)
 	back.pressed.connect(_go_title)
 	add_child(back)
-
 	_stage_hint = UIKit.label("", 13, UIKit.MUTED)
 	_stage_hint.visible = false
 	_stage_hint.position = Vector2(0, 704)
 	_stage_hint.size = Vector2(1280, 20)
 	_stage_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_stage_hint)
-
 	var domain := UIKit.label("dalbear.com", 13, UIKit.GOLD)
 	domain.position = Vector2(56, 690)
 	add_child(domain)
@@ -177,13 +284,46 @@ func _build() -> void:
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(ver)
 
-	_refresh()
+
+func _build_footer_portrait() -> void:
+	var start := UIKit.button("출격", Vector2(200, 62))
+	start.position = Vector2(115, 1066)
+	start.add_theme_font_size_override("font_size", 22)
+	start.pressed.connect(_start)
+	add_child(start)
+	var equipment := UIKit.button("장비", Vector2(150, 62))
+	equipment.position = Vector2(335, 1066)
+	equipment.add_theme_font_size_override("font_size", 18)
+	equipment.pressed.connect(_open_equipment)
+	add_child(equipment)
+	var back := UIKit.button("타이틀", Vector2(150, 62))
+	back.position = Vector2(505, 1066)
+	back.add_theme_font_size_override("font_size", 18)
+	back.pressed.connect(_go_title)
+	add_child(back)
+	_stage_hint = UIKit.label("", 12, UIKit.MUTED)
+	_stage_hint.visible = false
+	_stage_hint.position = Vector2(0, 1144)
+	_stage_hint.size = Vector2(720, 20)
+	_stage_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_stage_hint)
+	var domain := UIKit.label("dalbear.com", 11, UIKit.GOLD)
+	domain.position = Vector2(24, 1236)
+	add_child(domain)
+	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  Q/E 전선  ·  스와이프", 9, UIKit.MUTED)
+	ver.position = Vector2(180, 1238)
+	ver.size = Vector2(516, 16)
+	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(ver)
 
 
 func _build_carousel() -> void:
 	_carousel = Control.new()
 	_carousel.name = "FrontCarousel"
-	UIKit.place(_carousel, 26, 154, PAGE_W, 370)
+	if _portrait:
+		UIKit.place(_carousel, 20, 170, _stride, _carousel_h)
+	else:
+		UIKit.place(_carousel, 26, 154, _stride, _carousel_h)
 	_carousel.clip_contents = true
 	_carousel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_carousel.mouse_default_cursor_shape = Control.CURSOR_DRAG
@@ -195,31 +335,35 @@ func _build_carousel() -> void:
 	_strip.name = "Pages"
 	_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_strip.position = Vector2.ZERO
-	_strip.size = Vector2(PAGE_W * float(_page_count), 370)
+	_strip.size = Vector2(_stride * float(_page_count), _carousel_h)
 	_carousel.add_child(_strip)
 
 	for p in _page_count:
 		var page := Control.new()
 		page.name = "Page%d" % (p + 1)
 		page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		page.position = Vector2(PAGE_W * float(p), 0)
-		page.size = Vector2(PAGE_W, 370)
+		page.position = Vector2(_stride * float(p), 0)
+		page.size = Vector2(_stride, _carousel_h)
 		_strip.add_child(page)
-		for i in PAGE_SIZE:
-			var idx := p * PAGE_SIZE + i
+		var per_page := 1 if _portrait else PAGE_SIZE
+		for i in per_page:
+			var idx := p * per_page + i
 			if idx >= GameData.STAGE_ORDER.size():
 				break
 			var id: String = GameData.STAGE_ORDER[idx]
 			var card := _make_stage_card(id, idx)
-			UIKit.place(card["root"], 19.0 + float(i) * (CARD_W + CARD_GAP), 0, CARD_W, 366)
+			var card_x := _card_left if _portrait else 19.0 + float(i) * (CARD_W + CARD_GAP)
+			UIKit.place(card["root"], card_x, _card_top, CARD_W, CARD_H)
+			if _portrait:
+				card["root"].scale = Vector2(PORTRAIT_SCALE, PORTRAIT_SCALE)
 			page.add_child(card["root"])
 			_cards[id] = card
 
-	_prev_btn = _make_page_arrow("<", Vector2(1, 296))
-	_prev_btn.pressed.connect(func() -> void: _go_page(_page - 1))
+	_prev_btn = _make_page_arrow("<", Vector2(1, 180) if _portrait else Vector2(1, 296))
+	_prev_btn.pressed.connect(func() -> void: _go_page(_page - 1, true, true))
 	add_child(_prev_btn)
-	_next_btn = _make_page_arrow(">", Vector2(1254, 296))
-	_next_btn.pressed.connect(func() -> void: _go_page(_page + 1))
+	_next_btn = _make_page_arrow(">", Vector2(693, 180) if _portrait else Vector2(1254, 296))
+	_next_btn.pressed.connect(func() -> void: _go_page(_page + 1, true, true))
 	add_child(_next_btn)
 
 
@@ -243,7 +387,7 @@ func _make_stage_card(id: String, _index: int) -> Dictionary:
 	var info: Dictionary = GameData.STAGES[id]
 	var accent: Color = info["accent"]
 	var root := UIKit.panel(Color(0.045, 0.07, 0.105, 0.94), UIKit.BORDER, 2)
-	root.custom_minimum_size = Vector2(CARD_W, 366)
+	root.custom_minimum_size = Vector2(CARD_W, CARD_H)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.clip_contents = true
 
@@ -330,19 +474,24 @@ func _ignore_mouse(node: Node) -> void:
 func _make_diff_chip(id: String, index: int) -> Dictionary:
 	var info: Dictionary = GameData.DIFFICULTIES[id]
 	var root := UIKit.panel(Color(0.06, 0.09, 0.13, 0.95), UIKit.BORDER, 2)
-	UIKit.place(root, 86 + index * 282, 534, 266, 52)
+	if _portrait:
+		var col := index % 2
+		var row := floori(float(index) / 2.0)
+		UIKit.place(root, 20 + col * 350, 856 + row * 80, 330, 68)
+	else:
+		UIKit.place(root, 86 + index * 282, 534, 266, 52)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var name_label := UIKit.label(String(info["name"]), 19, UIKit.CREAM, 2)
+	var name_label := UIKit.label(String(info["name"]), 19 if not _portrait else 18, UIKit.CREAM, 2)
 	name_label.position = Vector2(14, 7)
 	root.add_child(name_label)
 	var tag := UIKit.label(String(info["tag"]), 11, info["color"])
-	tag.position = Vector2(150, 13)
-	tag.size = Vector2(100, 18)
+	tag.position = Vector2(150, 13) if not _portrait else Vector2(196, 12)
+	tag.size = Vector2(100, 18) if not _portrait else Vector2(120, 18)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	root.add_child(tag)
-	var mod := UIKit.label(_diff_mods(id), 11, UIKit.MUTED)
-	mod.position = Vector2(14, 30)
+	var mod := UIKit.label(_diff_mods(id), 11 if not _portrait else 10, UIKit.MUTED)
+	mod.position = Vector2(14, 30) if not _portrait else Vector2(14, 40)
 	root.add_child(mod)
 	root.gui_input.connect(_on_diff_input.bind(id))
 	root.mouse_entered.connect(func():
@@ -372,10 +521,10 @@ func _on_carousel_input(event: InputEvent) -> void:
 				_end_drag(mb.position)
 			accept_event()
 		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
-			_go_page(_page - 1)
+			_go_page(_page - 1, true, true)
 			accept_event()
 		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
-			_go_page(_page + 1)
+			_go_page(_page + 1, true, true)
 			accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -402,7 +551,7 @@ func _move_drag(pos: Vector2) -> void:
 	var dx := pos.x - _drag_last.x
 	_drag_last = pos
 	_drag_moved += absf(dx)
-	var min_x := -float(_page_count - 1) * PAGE_W
+	var min_x := -float(_page_count - 1) * _stride
 	var raw := _strip.position.x + dx
 	if raw > 0.0:
 		raw *= 0.35
@@ -429,14 +578,14 @@ func _end_drag(pos: Vector2) -> void:
 			target += 1
 		elif dx >= SWIPE_DIST or speed >= SWIPE_SPEED:
 			target -= 1
-		_go_page(target)
+		_go_page(target, true, true)
 	_hover_stage = ""
 	_refresh()
 
 
-func _go_page(target: int, animate: bool = true) -> void:
+func _go_page(target: int, animate: bool = true, select_visible: bool = false) -> void:
 	_page = clampi(target, 0, _page_count - 1)
-	var x := -float(_page) * PAGE_W
+	var x := -float(_page) * _stride
 	_kill_page_tween()
 	if animate and not is_equal_approx(_strip.position.x, x):
 		_page_tween = create_tween()
@@ -444,6 +593,13 @@ func _go_page(target: int, animate: bool = true) -> void:
 		_page_tween.tween_property(_strip, "position:x", x, 0.28)
 	else:
 		_strip.position.x = x
+	if select_visible and _portrait:
+		var id: String = GameData.STAGE_ORDER[_page]
+		if Game.is_stage_unlocked(id):
+			_selected_stage = id
+			Game.select_stage(id, _selected_diff)
+			_refresh()
+			Audio.play_click()
 	_update_page_ui()
 
 
@@ -456,24 +612,36 @@ func _ensure_page(id: String, animate: bool = true) -> void:
 	var idx := GameData.STAGE_ORDER.find(id)
 	if idx < 0:
 		return
-	_go_page(floori(float(idx) / float(PAGE_SIZE)), animate)
+	var page := idx if _portrait else floori(float(idx) / float(PAGE_SIZE))
+	_go_page(page, animate)
 
 
 func _card_at(pos: Vector2) -> String:
-	if pos.x < 0.0 or pos.x > PAGE_W or pos.y < 0.0 or pos.y > 366.0:
+	if pos.y < 0.0 or pos.y > _carousel_h:
 		return ""
 	var local := pos.x - _strip.position.x
-	var page := floori(local / PAGE_W)
+	var page := floori(local / _stride)
 	if page < 0 or page >= _page_count:
 		return ""
-	var px := local - float(page) * PAGE_W
-	var col := floori((px - 19.0) / (CARD_W + CARD_GAP))
-	if col < 0 or col >= PAGE_SIZE:
-		return ""
-	var left := 19.0 + float(col) * (CARD_W + CARD_GAP)
-	if px < left or px > left + CARD_W:
-		return ""
-	var idx := page * PAGE_SIZE + col
+	var px := local - float(page) * _stride
+	var idx := 0
+	if _portrait:
+		var left := _card_left
+		if px < left or px > left + CARD_W * _card_scale:
+			return ""
+		if pos.y < _card_top or pos.y > _card_top + CARD_H * _card_scale:
+			return ""
+		idx = page
+	else:
+		var col := floori((px - 19.0) / (CARD_W + CARD_GAP))
+		if col < 0 or col >= PAGE_SIZE:
+			return ""
+		var left := 19.0 + float(col) * (CARD_W + CARD_GAP)
+		if px < left or px > left + CARD_W:
+			return ""
+		if pos.y > CARD_H:
+			return ""
+		idx = page * PAGE_SIZE + col
 	if idx < 0 or idx >= GameData.STAGE_ORDER.size():
 		return ""
 	return GameData.STAGE_ORDER[idx]
@@ -643,10 +811,10 @@ func _input(event: InputEvent) -> void:
 			_select_stage("citadel")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_Q or event.keycode == KEY_PAGEUP:
-			_go_page(_page - 1)
+			_go_page(_page - 1, true, true)
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_E or event.keycode == KEY_PAGEDOWN:
-			_go_page(_page + 1)
+			_go_page(_page + 1, true, true)
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
 			var idx := maxi(0, GameData.DIFFICULTY_ORDER.find(_selected_diff) - 1)
@@ -670,17 +838,22 @@ func _test_swipe() -> void:
 	_refresh()
 	_ensure_page(_selected_stage, false)
 	var start_page := _page
-	var page_ok := start_page == 0
-	await _swipe(Vector2(900, 180), Vector2(500, 180))
-	var next_ok := _page == 1
-	await _swipe(Vector2(500, 180), Vector2(900, 180))
-	var back_ok := _page == 0
-	await _swipe(Vector2(500, 180), Vector2(900, 180))
+	var page_ok := start_page == (1 if _portrait else 0)
+	var from_x := 500.0 if _portrait else 900.0
+	var to_x := 120.0 if _portrait else 500.0
+	var back_x := 560.0 if _portrait else 900.0
+	await _swipe(Vector2(from_x, 300), Vector2(to_x, 300))
+	var next_ok := _page == mini(_page_count - 1, start_page + 1)
+	await _swipe(Vector2(to_x, 300), Vector2(back_x, 300))
+	var back_ok := _page == start_page
+	_go_page(0, false)
+	await _swipe(Vector2(to_x, 300), Vector2(back_x, 300))
 	var clamp_ok := _page == 0
-	await _tap(Vector2(19 + 115, 180))
+	var tap_pos := Vector2(19 + 115, 180) if not _portrait else Vector2(360, 300)
+	await _tap(tap_pos)
 	var tap_ok := _selected_stage == "forest"
-	print("SWIPE TEST start=%d next=%s back=%s clamp=%s tap=%s selected=%s page=%d" % [
-		start_page, next_ok, back_ok, clamp_ok, tap_ok, _selected_stage, _page,
+	print("SWIPE TEST portrait=%s start=%d next=%s back=%s clamp=%s tap=%s selected=%s page=%d" % [
+		_portrait, start_page, next_ok, back_ok, clamp_ok, tap_ok, _selected_stage, _page,
 	])
 	if not page_ok or not next_ok or not back_ok or not clamp_ok or not tap_ok:
 		push_error("SWIPE TEST FAILED")
@@ -713,14 +886,14 @@ func _send_button(pos: Vector2, pressed: bool) -> void:
 	e.pressed = pressed
 	e.position = _carousel.get_global_transform_with_canvas() * pos
 	e.global_position = e.position
-	get_viewport().push_input(e)
+	get_viewport().push_input(e, true)
 
 
 func _send_motion(pos: Vector2) -> void:
 	var e := InputEventMouseMotion.new()
 	e.position = _carousel.get_global_transform_with_canvas() * pos
 	e.global_position = e.position
-	get_viewport().push_input(e)
+	get_viewport().push_input(e, true)
 
 
 func _capture(shot: String = "stage_select") -> void:
@@ -728,6 +901,9 @@ func _capture(shot: String = "stage_select") -> void:
 	_ensure_page(_selected_stage, false)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var view := get_viewport_rect().size
+	if view.y > view.x:
+		shot += "_portrait"
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()

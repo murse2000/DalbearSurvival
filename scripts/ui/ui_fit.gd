@@ -4,9 +4,11 @@ extends RefCounted
 ## Centre a 1280x720 UI on any aspect ratio, with a full-bleed backdrop behind it.
 
 const DESIGN := Vector2(1280, 720)
+const PORTRAIT := Vector2(720, 1280)
 
 
-static func wrap_menu(root: Control, backdrop_path: String = "res://assets/art/ui/menu_backdrop.png") -> void:
+static func wrap_menu(root: Control, backdrop_path: String = "res://assets/art/ui/menu_backdrop.png",
+		design: Vector2 = DESIGN) -> void:
 	if root.has_meta("ui_fit_done"):
 		return
 	root.set_meta("ui_fit_done", true)
@@ -32,7 +34,7 @@ static func wrap_menu(root: Control, backdrop_path: String = "res://assets/art/u
 
 	var content := Control.new()
 	content.name = "ResponsiveContent"
-	content.size = DESIGN
+	content.size = design
 	content.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(content)
 	for child in old_children:
@@ -43,9 +45,9 @@ static func wrap_menu(root: Control, backdrop_path: String = "res://assets/art/u
 		if not is_instance_valid(content):
 			return
 		var vp := root.get_viewport_rect().size
-		var s := minf(vp.x / DESIGN.x, vp.y / DESIGN.y)
+		var s := minf(vp.x / design.x, vp.y / design.y)
 		content.scale = Vector2(s, s)
-		content.position = (vp - DESIGN * s) * 0.5
+		content.position = (vp - design * s) * 0.5
 
 	apply.call()
 	root.get_viewport().size_changed.connect(apply)

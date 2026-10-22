@@ -5,6 +5,7 @@ extends Node
 
 const P := "res://assets/particles/small/kenney_"
 const MAX_FX := 260
+const MOBILE_FX := 90
 const TEX_PATHS := {
 	"star": P + "star_08.png",
 	"star4": P + "star_02.png",
@@ -59,6 +60,12 @@ var _grade_tween: Tween
 var _numbers: Array[Label] = []
 var _decals: Array[Node] = []
 var _rng := RandomNumberGenerator.new()
+var _number_frame := -1
+var _number_count := 0
+
+
+func _fx_cap() -> int:
+	return MOBILE_FX if OS.has_feature("mobile") else MAX_FX
 
 
 func _ready() -> void:
@@ -133,6 +140,8 @@ func _add(node: Node2D, additive: bool = false, parent: Node2D = null) -> void:
 
 
 func _sprite(pos: Vector2, key: String, color: Color, scale: float, additive: bool = true) -> Sprite2D:
+	if fx_root == null or not is_instance_valid(fx_root) or fx_root.get_child_count() > _fx_cap():
+		return null
 	var s := Sprite2D.new()
 	s.texture = _tex.get(key)
 	s.position = pos
@@ -144,7 +153,7 @@ func _sprite(pos: Vector2, key: String, color: Color, scale: float, additive: bo
 
 func _fade_sprite(pos: Vector2, key: String, color: Color, start_scale: float,
 		end_scale: float, dur: float, additive: bool = true, rot: float = 0.0) -> void:
-	if fx_root == null or not is_instance_valid(fx_root) or fx_root.get_child_count() > MAX_FX:
+	if fx_root == null or not is_instance_valid(fx_root) or fx_root.get_child_count() > _fx_cap():
 		return
 	var s := _sprite(pos, key, color, start_scale, additive)
 	if not is_instance_valid(s):
@@ -190,7 +199,7 @@ func rune(pos: Vector2, color: Color, radius: float, dur: float = 0.7, alpha: fl
 func particles(pos: Vector2, key: String, color: Color, amount: int, lifetime: float,
 		speed_min: float, speed_max: float, size: float, spread: float = 180.0,
 		gravity: Vector2 = Vector2.ZERO, additive: bool = true, spin: float = 0.0) -> void:
-	if fx_root == null or not is_instance_valid(fx_root) or fx_root.get_child_count() > MAX_FX:
+	if fx_root == null or not is_instance_valid(fx_root) or fx_root.get_child_count() > _fx_cap():
 		return
 	var p := CPUParticles2D.new()
 	p.texture = _tex.get(key)
@@ -368,10 +377,21 @@ func damage_number(pos: Vector2, amount: float, color: Color, crit: bool = false
 		return
 	if damage_root == null or not is_instance_valid(damage_root):
 		return
-	if _numbers.size() > 55:
+	var mobile := OS.has_feature("mobile")
+	var max_numbers := 24 if mobile else 55
+	while _numbers.size() > max_numbers:
 		var old = _numbers.pop_front()
 		if is_instance_valid(old):
 			old.queue_free()
+	# Cap label creation per frame: late-game AoE can trigger hundreds of hits in
+	# one frame and label nodes dominate the CPU cost.
+	var frame := Engine.get_process_frames()
+	if frame != _number_frame:
+		_number_frame = frame
+		_number_count = 0
+	if _number_count >= (4 if mobile else 8):
+		return
+	_number_count += 1
 	var l := Label.new()
 	l.text = ("%d!" % int(round(amount))) if crit else str(int(round(amount)))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -443,7 +463,10 @@ func crit_burst(pos: Vector2, amount: float = 0.0) -> void:
 func hit(pos: Vector2, color: Color, crit: bool = false) -> void:
 	if fx_root == null:
 		return
-	particles(pos, "star", color, 4 if not crit else 8, 0.3, 50, 150, 0.24, 180, Vector2(0, 90), true, 300)
+	# When the pool is already busy, keep the cheap flare and skip the
+	# particle burst for ordinary hits. Critical hits always burst.
+	if crit or fx_root.get_child_count() < _fx_cap() * 3 / 4:
+		particles(pos, "star", color, 4 if not crit else 8, 0.3, 50, 150, 0.24, 180, Vector2(0, 90), true, 300)
 	_fade_sprite(pos, "flare", color, 0.25 if not crit else 0.4, 0.5, 0.12)
 	if crit:
 		ring(pos, Color(1.0, 0.1, 0.14), 38, 0.3, "halo")
@@ -480,13 +503,16 @@ func slash(pos: Vector2, angle: float, color: Color, scale: float = 0.4) -> void
 func enemy_death(pos: Vector2, color: Color, big: bool = false) -> void:
 	if fx_root == null:
 		return
-	var n := 26 if big else 13
+	var mobile := OS.has_feature("mobile")
+	var n := (18 if mobile else 26) if big else (8 if mobile else 13)
 	particles(pos, "star", color, n, 0.5, 70, 220, 0.32, 180, Vector2(0, 190), true, 420)
 	particles(pos, "dirt", color.darkened(0.15), n / 2 + 3, 0.65, 40, 150, 0.34, 120, Vector2(0, 240), false)
-	particles(pos, "smoke", Color(color.r, color.g, color.b, 0.55), 4, 0.8, 20, 60, 0.45, 90, Vector2(0, -30), false)
+	if not mobile:
+		particles(pos, "smoke", Color(color.r, color.g, color.b, 0.55), 4, 0.8, 20, 60, 0.45, 90, Vector2(0, -30), false)
 	_fade_sprite(pos, "flare", color, 0.5, 1.1, 0.22)
 	ring(pos, color, 34 if not big else 64, 0.3, "halo")
-	death_decal(pos, color)
+	if not mobile:
+		death_decal(pos, color)
 	shake(3.0 if not big else 7.0, 0.15 if not big else 0.3)
 	if big:
 		flash(color, 0.18, 0.3)

@@ -34,7 +34,8 @@ func _ready() -> void:
 	_args = OS.get_cmdline_user_args()
 	for a in _args:
 		if a.begins_with("--capture") or a.begins_with("--test") \
-				or a.begins_with("--evolution") or a == "--smoke-start":
+				or a.begins_with("--evolution") or a.begins_with("--bench") \
+				or a == "--smoke-start":
 			_dev_mode = true
 	for a in _args:
 		if a.begins_with("--stage="):
@@ -160,6 +161,8 @@ func _ready() -> void:
 		_test_new_skills()
 	elif "--test-balance" in _args:
 		_test_balance()
+	elif "--bench-enemies" in _args or _has_bench_arg():
+		_bench_enemies()
 	elif "--test-late-balance" in _args:
 		_test_late_balance()
 	elif "--test-world-expansion" in _args:
@@ -274,6 +277,9 @@ func _build_post() -> void:
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	post_mat = ShaderMaterial.new()
 	post_mat.shader = load("res://assets/shaders/post_fx.gdshader")
+	# Phones skip the 16-tap bloom ring; the rest of the grade stays.
+	if OS.has_feature("mobile"):
+		post_mat.set_shader_parameter("bloom_quality", 0.0)
 	rect.material = post_mat
 	layer.add_child(rect)
 	FX.setup(camera, world.fx_root, world.damage_root, world.decals, post_mat)
@@ -609,6 +615,73 @@ func _test_late_balance() -> void:
 		get_tree().quit(1)
 		return
 	print("LATE BALANCE TEST OK")
+	get_tree().quit()
+
+
+func _has_bench_arg() -> bool:
+	for a in _args:
+		if a.begins_with("--bench-enemies="):
+			return true
+	return false
+
+
+func _bench_enemies() -> void:
+	var count := 200
+	for a in _args:
+		if a.begins_with("--bench-enemies="):
+			count = maxi(1, int(a.substr(16)))
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	if "--bench-no-bloom" in _args:
+		Settings.bloom = false
+	Game.time = 200.0
+	manager.spawn_timer = 99999.0
+	manager.boss_spawned = true
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	player.invuln = 999.0
+	var idle := "--bench-idle" in _args
+	if not idle:
+		for id in ["core", "star", "coolant", "armor", "heart"]:
+			player.passive_levels[id] = 5
+		for id in ["moon_shot", "satellite", "pulse", "laser", "meteor", "chain",
+				"singularity", "blades"]:
+			if not player.weapon_levels.has(id):
+				player.add_weapon(id)
+			while int(player.weapon_levels.get(id, 0)) < 6:
+				player.upgrade_weapon(id)
+		player.recalc_stats()
+		for id in ["moon_shot", "satellite", "pulse", "laser"]:
+			player.evolve_weapon(id)
+	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(Game.stage_id, ["blob", "drone"])
+	for i in count:
+		var a := TAU * float(i) / float(count)
+		var d := 120.0 + float(i % 9) * 110.0
+		manager.spawn_enemy(String(pair[i % 2]),
+			player.global_position + Vector2.from_angle(a) * d, false)
+	await get_tree().create_timer(2.0, true, false, true).timeout
+	var frames := 0
+	var process_time := 0.0
+	var alive_sum := 0
+	var start := Time.get_ticks_usec()
+	while Time.get_ticks_usec() - start < 6_000_000:
+		await get_tree().process_frame
+		frames += 1
+		process_time += Performance.get_monitor(Performance.TIME_PROCESS)
+		var missing: int = count - manager.enemies.size()
+		for i in mini(missing, 12):
+			var a := randf() * TAU
+			manager.spawn_enemy(String(pair[i % 2]),
+				player.global_position + Vector2.from_angle(a) * randf_range(500.0, 900.0), false)
+		alive_sum += manager.enemies.size()
+	var seconds := maxf(0.001, float(Time.get_ticks_usec() - start) / 1000000.0)
+	print("BENCH enemies=%d idle=%s fps=%.1f proc_ms=%.2f alive=%.0f draw=%d objects=%d" % [
+		count, idle, float(frames) / seconds, process_time / float(frames) * 1000.0,
+		float(alive_sum) / float(maxi(1, frames)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+	])
 	get_tree().quit()
 
 
@@ -1543,6 +1616,9 @@ func _test_upgrade() -> void:
 func _capture(name: String) -> void:
 	# Avoid frame_post_draw: it can stall when the window is occluded.
 	await get_tree().process_frame
+	var view := get_viewport_rect().size
+	if view.y > view.x:
+		name += "_portrait"
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()

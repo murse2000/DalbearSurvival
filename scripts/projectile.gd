@@ -18,6 +18,7 @@ var _sprite: Sprite2D
 var _glow: Sprite2D
 var _trail: Line2D
 var _add_mat: CanvasItemMaterial
+var _trail_tick := 0
 
 
 func _ready() -> void:
@@ -43,6 +44,9 @@ func _ready() -> void:
 	_glow.scale = Vector2.ONE * 0.5
 	_glow.modulate = Color(1, 1, 1, 0.4)
 	_glow.material = _add_mat
+	# The glow doubles the cost of every projectile; the trail already carries
+	# the read on small screens.
+	_glow.visible = not OS.has_feature("mobile")
 	add_child(_glow)
 	_trail.width = 5.0
 	var curve := Curve.new()
@@ -110,9 +114,11 @@ func _process(delta: float) -> void:
 		return
 	var previous_position := global_position
 	global_position += velocity * delta
-	_trail.add_point(global_position, 0)
-	while _trail.get_point_count() > 10:
-		_trail.remove_point(_trail.get_point_count() - 1)
+	_trail_tick += 1
+	if _trail_tick % 2 == 0:
+		_trail.add_point(global_position, 0)
+		while _trail.get_point_count() > 7:
+			_trail.remove_point(_trail.get_point_count() - 1)
 	_sprite.rotation += delta * 9.0
 	_glow.scale = Vector2.ONE * (0.68 + sin(age * 18.0) * 0.06)
 

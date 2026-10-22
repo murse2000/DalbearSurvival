@@ -34,6 +34,10 @@ var contact_cd := 0.0
 var flash := 0.0
 var age := 0.0
 var seeded := 0.0
+var flying := false
+var bob_freq := 7.0
+var bob_amp := 0.8
+var _near := true
 
 var sprite: Sprite2D
 var shadow: Sprite2D
@@ -89,6 +93,10 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 	boss_style = String(data.get("style", ""))
 	mini_style = String(data.get("mini_style", ""))
 	behavior = String(data.get("behavior", "chase"))
+	flying = bool(data.get("flying", false))
+	if flying or kind in ["drone", "jelly", "sentinel", "moth", "sporeling"]:
+		bob_freq = 4.0
+		bob_amp = 3.0
 	elite = is_elite and not miniboss
 	display_name = String(data["name"])
 	color = data["color"]
@@ -151,11 +159,14 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 
 func _build_visuals() -> void:
 	var big_shadow := boss or elite or miniboss
-	shadow = Sprite2D.new()
-	shadow.texture = load("res://assets/art/char/shadow_big.png" if big_shadow else "res://assets/art/char/shadow.png")
-	shadow.modulate = Color(1, 1, 1, 0.45 if boss or miniboss else 0.55)
-	shadow.scale = Vector2(1.4, 1.1) if boss else Vector2(1.35 if (elite or miniboss) else 1.0, 0.9)
-	add_child(shadow)
+	# Mobile skips plain-enemy contact shadows (one extra draw call each) but
+	# keeps them for elites and bosses where they read as scale cues.
+	if big_shadow or not OS.has_feature("mobile"):
+		shadow = Sprite2D.new()
+		shadow.texture = load("res://assets/art/char/shadow_big.png" if big_shadow else "res://assets/art/char/shadow.png")
+		shadow.modulate = Color(1, 1, 1, 0.45 if boss or miniboss else 0.55)
+		shadow.scale = Vector2(1.4, 1.1) if boss else Vector2(1.35 if (elite or miniboss) else 1.0, 0.9)
+		add_child(shadow)
 
 	if boss or elite or miniboss:
 		aura = Sprite2D.new()
@@ -189,8 +200,11 @@ func _build_visuals() -> void:
 		_light = LightRig.add_point_light(self, color, 175.0, 0.95, false,
 			Vector2(0, -height * visual_scale * 0.4))
 	elif elite:
-		_light = LightRig.add_point_light(self, color, 92.0, 0.62, false,
-			Vector2(0, -height * visual_scale * 0.4))
+		# Point lights are the single most expensive canvas item on the GL
+		# compatibility (Android) renderer. Bosses and mid-bosses keep theirs.
+		if not OS.has_feature("mobile"):
+			_light = LightRig.add_point_light(self, color, 92.0, 0.62, false,
+				Vector2(0, -height * visual_scale * 0.4))
 	if elite:
 		sprite.modulate = Color(1.08, 1.05, 1.18)
 	var target_scale := Vector2.ONE * visual_scale
@@ -207,9 +221,21 @@ func _process(delta: float) -> void:
 	flash = maxf(0.0, flash - delta)
 	if player == null or not is_instance_valid(player):
 		return
-	var to: Vector2 = player.global_position - global_position
+	var player_pos: Vector2 = player.global_position
+	var to: Vector2 = player_pos - global_position
 	var dist := to.length()
 	var dir := to / maxf(0.001, dist)
+	# Full simulation (separation, obstacle push-out, attacks, bobbing) only for
+	# enemies near the player. The camera shows roughly 640x360 world units at
+	# zoom 2, so anything beyond 560 is off-screen; distant units just chase.
+	_near = dist < 560.0
+	knockback = knockback.lerp(Vector2.ZERO, 1.0 - exp(-delta * 7.5))
+	if not _near and not boss and not miniboss:
+		global_position += (dir * speed + knockback) * delta
+		_clamp_arena()
+		if dist > 1700.0:
+			queue_free()
+		return
 
 	if boss:
 		_boss_move(delta, dir, dist)
@@ -233,9 +259,8 @@ func _process(delta: float) -> void:
 			_:
 				_default_move(delta, dir, dist)
 
-	if not boss and not miniboss:
+	if not boss and not miniboss and _near:
 		global_position = manager.resolve_obstacles(global_position, radius)
-	knockback = knockback.lerp(Vector2.ZERO, 1.0 - exp(-delta * 7.5))
 
 	# visual motion
 	if boss or miniboss:
@@ -246,10 +271,8 @@ func _process(delta: float) -> void:
 			aura.scale = Vector2.ONE * ((1.15 if boss_style == "queen" else 1.0) if boss
 				else 0.68) * (1.0 + sin(age * 2.2) * 0.04)
 			aura.modulate.a = 0.22 + sin(age * 3.0) * 0.05
-	elif bool(data.get("flying", false)) or kind in ["drone", "jelly", "sentinel", "moth", "sporeling"]:
-		sprite.position.y = sprite_base_y + sin(age * 4.0 + seeded) * 3.0
-	else:
-		sprite.position.y = sprite_base_y + sin(age * 7.0 + seeded) * 0.8
+	elif _near:
+		sprite.position.y = sprite_base_y + sin(age * bob_freq + seeded) * bob_amp
 
 	var tint := Color.WHITE
 	if enraged:
@@ -258,7 +281,10 @@ func _process(delta: float) -> void:
 		tint = Color(1.08, 1.04, 1.14)
 	elif elite:
 		tint = Color(1.08, 1.05, 1.18)
-	sprite.modulate = Color(2.6, 2.6, 2.6) if flash > 0.0 else tint
+	if _near or boss or miniboss:
+		var flash_mod := Color(2.6, 2.6, 2.6) if flash > 0.0 else tint
+		if sprite.modulate != flash_mod:
+			sprite.modulate = flash_mod
 
 	# contact damage
 	if behavior != "bomber" and dist < radius + player.radius + 2.0 and contact_cd <= 0.0:
@@ -287,20 +313,9 @@ func _clamp_arena() -> void:
 
 
 func _separation() -> Vector2:
-	var push := Vector2.ZERO
-	var count := 0
-	for other in manager.query_circle(global_position, radius + 16.0):
-		if other == self or other.dead:
-			continue
-		var d: float = global_position.distance_to(other.global_position)
-		if d > 0.01:
-			var overlap: float = (radius + other.radius) - d
-			if overlap > 0.0:
-				push += (global_position - other.global_position) / d * overlap * 5.0
-				count += 1
-				if count >= 6:
-					break
-	return push
+	if not _near:
+		return Vector2.ZERO
+	return manager.separation_push(global_position, self, radius)
 
 
 # ---------------------------------------------------------------- specialists

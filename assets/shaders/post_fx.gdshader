@@ -6,6 +6,7 @@ render_mode unshaded;
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 uniform float bloom_strength : hint_range(0.0, 4.0) = 0.95;
+uniform float bloom_quality : hint_range(0.0, 1.0) = 1.0;
 uniform float aberration : hint_range(0.0, 0.04) = 0.0;
 uniform float flash : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 flash_color : source_color = vec4(1.0, 0.94, 0.78, 1.0);
@@ -35,21 +36,28 @@ void fragment() {
 	// radial chromatic aberration
 	float ab = aberration * (0.35 + r2 * 2.2);
 	vec3 col;
-	col.r = texture(screen_texture, uv + radial * ab).r;
-	col.g = texture(screen_texture, uv).g;
-	col.b = texture(screen_texture, uv - radial * ab).b;
-
-	// cheap two-ring bloom
-	vec3 glow = vec3(0.0);
-	for (int i = 0; i < 8; i++) {
-		float a = float(i) * 0.785398;
-		vec2 o = vec2(cos(a), sin(a));
-		glow += texture(screen_texture, uv + o * 0.0034).rgb;
-		glow += texture(screen_texture, uv + o * 0.0078).rgb * 0.65;
+	if (ab > 0.0005) {
+		col.r = texture(screen_texture, uv + radial * ab).r;
+		col.g = texture(screen_texture, uv).g;
+		col.b = texture(screen_texture, uv - radial * ab).b;
+	} else {
+		col = texture(screen_texture, uv).rgb;
 	}
-	glow /= 13.2;
-	glow = max(glow - 0.60, 0.0) * 1.75;
-	col += glow * bloom_strength;
+
+	// cheap two-ring bloom (skipped entirely when bloom is off or on mobile)
+	float bloom = bloom_strength * bloom_quality;
+	if (bloom > 0.001) {
+		vec3 glow = vec3(0.0);
+		for (int i = 0; i < 8; i++) {
+			float a = float(i) * 0.785398;
+			vec2 o = vec2(cos(a), sin(a));
+			glow += texture(screen_texture, uv + o * 0.0034).rgb;
+			glow += texture(screen_texture, uv + o * 0.0078).rgb * 0.65;
+		}
+		glow /= 13.2;
+		glow = max(glow - 0.60, 0.0) * 1.75;
+		col += glow * bloom;
+	}
 
 	// radial anime speed lines (combo / dash / ultimate / boss finish)
 	float ang = atan(c.y, c.x);
