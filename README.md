@@ -99,8 +99,10 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 전선 선택·장비·친구 화면은 **1280×720 안전 영역**을 중앙에 두고, 남는 영역은 **풀블리드 블러 배경**으로 채워 검은 레터박스가 생기지 않습니다.
 - 일시정지·레벨업·결과 화면은 화면 전체를 어둡게 덮고 패널을 중앙에 배치합니다.
 - 폴드 폰의 외부/내부 화면 전환 시 viewport 크기 변경을 감지해 HUD·터치·메뉴 레이아웃을 다시 계산합니다.
-- **세로 모드**에서는 전투 카메라와 HUD가 세로 화면을 그대로 사용하고, 전선 선택은 **한 화면에 한 전선씩 보이는 대형 카드 캐러셀**로 재배치됩니다.
-- 장비·친구처럼 정보가 많은 화면은 1280×720 안전 영역을 유지한 채 중앙에 배치됩니다.
+- **세로 모드**에서는 전투 카메라가 더 가까이 당겨져 캐릭터가 크게 보이고, HUD도 **1.6~1.75배 확대**되어 타이머·체력·무기 슬롯 글자가 읽힙니다.
+- 세로 전선 선택은 **한 화면에 한 전선씩 보이는 대형 카드 캐러셀**로 재배치됩니다.
+- 세로 장비 화면은 장착 패널과 인벤토리 패널을 **위아래로 쌓고**, 친구 선택은 **3×2 카드 그리드**로 재배치합니다. 글자 크기는 가로 모드와 같습니다.
+- 일시정지·레벨업·결과 화면은 화면 중앙에 유지됩니다.
 
 ### 성능
 - 적이 많아질수록 무거워지던 구간을 모바일 기준으로 다시 손봤습니다.
@@ -354,7 +356,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![성운 미궁](screenshots/stage_maze.png) | ![종말 궤도](screenshots/stage_orbit.png) |
 | ![새벽의 문](screenshots/stage_dawn.png) | ![사막의 스콜피온](screenshots/boss_dunes.png) |
 | ![세로 타이틀](screenshots/title_portrait.png) | ![세로 전선 선택](screenshots/stage_select_portrait.png) |
-| ![세로 전투](screenshots/stage_dunes_portrait.png) | ![가로 전투](screenshots/gameplay_wide.png) |
+| ![세로 전투](screenshots/stage_dunes_portrait.png) | ![세로 장비](screenshots/equipment_portrait.png) |
+| ![세로 친구 선택](screenshots/characters_portrait.png) | ![15개 전선 선택](screenshots/stage_select_late.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
@@ -475,6 +478,8 @@ DalbearSurvival/
   godot --path . --resolution 720x1280 res://scenes/title.tscn -- --capture-title
   godot --path . --resolution 720x1280 res://scenes/stage_select.tscn -- --capture-select
   godot --path . --resolution 720x1280 res://scenes/main.tscn -- --stage=dunes --capture-game
+  godot --path . --resolution 720x1280 res://scenes/equipment.tscn -- --capture-equipment
+  godot --path . --resolution 720x1280 res://scenes/characters.tscn -- --capture-characters
   godot --path . res://scenes/main.tscn --rendering-method gl_compatibility -- --stage=dawn --bench-enemies=340
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression

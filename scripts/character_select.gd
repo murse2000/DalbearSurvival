@@ -9,6 +9,13 @@ const CARD_Y := 150.0
 var _args: PackedStringArray
 var _cards := {}
 var _message: Label
+var _portrait := false
+var _reloading := false
+
+
+func _is_portrait() -> bool:
+	var size := get_viewport_rect().size
+	return size.y > size.x
 
 
 func _ready() -> void:
@@ -19,8 +26,11 @@ func _ready() -> void:
 	_args = OS.get_cmdline_user_args()
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
+	_portrait = _is_portrait()
 	_build()
-	UIFit.wrap_menu(self)
+	UIFit.wrap_menu(self, "res://assets/art/ui/menu_backdrop.png",
+		UIFit.PORTRAIT if _portrait else UIFit.DESIGN)
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	_refresh_cards()
 	if "--capture-characters" in _args:
 		_capture()
@@ -28,15 +38,29 @@ func _ready() -> void:
 		_test_characters.call_deferred()
 
 
+func _on_viewport_resized() -> void:
+	if _reloading:
+		return
+	if _is_portrait() == _portrait:
+		return
+	_reloading = true
+	get_tree().reload_current_scene.call_deferred()
+
+
 func _build() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := TextureRect.new()
 	bg.texture = load("res://assets/art/ui/title_bg.png")
-	bg.position = Vector2(-26, -14)
-	bg.size = Vector2(1332, 748)
+	if _portrait:
+		bg.position = Vector2(-180, -14)
+		bg.size = Vector2(1080, 1308)
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	else:
+		bg.position = Vector2(-26, -14)
+		bg.size = Vector2(1332, 748)
+		bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -49,48 +73,60 @@ func _build() -> void:
 	add_child(shade)
 
 	var over := UIKit.label("FRIENDS OF DALBEAR  ·  DALBEAR.COM", 13, UIKit.MINT)
-	over.position = Vector2(56, 26)
+	over.position = Vector2(26, 20) if _portrait else Vector2(56, 26)
 	add_child(over)
-	var title := UIKit.label("달베어의 친구들", 44, UIKit.GOLD, 7)
-	title.position = Vector2(52, 42)
+	var title := UIKit.label("달베어의 친구들", 40 if _portrait else 44, UIKit.GOLD, 7)
+	title.position = Vector2(24, 38) if _portrait else Vector2(52, 42)
 	add_child(title)
-	var sub := UIKit.label("다섯 명의 친구, 다섯 가지 전투 방식. 친구마다 전용 장비 세트가 함께합니다.", 15, UIKit.CREAM)
-	sub.position = Vector2(56, 96)
+	var sub := UIKit.label("다섯 명의 친구, 다섯 가지 전투 방식. 친구마다 전용 장비 세트가 함께합니다.", 14 if _portrait else 15, UIKit.CREAM)
+	sub.position = Vector2(26, 94) if _portrait else Vector2(56, 96)
 	add_child(sub)
 
 	var back := UIKit.button("← 돌아가기", Vector2(164, 42))
-	back.position = Vector2(1074, 30)
+	back.position = Vector2(540, 22) if _portrait else Vector2(1074, 30)
 	back.add_theme_font_size_override("font_size", 18)
 	back.pressed.connect(_go_back)
 	add_child(back)
 
 	var line := ColorRect.new()
 	line.color = Color(0.85, 0.68, 0.35, 0.28)
-	line.position = Vector2(36, 132)
-	line.size = Vector2(1208, 1)
+	line.position = Vector2(26, 130) if _portrait else Vector2(36, 132)
+	line.size = Vector2(668, 1) if _portrait else Vector2(1208, 1)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(line)
 
-	var start_x := (1280.0 - (CARD_SIZE.x * 5.0 + CARD_GAP * 4.0)) * 0.5
-	for i in CharacterData.ORDER.size():
-		var id: String = CharacterData.ORDER[i]
-		_make_card(id, Vector2(start_x + i * (CARD_SIZE.x + CARD_GAP), CARD_Y))
+	if _portrait:
+		# 3 columns x 2 rows at full card size; the last row holds two centered
+		# cards so the roster does not look left-heavy.
+		for i in CharacterData.ORDER.size():
+			var id: String = CharacterData.ORDER[i]
+			var x := 15.0 + float(i % 3) * 236.0
+			var y := 150.0
+			if i >= 3:
+				x = 133.0 + float(i - 3) * 236.0
+				y = 602.0
+			_make_card(id, Vector2(x, y))
+	else:
+		var start_x := (1280.0 - (CARD_SIZE.x * 5.0 + CARD_GAP * 4.0)) * 0.5
+		for i in CharacterData.ORDER.size():
+			var id: String = CharacterData.ORDER[i]
+			_make_card(id, Vector2(start_x + i * (CARD_SIZE.x + CARD_GAP), CARD_Y))
 
 	var hint := UIKit.label("선택한 친구의 전용 장비는 인벤토리에 추가되며, 더 강한 장비가 없으면 자동 장착됩니다.",
 		11, UIKit.MUTED)
-	hint.position = Vector2(0, 606)
-	hint.size = Vector2(1280, 18)
+	hint.position = Vector2(0, 1080) if _portrait else Vector2(0, 606)
+	hint.size = Vector2(720, 18) if _portrait else Vector2(1280, 18)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 	hint = UIKit.label("전용 장비는 해당 친구만 장착할 수 있습니다 · ESC 돌아가기", 10, Color(0.47, 0.56, 0.64))
-	hint.position = Vector2(0, 630)
-	hint.size = Vector2(1280, 16)
+	hint.position = Vector2(0, 1106) if _portrait else Vector2(0, 630)
+	hint.size = Vector2(720, 16) if _portrait else Vector2(1280, 16)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 
 	_message = UIKit.label("", 13, UIKit.MINT)
-	_message.position = Vector2(56, 668)
-	_message.size = Vector2(1168, 20)
+	_message.position = Vector2(26, 1200) if _portrait else Vector2(56, 668)
+	_message.size = Vector2(668, 20) if _portrait else Vector2(1168, 20)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_message)
 
@@ -327,6 +363,7 @@ func _capture() -> void:
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/characters.png")
-	print("CAPTURED: ", dir + "/characters.png")
+	var shot := "characters" + ("_portrait" if _portrait else "")
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()

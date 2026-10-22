@@ -50,6 +50,15 @@ var _detail_type: Label
 var _detail_stats: Label
 var _detail_weapon: Label
 var _action_row: HBoxContainer
+var _portrait := false
+var _paper_pos := PAPER_PANEL_POS
+var _inv_pos := INV_PANEL_POS
+var _reloading := false
+
+
+func _is_portrait() -> bool:
+	var size := get_viewport_rect().size
+	return size.y > size.x
 
 
 func _ready() -> void:
@@ -60,8 +69,15 @@ func _ready() -> void:
 	_args = OS.get_cmdline_user_args()
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
+	_portrait = _is_portrait()
+	if _portrait:
+		# Two 1280x720 panels stacked at 1:1 so their text keeps its design size.
+		_paper_pos = Vector2(26, 140)
+		_inv_pos = Vector2(100, 706)
 	_build()
-	UIFit.wrap_menu(self)
+	UIFit.wrap_menu(self, "res://assets/art/ui/menu_backdrop.png",
+		UIFit.PORTRAIT if _portrait else UIFit.DESIGN)
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	_refresh_all()
 	if "--capture-equipment" in _args:
 		_capture()
@@ -71,15 +87,29 @@ func _ready() -> void:
 		_test_equipment.call_deferred()
 
 
+func _on_viewport_resized() -> void:
+	if _reloading:
+		return
+	if _is_portrait() == _portrait:
+		return
+	_reloading = true
+	get_tree().reload_current_scene.call_deferred()
+
+
 func _build() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := TextureRect.new()
 	bg.texture = load("res://assets/art/ui/title_bg.png")
-	bg.position = Vector2(-26, -14)
-	bg.size = Vector2(1332, 748)
+	if _portrait:
+		bg.position = Vector2(-180, -14)
+		bg.size = Vector2(1080, 1308)
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	else:
+		bg.position = Vector2(-26, -14)
+		bg.size = Vector2(1332, 748)
+		bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -92,36 +122,39 @@ func _build() -> void:
 	add_child(shade)
 
 	var over := UIKit.label("ARMORY  ·  DALBEAR.COM", 13, UIKit.MINT)
-	over.position = Vector2(56, 26)
+	over.position = Vector2(26, 20) if _portrait else Vector2(56, 26)
 	add_child(over)
-	var title := UIKit.label("장비 & 인벤토리", 46, UIKit.GOLD, 7)
-	title.position = Vector2(52, 42)
+	var title := UIKit.label("장비 & 인벤토리", 40 if _portrait else 46, UIKit.GOLD, 7)
+	title.position = Vector2(24, 34) if _portrait else Vector2(52, 42)
 	add_child(title)
-	var sub := UIKit.label("장비를 장착하고 달빛 조각으로 강화하세요. 다음 밤이 더 길어집니다.", 16, UIKit.CREAM)
-	sub.position = Vector2(56, 98)
+	var sub := UIKit.label("장비를 장착하고 달빛 조각으로 강화하세요. 다음 밤이 더 길어집니다.", 14 if _portrait else 16, UIKit.CREAM)
+	sub.position = Vector2(26, 92) if _portrait else Vector2(56, 98)
 	add_child(sub)
 
 	var back := UIKit.button("← 돌아가기", Vector2(164, 42))
-	back.position = Vector2(1074, 30)
+	back.position = Vector2(540, 22) if _portrait else Vector2(1074, 30)
 	back.add_theme_font_size_override("font_size", 18)
 	back.pressed.connect(_go_back)
 	add_child(back)
 
 	var shard_panel := UIKit.panel(Color(0.06, 0.09, 0.13, 0.96), UIKit.GOLD.darkened(0.45), 1)
-	UIKit.place(shard_panel, 916, 84, 308, 40)
+	if _portrait:
+		UIKit.place(shard_panel, 500, 68, 194, 36)
+	else:
+		UIKit.place(shard_panel, 916, 84, 308, 40)
 	add_child(shard_panel)
 	var shard_icon := UIKit.icon("res://assets/art/ui/icon_moon.png", 20)
-	UIKit.place(shard_icon, 12, 10, 20, 20)
+	UIKit.place(shard_icon, 12, 8 if _portrait else 10, 20, 20)
 	shard_panel.add_child(shard_icon)
 	_shards_label = UIKit.label("", 16, UIKit.GOLD)
-	UIKit.place(_shards_label, 38, 8, 258, 24)
+	UIKit.place(_shards_label, 38, 6 if _portrait else 8, 150 if _portrait else 258, 24)
 	_shards_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	shard_panel.add_child(_shards_label)
 
 	var header_line := ColorRect.new()
 	header_line.color = Color(0.85, 0.68, 0.35, 0.28)
-	header_line.position = Vector2(36, 126)
-	header_line.size = Vector2(1208, 1)
+	header_line.position = Vector2(26, 130) if _portrait else Vector2(36, 126)
+	header_line.size = Vector2(668, 1) if _portrait else Vector2(1208, 1)
 	header_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(header_line)
 
@@ -129,15 +162,15 @@ func _build() -> void:
 	_build_inventory_panel()
 
 	_message = UIKit.label("", 14, UIKit.MINT)
-	_message.position = Vector2(36, 696)
-	_message.size = Vector2(1208, 20)
+	_message.position = Vector2(26, 1262) if _portrait else Vector2(36, 696)
+	_message.size = Vector2(668, 18) if _portrait else Vector2(1208, 20)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_message)
 
 
 func _build_equipment_panel() -> void:
 	var panel := UIKit.panel(Color(0.045, 0.07, 0.105, 0.95), UIKit.BORDER, 2)
-	panel.position = PAPER_PANEL_POS
+	panel.position = _paper_pos
 	panel.size = PAPER_PANEL_SIZE
 	add_child(panel)
 
@@ -287,7 +320,7 @@ func _empty_slot_icon(slot: String) -> String:
 
 func _build_inventory_panel() -> void:
 	var panel := UIKit.panel(Color(0.045, 0.07, 0.105, 0.95), UIKit.BORDER, 2)
-	panel.position = INV_PANEL_POS
+	panel.position = _inv_pos
 	panel.size = INV_PANEL_SIZE
 	add_child(panel)
 
@@ -827,8 +860,9 @@ func _capture() -> void:
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/equipment.png")
-	print("CAPTURED: ", dir + "/equipment.png")
+	var shot := "equipment" + ("_portrait" if _portrait else "")
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()
 
 
@@ -842,8 +876,9 @@ func _capture_detail() -> void:
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/equipment_detail.png")
-	print("CAPTURED: ", dir + "/equipment_detail.png")
+	var shot := "equipment_detail" + ("_portrait" if _portrait else "")
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()
 
 

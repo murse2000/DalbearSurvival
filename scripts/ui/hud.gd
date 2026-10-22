@@ -57,6 +57,14 @@ var _combo_banner_tw: Tween
 var _warning_id := 0
 var _warning_tw: Tween
 var _time := 0.0
+var _hud_scale := 1.0
+
+
+func _hud_scale_for(vp: Vector2) -> float:
+	if vp.y <= vp.x:
+		return 1.0
+	# Taller screens get a bigger HUD, capped so near-square folds stay sane.
+	return clampf(1.0 + (vp.y / maxf(1.0, vp.x) - 1.0) * 0.75, 1.0, 1.75)
 
 
 func _ready() -> void:
@@ -317,10 +325,14 @@ func bind(p, m, w) -> void:
 
 
 func _fit_ui() -> void:
-	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var phys: Vector2 = get_viewport().get_visible_rect().size
+	# Portrait phones are much taller than the 1280x720 HUD design, so scale
+	# the whole HUD up instead of leaving tiny text on a tall screen.
+	_hud_scale = _hud_scale_for(phys)
+	var vp: Vector2 = phys / _hud_scale
 	root.position = Vector2.ZERO
+	root.scale = Vector2(_hud_scale, _hud_scale)
 	root.size = vp
-	root.scale = Vector2.ONE
 	if _xp_bg != null:
 		_xp_bg.size = Vector2(vp.x, 18)
 	if xp_bar != null:
@@ -332,17 +344,21 @@ func _fit_ui() -> void:
 	if warning_panel != null:
 		warning_panel.position = Vector2(vp.x * 0.5 - 360.0, 196)
 	if boss_panel != null:
-		boss_panel.position = Vector2(vp.x * 0.5 - 250.0, vp.y - 152.0)
+		var boss_y := (vp.y - 460.0) if _hud_scale > 1.01 else (vp.y - 152.0)
+		boss_panel.position = Vector2(vp.x * 0.5 - 250.0, boss_y)
+	var bottom_y := (vp.y - 96.0) if _hud_scale > 1.01 else (vp.y - 74.0)
 	if hp_panel != null:
-		hp_panel.position = Vector2(24, vp.y - 74.0)
+		# Portrait puts HP under the level/stage chips; the bottom row is kept
+		# for weapons and passives so the two do not overlap.
+		hp_panel.position = Vector2(24, 110) if _hud_scale > 1.01 else Vector2(24, bottom_y)
 	if _weapon_panel != null:
-		_weapon_panel.position = Vector2(vp.x * 0.5 - 258.0, vp.y - 74.0)
+		_weapon_panel.position = Vector2(vp.x * 0.5 - 258.0, bottom_y)
 	if _passive_panel != null:
-		_passive_panel.position = Vector2(vp.x - 364.0, vp.y - 74.0)
+		_passive_panel.position = Vector2(vp.x - 364.0, bottom_y)
 	if _dash_root != null:
-		_dash_root.position = Vector2(vp.x * 0.5 + 168.0, vp.y - 70.0)
+		_dash_root.position = Vector2(vp.x * 0.5 + 168.0, bottom_y + 4.0)
 	if _ult_root != null:
-		_ult_root.position = Vector2(vp.x * 0.5 + 220.0, vp.y - 70.0)
+		_ult_root.position = Vector2(vp.x * 0.5 + 220.0, bottom_y + 4.0)
 	if _combo_label != null:
 		_combo_label.size = Vector2(360, 40)
 		_combo_label.pivot_offset = Vector2(180, 20)
@@ -355,8 +371,8 @@ func _fit_ui() -> void:
 func _update_combo_anchor() -> void:
 	if _combo_label == null or player == null or not is_instance_valid(player):
 		return
-	var screen: Vector2 = player.get_global_transform_with_canvas().origin
-	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var screen: Vector2 = player.get_global_transform_with_canvas().origin / _hud_scale
+	var vp: Vector2 = get_viewport().get_visible_rect().size / _hud_scale
 	var x := clampf(screen.x, 200.0, maxf(200.0, vp.x - 200.0))
 	var y := clampf(screen.y, 150.0, maxf(150.0, vp.y - 190.0))
 	_combo_label.position = Vector2(x - 180.0, y - 102.0)
