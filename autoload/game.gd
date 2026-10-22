@@ -27,7 +27,7 @@ var running := false
 var time := 0.0
 var level := 1
 var xp := 0
-var xp_need := 11
+var xp_need := 12
 var kills := 0
 var pending_levelups := 0
 var levelup_open := false
@@ -146,7 +146,7 @@ func _reset() -> void:
 	time = 0.0
 	level = 1
 	xp = 0
-	xp_need = 11
+	xp_need = GameData.xp_requirement(1)
 	kills = 0
 	pending_levelups = 0
 	levelup_open = false
@@ -244,7 +244,7 @@ func load_run_checkpoint() -> Dictionary:
 			"time": checkpoint_time,
 			"level": maxi(1, int(cfg.get_value("meta", "level", 1))),
 			"xp": maxi(0, int(cfg.get_value("meta", "xp", 0))),
-			"xp_need": maxi(1, int(cfg.get_value("meta", "xp_need", 11))),
+			"xp_need": maxi(1, int(cfg.get_value("meta", "xp_need", 12))),
 			"kills": maxi(0, int(cfg.get_value("meta", "kills", 0))),
 			"pending_levelups": maxi(0, int(cfg.get_value("meta", "pending_levelups", 0))),
 			"levelup_open": bool(cfg.get_value("meta", "levelup_open", false)),
@@ -340,7 +340,7 @@ func _apply_run_meta(meta: Dictionary) -> void:
 	time = maxf(0.0, float(meta.get("time", 0.0)))
 	level = maxi(1, int(meta.get("level", 1)))
 	xp = maxi(0, int(meta.get("xp", 0)))
-	xp_need = maxi(1, int(meta.get("xp_need", 11)))
+	xp_need = GameData.xp_requirement(level)
 	kills = maxi(0, int(meta.get("kills", 0)))
 	pending_levelups = maxi(0, int(meta.get("pending_levelups", 0)))
 	levelup_open = pending_levelups > 0
@@ -359,7 +359,7 @@ func add_xp(amount: int) -> void:
 	while xp >= xp_need:
 		xp -= xp_need
 		level += 1
-		xp_need = 6 + level * 5
+		xp_need = GameData.xp_requirement(level)
 		pending_levelups += 1
 	xp_changed.emit(xp, xp_need, level)
 	if pending_levelups > 0 and not levelup_open:

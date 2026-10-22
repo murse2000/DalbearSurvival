@@ -2,7 +2,10 @@ extends CanvasLayer
 
 ## In-game HUD: XP, timer, kills, HP, skills, passives, boss bar, warnings.
 
-const WEAPON_ORDER := ["moon_shot", "satellite", "pulse", "laser"]
+const WEAPON_ORDER := [
+	"moon_shot", "satellite", "pulse", "laser",
+	"meteor", "chain", "singularity", "blades",
+]
 const PASSIVE_ORDER := ["boots", "core", "coolant", "heart", "magnet", "star", "armor", "nano"]
 
 var player
@@ -202,13 +205,13 @@ func _build() -> void:
 
 	# weapon slots
 	var weapon_panel := UIKit.panel(Color(0.045, 0.07, 0.105, 0.92), UIKit.BORDER, 2)
-	UIKit.place(weapon_panel, 475, 646, 330, 52)
+	UIKit.place(weapon_panel, 382, 646, 423, 52)
 	root.add_child(weapon_panel)
 	_weapon_panel = weapon_panel
 	for i in WEAPON_ORDER.size():
 		var info: Dictionary = GameData.WEAPONS[WEAPON_ORDER[i]]
 		var slot := _make_weapon_slot(info)
-		slot["root"].position = Vector2(18 + i * 77, 3)
+		slot["root"].position = Vector2(9 + i * 51, 3)
 		weapon_panel.add_child(slot["root"])
 		_weapon_slots.append(slot)
 
@@ -265,20 +268,20 @@ func _make_ability_slot(icon_path: String, key_text: String, x: float, accent: C
 
 func _make_weapon_slot(info: Dictionary) -> Dictionary:
 	var p := UIKit.panel(Color(0.065, 0.10, 0.145, 0.95), UIKit.BORDER, 2)
-	p.size = Vector2(62, 46)
-	var icon := UIKit.icon(info["icon"], 38)
-	icon.position = Vector2(11, 3)
+	p.size = Vector2(48, 46)
+	var icon := UIKit.icon(info["icon"], 30)
+	icon.position = Vector2(9, 4)
 	icon.modulate.a = 0.13
 	p.add_child(icon)
-	var lv := UIKit.label("", 13, UIKit.GOLD, 2)
-	lv.position = Vector2(42, 28)
-	lv.size = Vector2(16, 14)
+	var lv := UIKit.label("", 11, UIKit.GOLD, 2)
+	lv.position = Vector2(30, 29)
+	lv.size = Vector2(14, 13)
 	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	p.add_child(lv)
 	var accent := ColorRect.new()
 	accent.color = Color(info["color"].r, info["color"].g, info["color"].b, 0.0)
 	accent.position = Vector2(2, 42)
-	accent.size = Vector2(58, 2)
+	accent.size = Vector2(44, 2)
 	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(accent)
 	return {"root": p, "icon": icon, "level": lv, "accent": accent, "id": info}
@@ -334,7 +337,7 @@ func _fit_ui() -> void:
 	if hp_panel != null:
 		hp_panel.position = Vector2(24, vp.y - 74.0)
 	if _weapon_panel != null:
-		_weapon_panel.position = Vector2(vp.x * 0.5 - 165.0, vp.y - 74.0)
+		_weapon_panel.position = Vector2(vp.x * 0.5 - 258.0, vp.y - 74.0)
 	if _passive_panel != null:
 		_passive_panel.position = Vector2(vp.x - 364.0, vp.y - 74.0)
 	if _dash_root != null:

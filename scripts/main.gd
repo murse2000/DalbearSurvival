@@ -146,6 +146,12 @@ func _ready() -> void:
 		_capture_abilities()
 	elif "--test-abilities" in _args:
 		_test_abilities()
+	elif "--capture-new-skills" in _args:
+		_capture_new_skills()
+	elif "--test-new-skills" in _args:
+		_test_new_skills()
+	elif "--test-balance" in _args:
+		_test_balance()
 	elif "--test-enemy-projectile" in _args:
 		_test_enemy_projectile()
 	elif "--test-background-pause" in _args:
@@ -448,6 +454,82 @@ func _test_abilities() -> void:
 	print("ABILITY TEST OK dash_cd=", player.dash_cd, " charge=", player.ultimate_charge,
 		" kills=", Game.kills, " enemies=", manager.enemies.size())
 	get_tree().quit()
+
+
+func _prepare_new_skills(level: int = 4) -> void:
+	for id in ["meteor", "chain", "singularity", "blades"]:
+		if not player.weapon_levels.has(id):
+			player.add_weapon(id)
+		while int(player.weapon_levels.get(id, 0)) < level:
+			player.upgrade_weapon(id)
+	player.recalc_stats()
+
+
+func _test_new_skills() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	manager.spawn_timer = 999.0
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	player.invuln = 999.0
+	var kills_before := Game.kills
+	_prepare_new_skills(4)
+	var kinds := ["blob", "grey", "jelly", "drone", "mech"]
+	for i in 30:
+		var a := TAU * float(i) / 30.0 + 0.17
+		var d := 145.0 + float(i % 5) * 30.0
+		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * d, false)
+	await get_tree().create_timer(4.2, true, false, true).timeout
+	var new_weapons_ok := true
+	for id in ["meteor", "chain", "singularity", "blades"]:
+		if int(player.weapon_levels.get(id, 0)) < 4:
+			new_weapons_ok = false
+	var slots_ok: bool = hud != null and hud._weapon_slots.size() == 8
+	var kills_gained := Game.kills - kills_before
+	print("NEW SKILLS TEST weapons=%s slots=%s kills=%d enemies=%d levels=%s" % [
+		new_weapons_ok, slots_ok, kills_gained, manager.enemies.size(), player.weapon_levels,
+	])
+	if not new_weapons_ok or not slots_ok or kills_gained < 5:
+		push_error("NEW SKILLS TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("NEW SKILLS TEST OK")
+	get_tree().quit()
+
+
+func _test_balance() -> void:
+	var reqs: Array = []
+	for lv in [1, 2, 5, 10, 20, 30]:
+		reqs.append(GameData.xp_requirement(int(lv)))
+	var spawn_at_60 := GameData.spawn_interval("forest", 60.0, "normal")
+	print("BALANCE TEST xp=%s spawn60=%.3f" % [reqs, spawn_at_60])
+	if int(reqs[3]) < 150 or int(reqs[4]) < 350 or spawn_at_60 > 0.65:
+		push_error("BALANCE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("BALANCE TEST OK")
+	get_tree().quit()
+
+
+func _capture_new_skills() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	manager.spawn_timer = 999.0
+	for e in manager.enemies.duplicate():
+		if is_instance_valid(e):
+			e.queue_free()
+	manager.enemies.clear()
+	player.invuln = 999.0
+	_prepare_new_skills(5)
+	var kinds := ["blob", "grey", "jelly", "drone", "mech"]
+	for i in 34:
+		var a := TAU * float(i) / 34.0 + 0.11
+		var d := 145.0 + float(i % 5) * 28.0
+		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * d, i % 11 == 0)
+	await get_tree().create_timer(1.35, true, false, true).timeout
+	if hud != null:
+		hud.warning_panel.visible = false
+	await _capture("new_skills")
 
 
 func _capture_evolution() -> void:

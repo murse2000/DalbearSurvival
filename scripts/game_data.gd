@@ -44,6 +44,42 @@ const WEAPONS := {
 		"max_level": 6,
 		"color": Color(0.75, 0.95, 0.85),
 	},
+	"meteor": {
+		"name": "유성 낙하",
+		"tag": "METEOR FALL",
+		"desc": "하늘에서 달빛 유성을 소환해 적 밀집 지역을 폭격합니다.",
+		"icon": "res://assets/art/ui/icon_meteor.png",
+		"scene": "res://scripts/weapons/meteor_weapon.gd",
+		"max_level": 6,
+		"color": Color(1.0, 0.58, 0.25),
+	},
+	"chain": {
+		"name": "성운 연쇄",
+		"tag": "NEBULA CHAIN",
+		"desc": "성운 전류가 적들 사이를 연쇄로 튕기며 감전시킵니다.",
+		"icon": "res://assets/art/ui/icon_chain.png",
+		"scene": "res://scripts/weapons/chain_weapon.gd",
+		"max_level": 6,
+		"color": Color(0.55, 0.92, 1.0),
+	},
+	"singularity": {
+		"name": "월식 특이점",
+		"tag": "ECLIPSE SINGULARITY",
+		"desc": "작은 월식을 소환해 적을 끌어당기고 붕괴시킵니다.",
+		"icon": "res://assets/art/ui/icon_singularity.png",
+		"scene": "res://scripts/weapons/singularity_weapon.gd",
+		"max_level": 6,
+		"color": Color(0.78, 0.45, 1.0),
+	},
+	"blades": {
+		"name": "월광 칼날",
+		"tag": "MOONLIT BLADES",
+		"desc": "달빛 칼날이 곰 주위를 회전하며 적을 베고 참격파를 방출합니다.",
+		"icon": "res://assets/art/ui/icon_blades.png",
+		"scene": "res://scripts/weapons/blades_weapon.gd",
+		"max_level": 6,
+		"color": Color(1.0, 0.82, 0.42),
+	},
 }
 
 const WEAPON_STATS := {
@@ -78,6 +114,38 @@ const WEAPON_STATS := {
 		{"cooldown": 1.8, "damage": 72.0, "width": 27.0, "length": 530.0},
 		{"cooldown": 1.55, "damage": 92.0, "width": 31.0, "length": 580.0},
 		{"cooldown": 1.3, "damage": 118.0, "width": 38.0, "length": 650.0},
+	],
+	"meteor": [
+		{"cooldown": 3.0, "damage": 38.0, "radius": 62.0, "strikes": 1, "burn_damage": 0.0},
+		{"cooldown": 2.8, "damage": 50.0, "radius": 68.0, "strikes": 1, "burn_damage": 6.0},
+		{"cooldown": 2.55, "damage": 64.0, "radius": 74.0, "strikes": 2, "burn_damage": 9.0},
+		{"cooldown": 2.3, "damage": 82.0, "radius": 80.0, "strikes": 2, "burn_damage": 13.0},
+		{"cooldown": 2.05, "damage": 104.0, "radius": 88.0, "strikes": 3, "burn_damage": 18.0},
+		{"cooldown": 1.8, "damage": 132.0, "radius": 96.0, "strikes": 3, "burn_damage": 24.0},
+	],
+	"chain": [
+		{"cooldown": 2.6, "damage": 30.0, "chains": 1, "jumps": 4, "range": 180.0},
+		{"cooldown": 2.4, "damage": 38.0, "chains": 1, "jumps": 5, "range": 190.0},
+		{"cooldown": 2.2, "damage": 48.0, "chains": 2, "jumps": 5, "range": 205.0},
+		{"cooldown": 1.95, "damage": 60.0, "chains": 2, "jumps": 6, "range": 220.0},
+		{"cooldown": 1.7, "damage": 76.0, "chains": 3, "jumps": 7, "range": 235.0},
+		{"cooldown": 1.45, "damage": 96.0, "chains": 3, "jumps": 8, "range": 255.0},
+	],
+	"singularity": [
+		{"cooldown": 5.6, "damage": 90.0, "radius": 105.0, "pull_radius": 230.0, "pull_time": 0.75, "pull_speed": 180.0, "tick_damage": 4.0, "tick_interval": 0.25},
+		{"cooldown": 5.2, "damage": 112.0, "radius": 116.0, "pull_radius": 250.0, "pull_time": 0.82, "pull_speed": 200.0, "tick_damage": 6.0, "tick_interval": 0.23},
+		{"cooldown": 4.8, "damage": 138.0, "radius": 128.0, "pull_radius": 275.0, "pull_time": 0.9, "pull_speed": 220.0, "tick_damage": 8.0, "tick_interval": 0.21},
+		{"cooldown": 4.4, "damage": 168.0, "radius": 140.0, "pull_radius": 300.0, "pull_time": 0.98, "pull_speed": 245.0, "tick_damage": 11.0, "tick_interval": 0.19},
+		{"cooldown": 3.9, "damage": 204.0, "radius": 155.0, "pull_radius": 328.0, "pull_time": 1.05, "pull_speed": 272.0, "tick_damage": 14.0, "tick_interval": 0.17},
+		{"cooldown": 3.3, "damage": 248.0, "radius": 172.0, "pull_radius": 360.0, "pull_time": 1.15, "pull_speed": 300.0, "tick_damage": 18.0, "tick_interval": 0.15},
+	],
+	"blades": [
+		{"damage": 12.0, "count": 2, "radius": 58.0, "spin": 3.0, "hit_cd": 0.42, "wave_cd": 4.5, "wave_damage": 22.0},
+		{"damage": 16.0, "count": 2, "radius": 63.0, "spin": 3.3, "hit_cd": 0.38, "wave_cd": 4.2, "wave_damage": 30.0},
+		{"damage": 21.0, "count": 3, "radius": 69.0, "spin": 3.6, "hit_cd": 0.34, "wave_cd": 3.8, "wave_damage": 40.0},
+		{"damage": 27.0, "count": 3, "radius": 76.0, "spin": 4.0, "hit_cd": 0.30, "wave_cd": 3.4, "wave_damage": 54.0},
+		{"damage": 35.0, "count": 4, "radius": 84.0, "spin": 4.4, "hit_cd": 0.26, "wave_cd": 3.0, "wave_damage": 72.0},
+		{"damage": 45.0, "count": 5, "radius": 92.0, "spin": 4.8, "hit_cd": 0.22, "wave_cd": 2.5, "wave_damage": 96.0},
 	],
 	"moon_barrage": [
 		{"cooldown": 2.8, "damage": 58.0, "strikes": 3, "radius": 68.0},
@@ -597,7 +665,8 @@ static func spawn_interval(stage_id: String, t: float, diff_id: String) -> float
 	var st := stage(stage_id)
 	var d := difficulty(diff_id)
 	var p := clampf(t / float(st["duration"]), 0.0, 1.0)
-	return lerpf(1.05, 0.34, p) * float(d["spawn"])
+	# 1.5x the original spawn cadence while keeping difficulty multipliers.
+	return lerpf(1.05, 0.34, p) * float(d["spawn"]) / 1.5
 
 
 static func spawn_batch(t: float, duration: float = 240.0) -> int:
@@ -659,6 +728,14 @@ static func weapon_detail(id: String, level: int) -> String:
 			return "피해 %d · 반경 %d · %.1f초" % [int(s.damage), int(s.radius), s.cooldown]
 		"laser":
 			return "피해 %d · 관통 · %.1f초" % [int(s.damage), s.cooldown]
+		"meteor":
+			return "피해 %d · 유성 %d발 · 반경 %d" % [int(s.damage), int(s.strikes), int(s.radius)]
+		"chain":
+			return "피해 %d · 연쇄 %d회 · 줄기 %d개" % [int(s.damage), int(s.jumps), int(s.chains)]
+		"singularity":
+			return "피해 %d · 반경 %d · %.1f초" % [int(s.damage), int(s.radius), s.cooldown]
+		"blades":
+			return "피해 %d · 칼날 %d개 · 참격 %d" % [int(s.damage), int(s.count), int(s.wave_damage)]
 	return ""
 
 
@@ -703,6 +780,14 @@ static func passive_detail(id: String, level: int) -> String:
 		"nano":
 			return "초당 회복 +0.5 (총 +%.1f)" % total
 	return ""
+
+
+static func xp_requirement(level: int) -> int:
+	var lv := maxi(1, level)
+	if lv <= 1:
+		return 12
+	# Levels 2+ scale much faster than the old linear 6 + level * 5 curve.
+	return int(round(10.0 + float(lv) * 5.5 + pow(float(lv), 1.62) * 2.4))
 
 
 static func format_time(seconds: float) -> String:

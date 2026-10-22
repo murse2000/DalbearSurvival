@@ -10,6 +10,10 @@ const WEAPON_SCRIPTS := {
 	"satellite": preload("res://scripts/weapons/satellite_weapon.gd"),
 	"pulse": preload("res://scripts/weapons/pulse_weapon.gd"),
 	"laser": preload("res://scripts/weapons/laser_weapon.gd"),
+	"meteor": preload("res://scripts/weapons/meteor_weapon.gd"),
+	"chain": preload("res://scripts/weapons/chain_weapon.gd"),
+	"singularity": preload("res://scripts/weapons/singularity_weapon.gd"),
+	"blades": preload("res://scripts/weapons/blades_weapon.gd"),
 }
 const PICKUP_TEXTURES := {
 	0: preload("res://assets/art/fx/gem_0.png"),

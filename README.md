@@ -5,7 +5,7 @@
 > 외계 함대가 지구를 덮친 밤, 세 개의 전선을 지켜낸다.
 
 **3개 스테이지 × 4분**, **4단계 난이도**, **13종 외계인 + 3종 보스**,
-**무기 4종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
+**무기 8종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
@@ -134,7 +134,9 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 외계인을 쓰러뜨리면 경험치 젬이 떨어집니다. 자력 범위 안에 들어오면 빨려옵니다.
 - 레벨 업마다 **3개의 강화 카드** 중 하나를 고릅니다.
 - **리롤 2회 · 밴 1회**가 런마다 주어집니다. 카드 아래 버튼 또는 `R` / `B`로 사용합니다.
-- 무기 4종 × 최대 6레벨, 패시브 8종 × 최대 5레벨.
+- 무기 8종 × 최대 6레벨, 패시브 8종 × 최대 5레벨.
+- 레벨업 필요 경험치는 레벨이 오를수록 **비선형으로 크게 증가**합니다. (Lv.10 165 · Lv.20 428 · Lv.30 768)
+- 적 출몰량은 이전 버전보다 **1.5배** 증가했습니다. 대신 무기 4종이 새로 추가되어 대응 선택지가 늘었습니다.
 - 모든 강화가 끝나면 회복/경험치/필살기 카드가 등장합니다.
 
 ### 리롤 & 밴
@@ -151,6 +153,10 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | **위성 드론** | 곰 주위를 도는 위성. 접촉한 적을 연속 절단 |
 | **문 펄스** | 주변 적을 밀쳐내는 광역 충격파 |
 | **성광 레이저** | 일직선상의 모든 적을 관통하는 빔 |
+| **유성 낙하** | 적 밀집 지역에 유성을 소환. 다중 낙하·잔불 폭발 |
+| **성운 연쇄** | 적들 사이를 튕기는 연쇄 번개. 다중 줄기·감전 |
+| **월식 특이점** | 적을 끌어당기는 소형 월식. 붕괴 폭발로 마무리 |
+| **월광 칼날** | 주위를 회전하는 달빛 칼날 + 주기적 원형 참격파 |
 
 ### 무기 진화 (6Lv + 패시브 3Lv)
 무기를 6레벨까지 올리고 지정 패시브를 3레벨까지 올리면, 다음 레벨 업에서
@@ -164,6 +170,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 성광 레이저 6 + 행운의 별 3 | **성운 절단** | 3갈래 관통 성운 빔 |
 
 조건을 충족하면 화면에 진화 힌트가 표시되고, 일시정지 화면에도 규칙이 나옵니다.
+신규 4종(유성 낙하·성운 연쇄·월식 특이점·월광 칼날)은 진화 없이 **6레벨**까지 성장합니다.
 
 ### 대시 & 궁극기
 - **대시 (Space / 패드 B)**: 0.16초 동안 빠르게 이동하며 무적. 쿨다운 2초. 잔상과 파티클이 남습니다.
@@ -191,6 +198,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 적중/사망/폭발/픽업/레벨 업마다 **파티클 폭발 + 충격파 + 플래시**
 - 투사체 빛 궤적, 레이저 전격 아크, 보스 등장 빔, 보스 사망 연쇄 폭발 + 슬로우 모션
 - **대시 잔상 · 궁극기 달빛 심판 · 6연속 유성 폭격**
+- 신규 스킬 전용 연출: **유성 궤적·충격 화염**, **연쇄 번개 아크**, **월식 블랙홀·붕괴 플래시**, **회전 칼날·원형 참격파**
 - **콤보 시스템**: 연속 처치 시 화면 중앙 콤보 카운터, 10/25/50/100/150/200 콤보 마일스톤 버스트, 콤보 색상 변화
 - **히트스톱 · 화면 충격 줌 · 방사형 속도선 · 채도 펄스**로 강한 타격감
 - **궁극기/보스 격추 시 화면 왜곡·속도선·대형 플래시·슬로우 모션**
@@ -277,21 +285,22 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![모선 심장부](screenshots/stage_ship.png) | ![군체 여왕](screenshots/queen.png) |
 | ![모선 보스전](screenshots/boss.png) | ![최종 엔딩](screenshots/final_clear.png) |
 | ![무기 진화](screenshots/evolution.png) | ![진화 전투](screenshots/evolution_gameplay.png) |
-| ![대시·궁극기](screenshots/abilities.png) | ![게임플레이](screenshots/gameplay.png) |
+| ![신규 스킬](screenshots/new_skills.png) | ![게임플레이](screenshots/gameplay.png) |
+| ![대시·궁극기](screenshots/abilities.png) | ![50 콤보 연출](screenshots/combo.png) |
 | ![리롤·밴 카드](screenshots/levelup.png) | ![밴 모드](screenshots/banish.png) |
 | ![연출 설정](screenshots/settings.png) | ![일시정지 설정](screenshots/pause_settings.png) |
 | ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
 | ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
 | ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
 | ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
-| ![이어하기](screenshots/title_continue.png) | ![50 콤보 연출](screenshots/combo.png) |
+| ![이어하기](screenshots/title_continue.png) | ![타이틀](screenshots/title.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
 `screenshots/equipment_detail.png`, `screenshots/characters.png`, `screenshots/rewards.png`,
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
-`screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/combo.png`,
-`screenshots/title.png`
+`screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
+`screenshots/combo.png`, `screenshots/title.png`
 
 ---
 
@@ -364,6 +373,7 @@ DalbearSurvival/
   python gen_fx_ui.py
   python gen_evo_icons.py
   python gen_ability_icons.py
+  python gen_new_weapon_icons.py
   python gen_equipment_icons.py
   python gen_friends.py
   python gen_menu_backdrop.py
@@ -379,6 +389,9 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --capture-boss
   godot --path . res://scenes/main.tscn -- --capture-evolution
   godot --path . res://scenes/main.tscn -- --capture-abilities
+  godot --path . res://scenes/main.tscn -- --capture-new-skills
+  godot --path . res://scenes/main.tscn -- --test-new-skills
+  godot --path . res://scenes/main.tscn -- --test-balance
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear
   godot --path . res://scenes/main.tscn -- --capture-levelup
   godot --path . res://scenes/main.tscn -- --capture-banish
