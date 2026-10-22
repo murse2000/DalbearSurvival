@@ -11,6 +11,9 @@ signal equipment_changed
 signal character_changed
 
 const SAVE_PATH := "user://dalbear_save.cfg"
+const RUN_SAVE_PATH := "user://dalbear_run.cfg"
+const RUN_SAVE_TMP := "user://dalbear_run.tmp"
+const RUN_SAVE_VERSION := 1
 const MAIN_SCENE := "res://scenes/main.tscn"
 const TITLE_SCENE := "res://scenes/title.tscn"
 const STAGE_SELECT_SCENE := "res://scenes/stage_select.tscn"
@@ -41,6 +44,7 @@ var selected_difficulty := "normal"
 var record := {"best_time": 0.0, "best_level": 0, "best_kills": 0, "victory": false}
 var stage_records := {}
 var _warned := {}
+var _pending_run_snapshot: Dictionary = {}
 
 # ---------------------------------------------------------------- equipment
 var inventory: Array = []
@@ -100,6 +104,7 @@ func _check_warnings() -> void:
 
 
 func new_run(stage: String = "", diff: String = "") -> void:
+	clear_run_checkpoint()
 	if stage != "" and GameData.STAGES.has(stage):
 		stage_id = stage
 	if diff != "" and GameData.DIFFICULTIES.has(diff):
@@ -151,6 +156,200 @@ func _reset() -> void:
 	last_boss_killed = false
 	_warned.clear()
 	Engine.time_scale = 1.0
+
+
+# ---------------------------------------------------------------- run checkpoint
+func save_run_checkpoint(p) -> bool:
+	if not running or p == null or not is_instance_valid(p) or bool(p.get("dead")):
+		return false
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", RUN_SAVE_VERSION)
+	cfg.set_value("meta", "stage", stage_id)
+	cfg.set_value("meta", "difficulty", difficulty_id)
+	cfg.set_value("meta", "selected_character", selected_character)
+	cfg.set_value("meta", "time", time)
+	cfg.set_value("meta", "level", level)
+	cfg.set_value("meta", "xp", xp)
+	cfg.set_value("meta", "xp_need", xp_need)
+	cfg.set_value("meta", "kills", kills)
+	cfg.set_value("meta", "pending_levelups", pending_levelups)
+	cfg.set_value("meta", "levelup_open", levelup_open)
+	cfg.set_value("meta", "rerolls", rerolls)
+	cfg.set_value("meta", "banishes", banishes)
+	cfg.set_value("meta", "warned", _warned.duplicate(true))
+	cfg.set_value("player", "hp", float(p.hp))
+	cfg.set_value("player", "position", p.global_position)
+	var weapon_levels: Dictionary = p.weapon_levels
+	var passive_levels: Dictionary = p.passive_levels
+	var evolutions: Dictionary = p.evolutions
+	var banned: Dictionary = p.banned
+	cfg.set_value("player", "ultimate_charge", float(p.ultimate_charge))
+	cfg.set_value("player", "weapon_levels", weapon_levels.duplicate(true))
+	cfg.set_value("player", "passive_levels", passive_levels.duplicate(true))
+	cfg.set_value("player", "evolutions", evolutions.duplicate(true))
+	cfg.set_value("player", "banned", banned.duplicate(true))
+	var boss_data := {}
+	if boss != null and is_instance_valid(boss) and not bool(boss.get("dead")):
+		boss_data = {
+			"kind": String(boss.get("kind")),
+			"position": boss.global_position,
+			"hp_ratio": clampf(float(boss.get("hp")) / maxf(1.0, float(boss.get("max_hp"))), 0.01, 1.0),
+		}
+	cfg.set_value("boss", "data", boss_data)
+	var err := cfg.save(RUN_SAVE_TMP)
+	if err != OK:
+		return false
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		return false
+	if dir.file_exists("dalbear_run.cfg"):
+		dir.remove("dalbear_run.cfg")
+	if dir.rename("dalbear_run.tmp", "dalbear_run.cfg") == OK:
+		return true
+	# Fallback for platforms that cannot atomically replace the checkpoint.
+	return cfg.save(RUN_SAVE_PATH) == OK
+
+
+func load_run_checkpoint() -> Dictionary:
+	var cfg := ConfigFile.new()
+	if cfg.load(RUN_SAVE_PATH) != OK:
+		return {}
+	if int(cfg.get_value("meta", "version", 0)) != RUN_SAVE_VERSION:
+		return {}
+	var stage := String(cfg.get_value("meta", "stage", ""))
+	var diff := String(cfg.get_value("meta", "difficulty", ""))
+	if not GameData.STAGES.has(stage) or not GameData.DIFFICULTIES.has(diff):
+		return {}
+	var checkpoint_time := float(cfg.get_value("meta", "time", -1.0))
+	if checkpoint_time < 0.0:
+		return {}
+	var weapon_levels = cfg.get_value("player", "weapon_levels", {})
+	var passive_levels = cfg.get_value("player", "passive_levels", {})
+	var evolutions = cfg.get_value("player", "evolutions", {})
+	var banned = cfg.get_value("player", "banned", {})
+	if not weapon_levels is Dictionary or not passive_levels is Dictionary \
+			or not evolutions is Dictionary or not banned is Dictionary:
+		return {}
+	var char_id := String(cfg.get_value("meta", "selected_character", selected_character))
+	if not CharacterData.CHARACTERS.has(char_id):
+		char_id = selected_character
+	var boss_data = cfg.get_value("boss", "data", {})
+	if not boss_data is Dictionary:
+		boss_data = {}
+	return {
+		"meta": {
+			"stage": stage,
+			"difficulty": diff,
+			"selected_character": char_id,
+			"time": checkpoint_time,
+			"level": maxi(1, int(cfg.get_value("meta", "level", 1))),
+			"xp": maxi(0, int(cfg.get_value("meta", "xp", 0))),
+			"xp_need": maxi(1, int(cfg.get_value("meta", "xp_need", 11))),
+			"kills": maxi(0, int(cfg.get_value("meta", "kills", 0))),
+			"pending_levelups": maxi(0, int(cfg.get_value("meta", "pending_levelups", 0))),
+			"levelup_open": bool(cfg.get_value("meta", "levelup_open", false)),
+			"rerolls": maxi(0, int(cfg.get_value("meta", "rerolls", REROLL_MAX))),
+			"banishes": maxi(0, int(cfg.get_value("meta", "banishes", BANISH_MAX))),
+			"warned": cfg.get_value("meta", "warned", {}),
+		},
+		"player": {
+			"hp": maxf(1.0, float(cfg.get_value("player", "hp", 100.0))),
+			"position": cfg.get_value("player", "position", Vector2.ZERO),
+			"ultimate_charge": maxf(0.0, float(cfg.get_value("player", "ultimate_charge", 0.0))),
+			"weapon_levels": weapon_levels,
+			"passive_levels": passive_levels,
+			"evolutions": evolutions,
+			"banned": banned,
+		},
+		"boss": boss_data,
+	}
+
+
+func has_run_checkpoint() -> bool:
+	var snap := load_run_checkpoint()
+	if not snap.is_empty():
+		return true
+	if FileAccess.file_exists(RUN_SAVE_PATH):
+		clear_run_checkpoint()
+	return false
+
+
+func run_checkpoint_summary() -> String:
+	var snap := load_run_checkpoint()
+	if snap.is_empty():
+		return ""
+	var meta: Dictionary = snap.get("meta", {})
+	var stage := GameData.stage(String(meta.get("stage", stage_id)))
+	var diff := GameData.difficulty(String(meta.get("difficulty", difficulty_id)))
+	return "%s · %s · %s · Lv.%d" % [
+		String(stage.get("short", "")), String(diff.get("name", "")),
+		GameData.format_time(float(meta.get("time", 0.0))), int(meta.get("level", 1)),
+	]
+
+
+func prepare_resume_checkpoint() -> bool:
+	var snap := load_run_checkpoint()
+	if snap.is_empty():
+		clear_run_checkpoint()
+		return false
+	_apply_run_meta(snap.get("meta", {}))
+	_pending_run_snapshot = snap
+	running = true
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	return true
+
+
+func resume_run_checkpoint() -> bool:
+	if not prepare_resume_checkpoint():
+		return false
+	Audio.duck_music(false)
+	get_tree().change_scene_to_file(MAIN_SCENE)
+	return true
+
+
+func consume_run_snapshot() -> Dictionary:
+	var snap := _pending_run_snapshot
+	_pending_run_snapshot = {}
+	return snap
+
+
+func clear_run_checkpoint() -> void:
+	_pending_run_snapshot.clear()
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		return
+	if dir.file_exists("dalbear_run.cfg"):
+		dir.remove("dalbear_run.cfg")
+	if dir.file_exists("dalbear_run.tmp"):
+		dir.remove("dalbear_run.tmp")
+
+
+func _apply_run_meta(meta: Dictionary) -> void:
+	stage_id = String(meta.get("stage", stage_id))
+	difficulty_id = String(meta.get("difficulty", difficulty_id))
+	if not GameData.STAGES.has(stage_id):
+		stage_id = "forest"
+	if not GameData.DIFFICULTIES.has(difficulty_id):
+		difficulty_id = "normal"
+	selected_stage = stage_id
+	selected_difficulty = difficulty_id
+	var char_id := String(meta.get("selected_character", selected_character))
+	if CharacterData.CHARACTERS.has(char_id):
+		selected_character = char_id
+	time = maxf(0.0, float(meta.get("time", 0.0)))
+	level = maxi(1, int(meta.get("level", 1)))
+	xp = maxi(0, int(meta.get("xp", 0)))
+	xp_need = maxi(1, int(meta.get("xp_need", 11)))
+	kills = maxi(0, int(meta.get("kills", 0)))
+	pending_levelups = maxi(0, int(meta.get("pending_levelups", 0)))
+	levelup_open = pending_levelups > 0
+	rerolls = clampi(int(meta.get("rerolls", REROLL_MAX)), 0, REROLL_MAX)
+	banishes = clampi(int(meta.get("banishes", BANISH_MAX)), 0, BANISH_MAX)
+	last_boss_killed = false
+	boss = null
+	var warned = meta.get("warned", {})
+	_warned = warned if warned is Dictionary else {}
 
 
 func add_xp(amount: int) -> void:
@@ -690,6 +889,8 @@ func select_character(character_id: String) -> Dictionary:
 		return {"ok": false, "message": "알 수 없는 친구입니다."}
 	if character_id == selected_character:
 		return {"ok": true, "changed": false, "message": "이미 선택된 친구입니다."}
+	if has_run_checkpoint():
+		clear_run_checkpoint()
 	selected_character = character_id
 	_clear_incompatible_character_gear()
 	ensure_character_signature(character_id, true)
@@ -744,6 +945,7 @@ func trigger_victory() -> void:
 func end_run(victory: bool, boss_killed: bool = false) -> void:
 	if not running:
 		return
+	clear_run_checkpoint()
 	running = false
 	last_boss_killed = boss_killed
 	boss = null
@@ -801,12 +1003,14 @@ func has_cleared(stage: String) -> bool:
 
 
 func go_title() -> void:
+	clear_run_checkpoint()
 	running = false
 	get_tree().paused = false
 	get_tree().change_scene_to_file(TITLE_SCENE)
 
 
 func go_stage_select() -> void:
+	clear_run_checkpoint()
 	running = false
 	get_tree().paused = false
 	get_tree().change_scene_to_file(STAGE_SELECT_SCENE)

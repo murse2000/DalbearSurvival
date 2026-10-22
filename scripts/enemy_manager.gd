@@ -138,6 +138,17 @@ func _spawn_boss() -> void:
 	Game.warning.emit("%s 접근 — 전선이 흔들린다" % boss_name, 4.0)
 
 
+func restore_boss(kind: String, pos: Vector2, hp_ratio: float) -> void:
+	if not GameData.ENEMIES.has(kind):
+		return
+	spawn_enemy(kind, pos, false)
+	if enemies.is_empty():
+		return
+	var e = enemies.back()
+	e.hp = clampf(e.max_hp * clampf(hp_ratio, 0.01, 1.0), 1.0, e.max_hp)
+	boss_spawned = true
+
+
 func on_enemy_died(e: Node2D) -> void:
 	enemies.erase(e)
 

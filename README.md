@@ -6,7 +6,8 @@
 
 **3개 스테이지 × 4분**, **4단계 난이도**, **13종 외계인 + 3종 보스**,
 **무기 4종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
-**장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**로 구성한 2D 로그라이트 서바이벌입니다.
+**장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
+**자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
 
 ![타이틀](screenshots/title.png)
@@ -81,6 +82,14 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 데스크톱에서 터치 UI를 확인하려면 `--touch` 인자를 사용합니다.
 - Android 설정: 가로 모드, 1280×720 기준 `canvas_items` 스트레치, ETC2/ASTC 텍스처 임포트, arm64-v8a.
 - Android 빌드에는 Godot 4.7.1 Android export template, Android SDK, JDK, 디버그 키스토어가 필요합니다.
+
+### 저장 & 이어하기
+- 진행 중인 전투는 **8초마다 자동 저장**되고, 홈 화면/백그라운드 전환 시에도 즉시 저장됩니다.
+- 앱이 종료되거나 Android가 프로세스를 회수한 뒤 다시 실행하면 타이틀에 **이어하기** 버튼이 표시됩니다.
+- 이어하기는 **전선·난이도·생존 시간·레벨·경험치·킬·리롤/밴·무기/패시브/진화·체력·위치·궁극기 충전·보스 체력**을 복원합니다.
+- 복원 직후 2초 무적과 함께 주변 적은 새로 생성되며, 저장 시점의 일반 적/발사체/픽업은 복원하지 않습니다.
+- **새 모험**을 시작하거나 전선 선택·타이틀·결과 화면으로 이동하면 기존 저장은 삭제됩니다.
+- 저장 파일: `user://dalbear_run.cfg` (`%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_run.cfg`)
 
 ### 화면비 대응
 - 16:9, 20:9, 21:9, 폴드 내부(약 1.1:1)처럼 화면비가 달라도 **게임 월드는 화면을 가득 채웁니다**.
@@ -275,13 +284,14 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![친구 선택](screenshots/characters.png) | ![런 보상](screenshots/rewards.png) |
 | ![와이드 터치](screenshots/gameplay_wide.png) | ![폴드 비율](screenshots/gameplay_fold.png) |
 | ![타이틀 와이드](screenshots/title_wide.png) | ![타이틀 폴드](screenshots/title_fold.png) |
-| ![50 콤보 연출](screenshots/combo.png) | ![게임플레이](screenshots/gameplay.png) |
+| ![이어하기](screenshots/title_continue.png) | ![50 콤보 연출](screenshots/combo.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
 `screenshots/equipment_detail.png`, `screenshots/characters.png`, `screenshots/rewards.png`,
 `screenshots/gameplay_wide.png`, `screenshots/gameplay_fold.png`, `screenshots/title_wide.png`,
-`screenshots/title_fold.png`, `screenshots/combo.png`, `screenshots/title.png`
+`screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/combo.png`,
+`screenshots/title.png`
 
 ---
 
@@ -385,6 +395,10 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --test-reroll-banish
   godot --path . res://scenes/main.tscn -- --test-enemy-projectile
   godot --path . res://scenes/main.tscn -- --test-background-pause
+  godot --path . res://scenes/main.tscn -- --test-checkpoint-write
+  godot --path . res://scenes/main.tscn -- --test-checkpoint-resume
+  godot --path . res://scenes/title.tscn -- --test-title-continue
+  godot --path . res://scenes/title.tscn -- --test-title-resume
   godot --path . res://scenes/main.tscn -- --test-settings-effects
   godot --path . res://scenes/main.tscn -- --test-equipment-run
   godot --path . res://scenes/equipment.tscn -- --test-equipment
@@ -395,7 +409,7 @@ DalbearSurvival/
 - **기록 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_save.cfg`
   (기록 · 장비 인벤토리 · 장착 슬롯 · 달빛 조각 · 장비 레벨 · 선택한 친구가 함께 저장됩니다)
 - **연출 설정 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_settings.cfg`
-- **Android 생명주기**: 홈/백그라운드 진입 시 자동 일시정지, 복귀 시 일시정지 유지. 적 발사체는 이동 경로 기반 연속 충돌 판정을 사용합니다.
+- **Android 생명주기**: 홈/백그라운드 진입 시 자동 일시정지 + 체크포인트 저장, 복귀 시 일시정지 유지. 프로세스가 종료되어도 타이틀에서 이어하기가 가능합니다. 적 발사체는 이동 경로 기반 연속 충돌 판정을 사용합니다.
 - **Android 산출물**: `build/DALBEAR.apk` (디버그 서명 · minSdk 24 · targetSdk 36 · arm64-v8a)
 - Android 빌드 환경: Godot 4.7.1 Android export templates, Android SDK(platform 34+), JDK 17+, 디버그 키스토어. Godot Editor Settings의 `export/android/android_sdk_path`와 `java_sdk_path`를 설정해야 합니다.
 - **화면비**: `canvas_items` + `expand`. HUD/터치/오버레이는 viewport 크기 변경에 반응하고, 메뉴는 중앙 안전 영역 + 풀블리드 블러 배경을 사용합니다.

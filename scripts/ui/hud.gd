@@ -46,6 +46,7 @@ var _last_level := 0
 var _combo := 0
 var _combo_timer := 0.0
 var _combo_last_kills := 0
+var _combo_ready := false
 var _combo_label: Label
 var _combo_banner: Label
 var _combo_tw: Tween
@@ -379,6 +380,10 @@ func _on_xp(_xp: int, _need: int, level: int) -> void:
 
 func _on_kills(kills: int) -> void:
 	kills_label.text = str(kills)
+	if not _combo_ready:
+		_combo_ready = true
+		_combo_last_kills = kills
+		return
 	var gained := kills - _combo_last_kills
 	_combo_last_kills = kills
 	if gained <= 0:

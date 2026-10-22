@@ -23,6 +23,8 @@ var canvas_mod: CanvasModulate
 var _end_shown := false
 var _levelup_pending := false
 var _backgrounded := false
+var _checkpoint_timer := 8.0
+var _dev_mode := false
 var _fade: ColorRect
 var _args: PackedStringArray
 
@@ -30,6 +32,10 @@ var _args: PackedStringArray
 func _ready() -> void:
 	randomize()
 	_args = OS.get_cmdline_user_args()
+	for a in _args:
+		if a.begins_with("--capture") or a.begins_with("--test") \
+				or a.begins_with("--evolution") or a == "--smoke-start":
+			_dev_mode = true
 	for a in _args:
 		if a.begins_with("--stage="):
 			var sid := a.substr(8)
@@ -51,13 +57,19 @@ func _ready() -> void:
 		Game.stage_id = "hive"
 	elif "--capture-ship" in _args:
 		Game.stage_id = "ship"
+	if "--test-checkpoint-resume" in _args:
+		Game.prepare_resume_checkpoint()
+	var run_snapshot: Dictionary = Game.consume_run_snapshot()
 	Game.begin_run()
-	Game.levelup_open = false
+	if run_snapshot.is_empty():
+		Game.levelup_open = false
 	Engine.time_scale = 1.0
 	get_tree().paused = false
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 	_build_world()
 	_build_player()
+	if not run_snapshot.is_empty():
+		_restore_run(run_snapshot)
 	_build_camera()
 	_build_post()
 	_build_ui()
@@ -66,11 +78,19 @@ func _ready() -> void:
 	Game.run_ended.connect(_on_run_ended)
 	Game.level_up_requested.connect(_on_level_up_requested)
 	Game.warning.connect(hud.show_warning)
+	if not run_snapshot.is_empty():
+		_finish_restore()
+	elif not _dev_mode:
+		Game.save_run_checkpoint(player)
 	var stage := Game.stage_data()
 	Game.warning.emit("%s · %s — %s" % [String(stage["name"]), String(stage["short"]), String(stage["subtitle"])], 4.5)
 	Audio.set_music_volume(-16.0, 2.0)
 	Audio.set_music_pitch(float(stage.get("music_pitch", 1.0)))
-	if "--capture-game" in _args:
+	if "--test-checkpoint-write" in _args:
+		_test_checkpoint_write()
+	elif "--test-checkpoint-resume" in _args or "--test-title-resume" in _args:
+		_test_checkpoint_resume()
+	elif "--capture-game" in _args:
 		_capture_game()
 	elif "--capture-base" in _args:
 		_capture_base()
@@ -162,6 +182,31 @@ func _build_player() -> void:
 	manager.setup(player, world.actors, world.projectiles, world.pickups)
 	player.setup(manager)
 	world.target = player
+
+
+func _restore_run(snapshot: Dictionary) -> void:
+	var player_data = snapshot.get("player", {})
+	if player_data is Dictionary:
+		player.restore_run_state(player_data)
+	var boss_data = snapshot.get("boss", {})
+	if boss_data is Dictionary and not boss_data.is_empty():
+		var kind := String(boss_data.get("kind", ""))
+		var pos = boss_data.get("position", player.global_position + Vector2(260, 0))
+		if not pos is Vector2:
+			pos = player.global_position + Vector2(260, 0)
+		var ratio := float(boss_data.get("hp_ratio", 1.0))
+		manager.restore_boss(kind, pos, ratio)
+	_checkpoint_timer = 8.0
+
+
+func _finish_restore() -> void:
+	Game.warning.emit("저장된 전선에서 복귀했습니다", 3.0)
+	if Game.pending_levelups <= 0:
+		return
+	Game.levelup_open = true
+	get_tree().paused = true
+	Audio.duck_music(true)
+	overlay.show_levelup(player.get_upgrade_choices(3))
 
 
 func _build_camera() -> void:
@@ -269,7 +314,11 @@ func _on_app_background() -> void:
 		return
 	_backgrounded = true
 	_set_master_muted(true)
-	if not Game.running or player == null or overlay == null:
+	if not Game.running or player == null:
+		return
+	if not _dev_mode:
+		Game.save_run_checkpoint(player)
+	if overlay == null:
 		return
 	if _levelup_pending or _end_shown or overlay.is_blocking():
 		return
@@ -313,6 +362,11 @@ func _process(delta: float) -> void:
 		canvas_mod.color = base.lerp(Color(1.14, 1.0, 0.86), pow(p, 2.8) * 0.4)
 		if hud != null and hud.has_method("tick"):
 			hud.tick(delta)
+		if Game.running and not _dev_mode and not get_tree().paused:
+			_checkpoint_timer -= delta
+			if _checkpoint_timer <= 0.0:
+				_checkpoint_timer = 8.0
+				Game.save_run_checkpoint(player)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -913,12 +967,15 @@ func _test_background_pause() -> void:
 	manager.enemies.clear()
 	player.invuln = 999.0
 	var time_before: float = Game.time
+	_dev_mode = false
 	_notification(NOTIFICATION_APPLICATION_PAUSED)
 	await get_tree().create_timer(0.3, true, false, true).timeout
+	_dev_mode = true
 	var bus := AudioServer.get_bus_index("Master")
 	var paused_after_home: bool = get_tree().paused and overlay._pause_visible
 	var muted_in_background: bool = bus >= 0 and AudioServer.is_bus_mute(bus)
 	var time_frozen: bool = absf(Game.time - time_before) < 0.05
+	var checkpoint_saved: bool = Game.has_run_checkpoint()
 	_notification(NOTIFICATION_APPLICATION_RESUMED)
 	await get_tree().create_timer(0.15, true, false, true).timeout
 	var still_paused_on_return: bool = get_tree().paused and overlay._pause_visible
@@ -927,16 +984,100 @@ func _test_background_pause() -> void:
 		overlay._resume()
 	await get_tree().create_timer(0.15, true, false, true).timeout
 	var resumed: bool = not get_tree().paused and not overlay._pause_visible
-	print("BACKGROUND PAUSE TEST pause=%s frozen=%s muted=%s return_paused=%s unmuted=%s resume=%s" % [
-		paused_after_home, time_frozen, muted_in_background, still_paused_on_return,
-		unmuted_on_return, resumed,
+	Game.clear_run_checkpoint()
+	print("BACKGROUND PAUSE TEST pause=%s frozen=%s muted=%s checkpoint=%s return_paused=%s unmuted=%s resume=%s" % [
+		paused_after_home, time_frozen, muted_in_background, checkpoint_saved,
+		still_paused_on_return, unmuted_on_return, resumed,
 	])
 	if not paused_after_home or not time_frozen or not muted_in_background \
-			or not still_paused_on_return or not unmuted_on_return or not resumed:
+			or not checkpoint_saved or not still_paused_on_return \
+			or not unmuted_on_return or not resumed:
 		push_error("BACKGROUND PAUSE TEST FAILED")
 		get_tree().quit(1)
 		return
 	print("BACKGROUND PAUSE TEST OK")
+	get_tree().quit()
+
+
+func _test_checkpoint_write() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	Game.clear_run_checkpoint()
+	Game.stage_id = "hive"
+	Game.difficulty_id = "dark"
+	Game.selected_stage = "hive"
+	Game.selected_difficulty = "dark"
+	Game.time = 73.0
+	Game.level = 6
+	Game.xp = 8
+	Game.xp_need = 41
+	Game.kills = 54
+	Game.rerolls = 1
+	Game.banishes = 0
+	player.invuln = 999.0
+	player.passive_levels["core"] = 3
+	player.passive_levels["heart"] = 1
+	if not player.weapon_levels.has("pulse"):
+		player.add_weapon("pulse")
+	player.upgrade_weapon("pulse")
+	player.weapon_levels["moon_shot"] = 6
+	player.evolve_weapon("moon_shot")
+	player.banned["boots"] = true
+	player.recalc_stats()
+	player.hp = player.max_hp * 0.62
+	player.global_position = Vector2(123, -77)
+	player.ultimate_charge = 63.0
+	if "--boss" in _args:
+		Game.time = 175.0
+		var boss_kind := String(GameData.stage("hive")["boss"])
+		manager.spawn_enemy(boss_kind, player.global_position + Vector2(260, 0), false)
+		if Game.boss != null and is_instance_valid(Game.boss):
+			Game.boss.hp = Game.boss.max_hp * 0.5
+	if "--levelup" in _args:
+		Game.pending_levelups = 1
+		Game.levelup_open = true
+	var ok := Game.save_run_checkpoint(player)
+	print("CHECKPOINT WRITE %s time=%.1f level=%d kills=%d hp=%.1f weapons=%s" % [
+		"OK" if ok else "FAILED", Game.time, Game.level, Game.kills, player.hp,
+		player.weapon_levels,
+	])
+	print("CHECKPOINT PATH ", ProjectSettings.globalize_path(Game.RUN_SAVE_PATH),
+		" exists=", FileAccess.file_exists(Game.RUN_SAVE_PATH),
+		" size=", FileAccess.get_size(Game.RUN_SAVE_PATH) if FileAccess.file_exists(Game.RUN_SAVE_PATH) else -1,
+		" has=", Game.has_run_checkpoint())
+	get_tree().quit(0 if ok else 1)
+
+
+func _test_checkpoint_resume() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	var weapons_ok := int(player.weapon_levels.get("pulse", 0)) >= 2 \
+		and String(player.evolutions.get("moon_shot", "")) != ""
+	var passives_ok := int(player.passive_levels.get("core", 0)) == 3 \
+		and int(player.passive_levels.get("heart", 0)) == 1
+	var progress_ok: bool = Game.stage_id == "hive" and Game.difficulty_id == "dark" \
+		and Game.time >= 72.9 and Game.level == 6 and Game.kills >= 54 \
+		and Game.rerolls == 1 and Game.banishes == 0 and player.banned.has("boots")
+	var player_ok: bool = absf(player.global_position.x - 123.0) < 1.0 \
+		and absf(player.global_position.y + 77.0) < 1.0 \
+		and player.hp > player.max_hp * 0.5 and player.invuln > 1.0 \
+		and absf(player.ultimate_charge - 63.0) < 0.5
+	var combo_ok: bool = hud != null and hud._combo == 0
+	var overlay_ok: bool = Game.pending_levelups == 0 \
+		or (get_tree().paused and overlay != null and overlay._levelup_visible)
+	var boss_ok := true
+	if "--boss" in _args:
+		boss_ok = Game.boss != null and is_instance_valid(Game.boss) \
+			and not bool(Game.boss.get("dead")) \
+			and absf(float(Game.boss.get("hp")) / maxf(1.0, float(Game.boss.get("max_hp"))) - 0.5) < 0.05
+	print("CHECKPOINT RESUME time=%.1f level=%d kills=%d hp=%.1f pos=%s weapons=%s evolutions=%s passives=%s combo=%s levelup=%s boss=%s" % [
+		Game.time, Game.level, Game.kills, player.hp, player.global_position,
+		player.weapon_levels, player.evolutions, player.passive_levels, combo_ok, overlay_ok, boss_ok,
+	])
+	Game.clear_run_checkpoint()
+	if not weapons_ok or not passives_ok or not progress_ok or not player_ok or not combo_ok or not overlay_ok or not boss_ok:
+		push_error("CHECKPOINT RESUME TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("CHECKPOINT RESUME TEST OK")
 	get_tree().quit()
 
 

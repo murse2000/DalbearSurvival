@@ -12,6 +12,11 @@ var _ticker: Panel
 var _domain: Label
 var _credits: Label
 var _version: Label
+var _start_btn: Button
+var _new_run_btn: Button
+var _continue_info: Label
+var _record_label: Label
+var _hint_label: Label
 var _time := 0.0
 var _starting := false
 var _settings_panel: Control
@@ -34,7 +39,12 @@ func _ready() -> void:
 		_capture_settings()
 	if "--test-settings" in _args:
 		_test_settings()
+	if "--test-title-continue" in _args:
+		_test_title_continue()
+	if "--test-title-resume" in _args:
+		_test_title_resume()
 	if "--smoke-start" in _args:
+		Game.clear_run_checkpoint()
 		_start.call_deferred()
 
 
@@ -126,6 +136,7 @@ func _build() -> void:
 	start.pressed.connect(_start)
 	start.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
 	buttons.add_child(start)
+	_start_btn = start
 	var friends_btn := UIKit.button("친구들", Vector2(110, 60))
 	friends_btn.add_theme_font_size_override("font_size", 18)
 	friends_btn.pressed.connect(_open_characters)
@@ -148,13 +159,29 @@ func _build() -> void:
 	buttons.add_child(quit)
 	start.grab_focus()
 
+	_new_run_btn = UIKit.button("새 모험", Vector2(140, 36))
+	_new_run_btn.add_theme_font_size_override("font_size", 15)
+	_new_run_btn.position = Vector2(4, 446)
+	_new_run_btn.pressed.connect(_new_adventure)
+	_new_run_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	_new_run_btn.visible = false
+	_content.add_child(_new_run_btn)
+
+	_continue_info = UIKit.label("", 12, UIKit.MUTED)
+	_continue_info.position = Vector2(4, 486)
+	_continue_info.size = Vector2(600, 18)
+	_continue_info.visible = false
+	_content.add_child(_continue_info)
+
 	var record := UIKit.label(Game.record_text(), 15, UIKit.MINT)
 	record.position = Vector2(4, 462)
 	_content.add_child(record)
+	_record_label = record
 
 	var hint := UIKit.label("이동 WASD / 방향키   대시 Space   궁극기 Q   장비 I   친구들 C", 13, UIKit.MUTED)
 	hint.position = Vector2(4, 496)
 	_content.add_child(hint)
+	_hint_label = hint
 
 	# top-right invasion ticker
 	var ticker := UIKit.panel(Color(0.12, 0.035, 0.045, 0.75), Color(0.9, 0.3, 0.3, 0.6), 1)
@@ -190,6 +217,7 @@ func _build() -> void:
 	_settings_panel = SettingsPanel.new()
 	add_child(_settings_panel)
 	UIFit.fit_canvas_control(_settings_panel)
+	_refresh_continue()
 
 	# intro animation (fade only; positioning is handled by _fit_title)
 	_content.modulate.a = 0.0
@@ -250,9 +278,44 @@ func _process(delta: float) -> void:
 func _start() -> void:
 	if _starting:
 		return
+	if Game.has_run_checkpoint():
+		_continue_run()
+	else:
+		_new_adventure()
+
+
+func _continue_run() -> void:
+	if _starting:
+		return
 	_starting = true
 	Audio.play_click()
+	if not Game.resume_run_checkpoint():
+		_starting = false
+		_refresh_continue()
+
+
+func _new_adventure() -> void:
+	if _starting:
+		return
+	_starting = true
+	Audio.play_click()
+	Game.clear_run_checkpoint()
 	Game.go_stage_select()
+
+
+func _refresh_continue() -> void:
+	var has_run := Game.has_run_checkpoint()
+	if _start_btn != null:
+		_start_btn.text = "이어하기" if has_run else "모험 시작"
+	if _new_run_btn != null:
+		_new_run_btn.visible = has_run
+	if _continue_info != null:
+		_continue_info.visible = has_run
+		_continue_info.text = "이어서  %s" % Game.run_checkpoint_summary() if has_run else ""
+	if _record_label != null:
+		_record_label.position.y = 506.0 if has_run else 462.0
+	if _hint_label != null:
+		_hint_label.position.y = 536.0 if has_run else 496.0
 
 
 func _quit() -> void:
@@ -330,6 +393,34 @@ func _test_settings() -> void:
 	Settings.set_option("bloom", original)
 	print("SETTINGS TEST OK bloom=", target, " persisted and restored=", original)
 	get_tree().quit()
+
+
+func _test_title_continue() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var has_checkpoint := Game.has_run_checkpoint()
+	var continue_text := _start_btn.text if _start_btn != null else ""
+	var new_run_visible := _new_run_btn != null and _new_run_btn.visible
+	print("TITLE CONTINUE TEST checkpoint=%s text=%s new_run=%s summary=%s" % [
+		has_checkpoint, continue_text, new_run_visible, Game.run_checkpoint_summary(),
+	])
+	Game.clear_run_checkpoint()
+	if not has_checkpoint or continue_text != "이어하기" or not new_run_visible:
+		push_error("TITLE CONTINUE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("TITLE CONTINUE TEST OK")
+	get_tree().quit()
+
+
+func _test_title_resume() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	if not Game.has_run_checkpoint():
+		push_error("TITLE RESUME TEST: no checkpoint")
+		get_tree().quit(1)
+		return
+	print("TITLE RESUME TEST continue ", Game.run_checkpoint_summary())
+	Audio.play_click()
+	Game.resume_run_checkpoint()
 
 
 func _capture() -> void:

@@ -70,6 +70,7 @@ var _flash := 0.0
 var _regen_acc := 0.0
 var _moving := false
 var _time := 0.0
+var _restoring := false
 
 
 func _ready() -> void:
@@ -387,6 +388,69 @@ func _equip_starting_weapons() -> void:
 		add_weapon(fallback)
 
 
+func restore_run_state(snap: Dictionary) -> bool:
+	if snap.is_empty():
+		return false
+	_restoring = true
+	for id in weapons.keys():
+		var old = weapons[id]
+		if old != null and is_instance_valid(old):
+			old.queue_free()
+	weapons.clear()
+	weapon_levels.clear()
+	passive_levels.clear()
+	evolutions.clear()
+	banned.clear()
+	_evo_notified.clear()
+
+	var banned_data = snap.get("banned", {})
+	if banned_data is Dictionary:
+		for id in banned_data.keys():
+			if bool(banned_data[id]):
+				banned[String(id)] = true
+	var passive_data = snap.get("passive_levels", {})
+	if passive_data is Dictionary:
+		for id in passive_data.keys():
+			if GameData.PASSIVES.has(String(id)):
+				passive_levels[String(id)] = maxi(0, int(passive_data[id]))
+	var weapon_data = snap.get("weapon_levels", {})
+	if weapon_data is Dictionary:
+		for id in weapon_data.keys():
+			var wid := String(id)
+			if not GameData.WEAPONS.has(wid):
+				continue
+			add_weapon(wid)
+			var target := clampi(int(weapon_data[id]), 1, int(GameData.WEAPONS[wid]["max_level"]))
+			while int(weapon_levels.get(wid, 0)) < target:
+				upgrade_weapon(wid)
+	var evo_data = snap.get("evolutions", {})
+	if evo_data is Dictionary:
+		for id in evo_data.keys():
+			var base_id := String(id)
+			if GameData.EVOLUTIONS.has(base_id) and int(weapon_levels.get(base_id, 0)) >= 6:
+				evolve_weapon(base_id)
+
+	recalc_stats()
+	var saved_pos = snap.get("position", Vector2.ZERO)
+	if saved_pos is Vector2:
+		var limit := GameData.ARENA_HALF - 30.0
+		global_position = Vector2(
+			clampf(saved_pos.x, -limit, limit),
+			clampf(saved_pos.y, -limit, limit)
+		)
+	hp = clampf(float(snap.get("hp", max_hp)), 1.0, max_hp)
+	ultimate_charge = clampf(float(snap.get("ultimate_charge", 0.0)), 0.0, ultimate_max)
+	invuln = maxf(invuln, 2.0)
+	dash_cd = 0.0
+	dash_time = 0.0
+	_last_kills = Game.kills
+	_flash = 0.0
+	_restoring = false
+	hp_changed.emit(hp, max_hp)
+	stats_changed.emit()
+	return true
+
+
 func add_weapon(id: String) -> void:
 	if banned.has(id):
 		return
@@ -437,11 +501,12 @@ func evolve_weapon(base_id: String) -> void:
 	evolutions[base_id] = String(evo["id"])
 	_evo_notified[base_id + ":ready"] = true
 	stats_changed.emit()
-	FX.levelup_burst(global_position + Vector2(0, -10))
-	FX.flash(Color(1.0, 0.9, 0.6), 0.35, 0.8)
-	FX.shake(7.0, 0.5)
-	Audio.play("levelup", 0.85, -2.0)
-	Game.warning.emit("무기 진화! %s" % String(evo["name"]), 3.2)
+	if not _restoring:
+		FX.levelup_burst(global_position + Vector2(0, -10))
+		FX.flash(Color(1.0, 0.9, 0.6), 0.35, 0.8)
+		FX.shake(7.0, 0.5)
+		Audio.play("levelup", 0.85, -2.0)
+		Game.warning.emit("무기 진화! %s" % String(evo["name"]), 3.2)
 
 
 func check_evolution_ready() -> void:
