@@ -1005,8 +1005,8 @@ func stage_record_text(stage: String, diff: String) -> String:
 		return "미클리어"
 	var parts := ["클리어 ×%d" % int(rec["clears"])]
 	if bool(rec.get("boss", false)):
-		parts.append("보스 격추")
-	parts.append("최고 Lv.%d" % int(rec.get("best_level", 0)))
+		parts.append("보스")
+	parts.append("Lv.%d" % int(rec.get("best_level", 0)))
 	return " · ".join(parts)
 
 

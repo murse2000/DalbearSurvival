@@ -1,10 +1,32 @@
 extends Control
 
 ## Campaign hub: choose one of fifteen fronts and a difficulty.
+## Fronts sit on a horizontal page carousel: swipe / drag left-right, mouse
+## wheel, Q/E, the edge arrows or the 1-0 keys. No scrollbar.
+
+const CARD_W := 230.0
+const CARD_GAP := 10.0
+const PAGE_W := 1228.0
+const PAGE_SIZE := 5
+const SWIPE_DIST := 64.0
+const SWIPE_SPEED := 520.0
 
 var _cards := {}
 var _diff_chips := {}
-var _scroll: ScrollContainer
+var _carousel: Control
+var _strip: Control
+var _prev_btn: Button
+var _next_btn: Button
+var _page_label: Label
+var _page := 0
+var _page_count := 1
+var _page_tween: Tween
+var _hover_stage := ""
+var _dragging := false
+var _drag_start := Vector2.ZERO
+var _drag_last := Vector2.ZERO
+var _drag_start_ms := 0
+var _drag_moved := 0.0
 var _diff_desc: Label
 var _stage_hint: Label
 var _shards_label: Label
@@ -29,25 +51,31 @@ func _ready() -> void:
 	if marketing:
 		# Marketing captures show the map unlocked without touching the save.
 		for id in GameData.STAGE_ORDER:
-			Game.stage_records["%s:normal" % id] = {
-				"clears": 1, "boss": true, "best_kills": 180, "best_level": 18,
-				"best_time": 210.0,
-			}
+			for diff in GameData.DIFFICULTY_ORDER:
+				Game.stage_records["%s:%s" % [id, diff]] = {
+					"clears": 1, "boss": true, "best_kills": 180, "best_level": 18,
+					"best_time": 210.0,
+				}
 	if "--capture-select-late" in _args:
 		_selected_stage = "dawn"
 	elif "--capture-select" in _args:
 		_selected_stage = "dunes"
+	elif "--test-swipe" in _args:
+		_selected_stage = "forest"
 	elif not Game.is_stage_unlocked(_selected_stage):
 		_selected_stage = Game.first_unlocked_stage()
 	_selected_diff = Game.selected_difficulty if GameData.DIFFICULTIES.has(Game.selected_difficulty) else "normal"
 	Game.select_stage(_selected_stage, _selected_diff)
+	_page_count = maxi(1, int(ceil(float(GameData.STAGE_ORDER.size()) / float(PAGE_SIZE))))
 	_build()
+	_ensure_page(_selected_stage, false)
 	UIFit.wrap_menu(self)
-	_ensure_visible.call_deferred(_selected_stage)
 	if "--capture-select-late" in _args:
 		_capture("stage_select_late")
 	elif "--capture-select" in _args:
 		_capture()
+	elif "--test-swipe" in _args:
+		_test_swipe.call_deferred()
 	if "--smoke-start" in _args:
 		_start.call_deferred()
 
@@ -80,11 +108,11 @@ func _build() -> void:
 	var sub := UIKit.label("열다섯 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
 	sub.position = Vector2(56, 112)
 	add_child(sub)
-	var count_hint := UIKit.label("15 FRONTS  ·  SCROLL", 13, UIKit.MUTED)
-	count_hint.position = Vector2(1030, 116)
-	count_hint.size = Vector2(194, 20)
-	count_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	add_child(count_hint)
+	_page_label = UIKit.label("", 13, UIKit.MUTED)
+	_page_label.position = Vector2(966, 116)
+	_page_label.size = Vector2(288, 20)
+	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(_page_label)
 	var back_top := UIKit.button("← 타이틀", Vector2(140, 42))
 	back_top.position = Vector2(1084, 34)
 	back_top.add_theme_font_size_override("font_size", 18)
@@ -103,24 +131,7 @@ func _build() -> void:
 	_character_btn.pressed.connect(_open_characters)
 	add_child(_character_btn)
 
-	_scroll = ScrollContainer.new()
-	UIKit.place(_scroll, 26, 154, 1228, 370)
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_scroll.add_theme_stylebox_override("panel", UIKit.style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 0))
-	add_child(_scroll)
-
-	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	_scroll.add_child(grid)
-
-	for i in GameData.STAGE_ORDER.size():
-		var id: String = GameData.STAGE_ORDER[i]
-		var card := _make_stage_card(id, i)
-		grid.add_child(card["root"])
-		_cards[id] = card
+	_build_carousel()
 
 	# difficulty chips
 	for i in GameData.DIFFICULTY_ORDER.size():
@@ -160,7 +171,7 @@ func _build() -> void:
 	var domain := UIKit.label("dalbear.com", 13, UIKit.GOLD)
 	domain.position = Vector2(56, 690)
 	add_child(domain)
-	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  ESC 타이틀  ·  스크롤로 전선 선택", 10, UIKit.MUTED)
+	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  Q/E 전선  ·  스와이프", 10, UIKit.MUTED)
 	ver.position = Vector2(600, 698)
 	ver.size = Vector2(624, 18)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -169,13 +180,71 @@ func _build() -> void:
 	_refresh()
 
 
-func _make_stage_card(id: String, index: int) -> Dictionary:
+func _build_carousel() -> void:
+	_carousel = Control.new()
+	_carousel.name = "FrontCarousel"
+	UIKit.place(_carousel, 26, 154, PAGE_W, 370)
+	_carousel.clip_contents = true
+	_carousel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_carousel.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	_carousel.gui_input.connect(_on_carousel_input)
+	_carousel.mouse_exited.connect(_clear_hover)
+	add_child(_carousel)
+
+	_strip = Control.new()
+	_strip.name = "Pages"
+	_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip.position = Vector2.ZERO
+	_strip.size = Vector2(PAGE_W * float(_page_count), 370)
+	_carousel.add_child(_strip)
+
+	for p in _page_count:
+		var page := Control.new()
+		page.name = "Page%d" % (p + 1)
+		page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		page.position = Vector2(PAGE_W * float(p), 0)
+		page.size = Vector2(PAGE_W, 370)
+		_strip.add_child(page)
+		for i in PAGE_SIZE:
+			var idx := p * PAGE_SIZE + i
+			if idx >= GameData.STAGE_ORDER.size():
+				break
+			var id: String = GameData.STAGE_ORDER[idx]
+			var card := _make_stage_card(id, idx)
+			UIKit.place(card["root"], 19.0 + float(i) * (CARD_W + CARD_GAP), 0, CARD_W, 366)
+			page.add_child(card["root"])
+			_cards[id] = card
+
+	_prev_btn = _make_page_arrow("<", Vector2(1, 296))
+	_prev_btn.pressed.connect(func() -> void: _go_page(_page - 1))
+	add_child(_prev_btn)
+	_next_btn = _make_page_arrow(">", Vector2(1254, 296))
+	_next_btn.pressed.connect(func() -> void: _go_page(_page + 1))
+	add_child(_next_btn)
+
+
+func _make_page_arrow(glyph: String, pos: Vector2) -> Button:
+	var button := Button.new()
+	button.text = glyph
+	button.flat = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(26, 110)
+	button.position = pos
+	button.size = Vector2(26, 110)
+	button.add_theme_font_size_override("font_size", 38)
+	button.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 0.72))
+	button.add_theme_color_override("font_hover_color", UIKit.GOLD)
+	button.add_theme_color_override("font_pressed_color", UIKit.GOLD)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	return button
+
+
+func _make_stage_card(id: String, _index: int) -> Dictionary:
 	var info: Dictionary = GameData.STAGES[id]
 	var accent: Color = info["accent"]
 	var root := UIKit.panel(Color(0.045, 0.07, 0.105, 0.94), UIKit.BORDER, 2)
-	root.custom_minimum_size = Vector2(230, 366)
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	root.custom_minimum_size = Vector2(CARD_W, 366)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.clip_contents = true
 
 	var stripe := ColorRect.new()
@@ -193,7 +262,6 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	img.position = Vector2(16, 16)
 	img.size = Vector2(204, 118)
 	img.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(img)
 
 	var num := UIKit.label("%02d" % int(info["num"]), 11, UIKit.INK)
@@ -248,10 +316,15 @@ func _make_stage_card(id: String, index: int) -> Dictionary:
 	lock.visible = false
 	root.add_child(lock)
 
-	root.gui_input.connect(_on_stage_input.bind(id))
-	root.mouse_entered.connect(_on_stage_hover.bind(root, accent, true))
-	root.mouse_exited.connect(_on_stage_hover.bind(root, accent, false))
+	_ignore_mouse(root)
 	return {"root": root, "stripe": stripe, "record": rec, "accent": accent, "lock": lock}
+
+
+func _ignore_mouse(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_mouse(child)
 
 
 func _make_diff_chip(id: String, index: int) -> Dictionary:
@@ -288,23 +361,154 @@ func _diff_mods(id: String) -> String:
 	return "적 HP ×%.2f · 피해 ×%.2f · 출현 ×%.2f" % [float(d["hp"]), float(d["damage"]), float(d["spawn"])]
 
 
-func _on_stage_input(event: InputEvent, id: String) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_select_stage(id)
+# ------------------------------------------------------------------ carousel
+func _on_carousel_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_begin_drag(mb.position)
+			else:
+				_end_drag(mb.position)
+			accept_event()
+		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
+			_go_page(_page - 1)
+			accept_event()
+		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
+			_go_page(_page + 1)
+			accept_event()
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if _dragging:
+			_move_drag(mm.position)
+		else:
+			_update_hover(mm.position)
 
 
-func _on_stage_hover(card: Panel, accent: Color, hovered: bool) -> void:
-	if not is_instance_valid(card):
+func _begin_drag(pos: Vector2) -> void:
+	_dragging = true
+	_kill_page_tween()
+	_drag_start = pos
+	_drag_last = pos
+	_drag_start_ms = Time.get_ticks_msec()
+	_drag_moved = 0.0
+	_carousel.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	if _hover_stage != "":
+		_hover_stage = ""
+		_refresh()
+
+
+func _move_drag(pos: Vector2) -> void:
+	var dx := pos.x - _drag_last.x
+	_drag_last = pos
+	_drag_moved += absf(dx)
+	var min_x := -float(_page_count - 1) * PAGE_W
+	var raw := _strip.position.x + dx
+	if raw > 0.0:
+		raw *= 0.35
+	elif raw < min_x:
+		raw = min_x + (raw - min_x) * 0.35
+	_strip.position.x = raw
+
+
+func _end_drag(pos: Vector2) -> void:
+	if not _dragging:
 		return
-	var is_selected := false
-	for k in _cards:
-		if _cards[k]["root"] == card and k == _selected_stage:
-			is_selected = true
-	var border := accent if (hovered or is_selected) else UIKit.BORDER
-	var bg := Color(0.075, 0.11, 0.155, 0.97) if (hovered or is_selected) else Color(0.045, 0.07, 0.105, 0.94)
-	card.add_theme_stylebox_override("panel", UIKit.style(bg, border, 2 + (1 if is_selected else 0), 0))
+	_dragging = false
+	var dx := pos.x - _drag_start.x
+	var elapsed := maxf(0.016, float(Time.get_ticks_msec() - _drag_start_ms) / 1000.0)
+	var speed := dx / elapsed
+	if _drag_moved < 12.0 and absf(dx) < 12.0:
+		var id := _card_at(_drag_start)
+		if id != "":
+			_select_stage(id)
+		_go_page(_page)
+	else:
+		var target := _page
+		if dx <= -SWIPE_DIST or speed <= -SWIPE_SPEED:
+			target += 1
+		elif dx >= SWIPE_DIST or speed >= SWIPE_SPEED:
+			target -= 1
+		_go_page(target)
+	_hover_stage = ""
+	_refresh()
 
 
+func _go_page(target: int, animate: bool = true) -> void:
+	_page = clampi(target, 0, _page_count - 1)
+	var x := -float(_page) * PAGE_W
+	_kill_page_tween()
+	if animate and not is_equal_approx(_strip.position.x, x):
+		_page_tween = create_tween()
+		_page_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_page_tween.tween_property(_strip, "position:x", x, 0.28)
+	else:
+		_strip.position.x = x
+	_update_page_ui()
+
+
+func _kill_page_tween() -> void:
+	if _page_tween != null and _page_tween.is_valid():
+		_page_tween.kill()
+
+
+func _ensure_page(id: String, animate: bool = true) -> void:
+	var idx := GameData.STAGE_ORDER.find(id)
+	if idx < 0:
+		return
+	_go_page(floori(float(idx) / float(PAGE_SIZE)), animate)
+
+
+func _card_at(pos: Vector2) -> String:
+	if pos.x < 0.0 or pos.x > PAGE_W or pos.y < 0.0 or pos.y > 366.0:
+		return ""
+	var local := pos.x - _strip.position.x
+	var page := floori(local / PAGE_W)
+	if page < 0 or page >= _page_count:
+		return ""
+	var px := local - float(page) * PAGE_W
+	var col := floori((px - 19.0) / (CARD_W + CARD_GAP))
+	if col < 0 or col >= PAGE_SIZE:
+		return ""
+	var left := 19.0 + float(col) * (CARD_W + CARD_GAP)
+	if px < left or px > left + CARD_W:
+		return ""
+	var idx := page * PAGE_SIZE + col
+	if idx < 0 or idx >= GameData.STAGE_ORDER.size():
+		return ""
+	return GameData.STAGE_ORDER[idx]
+
+
+func _update_hover(pos: Vector2) -> void:
+	var id := _card_at(pos)
+	_carousel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if id != "" else Control.CURSOR_DRAG
+	if id == _hover_stage:
+		return
+	_hover_stage = id
+	_refresh()
+
+
+func _clear_hover() -> void:
+	if _hover_stage == "":
+		return
+	_hover_stage = ""
+	_refresh()
+
+
+func _update_page_ui() -> void:
+	if _page_label != null:
+		_page_label.text = "%d FRONTS  ·  %d / %d  ·  SWIPE" % [
+			GameData.STAGE_ORDER.size(), _page + 1, _page_count,
+		]
+	if _prev_btn != null:
+		_prev_btn.disabled = _page <= 0
+		_prev_btn.modulate.a = 0.22 if _prev_btn.disabled else 1.0
+	if _next_btn != null:
+		_next_btn.disabled = _page >= _page_count - 1
+		_next_btn.modulate.a = 0.22 if _next_btn.disabled else 1.0
+
+
+# ------------------------------------------------------------------ selection
 func _on_diff_input(event: InputEvent, id: String) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_select_diff(id)
@@ -319,14 +523,8 @@ func _select_stage(id: String) -> void:
 	_selected_stage = id
 	Game.select_stage(_selected_stage, _selected_diff)
 	_refresh()
-	_ensure_visible(id)
+	_ensure_page(id)
 	Audio.play_click()
-
-
-func _ensure_visible(id: String) -> void:
-	if _scroll == null or not _cards.has(id):
-		return
-	_scroll.ensure_control_visible(_cards[id]["root"])
 
 
 func _select_diff(id: String) -> void:
@@ -342,12 +540,13 @@ func _refresh() -> void:
 		var accent: Color = card["accent"]
 		var unlocked := Game.is_stage_unlocked(id)
 		var selected: bool = id == _selected_stage
+		var hovered: bool = unlocked and id == _hover_stage
 		card["root"].modulate = Color(1, 1, 1, 1) if unlocked else Color(0.62, 0.62, 0.68, 1)
 		card["lock"].visible = not unlocked
 		card["root"].add_theme_stylebox_override("panel", UIKit.style(
-			Color(0.075, 0.11, 0.155, 0.98) if selected else Color(0.045, 0.07, 0.105, 0.94),
-			accent if selected else UIKit.BORDER,
-			3 if selected else 2, 0))
+			Color(0.075, 0.11, 0.155, 0.98) if (selected or hovered) else Color(0.045, 0.07, 0.105, 0.94),
+			accent if (selected or hovered) else UIKit.BORDER,
+			3 if selected else (3 if hovered else 2), 0))
 		card["record"].text = ("기록  " + Game.stage_record_text(id, _selected_diff)) if unlocked else "이전 전선 클리어 필요"
 		card["record"].add_theme_color_override("font_color", accent if selected else (UIKit.MINT if unlocked else UIKit.CORAL))
 	for id in _diff_chips:
@@ -364,6 +563,7 @@ func _refresh() -> void:
 		_shards_label.text = "◈ 달빛 조각  %d" % Game.shards
 	if _character_btn != null:
 		_character_btn.text = "친구 · %s" % CharacterData.display_name(Game.selected_character)
+	_update_page_ui()
 
 
 func _start() -> void:
@@ -442,6 +642,12 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_0:
 			_select_stage("citadel")
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_Q or event.keycode == KEY_PAGEUP:
+			_go_page(_page - 1)
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_E or event.keycode == KEY_PAGEDOWN:
+			_go_page(_page + 1)
+			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
 			var idx := maxi(0, GameData.DIFFICULTY_ORDER.find(_selected_diff) - 1)
 			_select_diff(GameData.DIFFICULTY_ORDER[idx])
@@ -452,9 +658,74 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _test_swipe() -> void:
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	for id in GameData.STAGE_ORDER:
+		Game.stage_records["%s:normal" % id] = {
+			"clears": 1, "boss": true, "best_kills": 100, "best_level": 10,
+			"best_time": 200.0,
+		}
+	_selected_stage = "hive"
+	Game.select_stage(_selected_stage, _selected_diff)
+	_refresh()
+	_ensure_page(_selected_stage, false)
+	var start_page := _page
+	var page_ok := start_page == 0
+	await _swipe(Vector2(900, 180), Vector2(500, 180))
+	var next_ok := _page == 1
+	await _swipe(Vector2(500, 180), Vector2(900, 180))
+	var back_ok := _page == 0
+	await _swipe(Vector2(500, 180), Vector2(900, 180))
+	var clamp_ok := _page == 0
+	await _tap(Vector2(19 + 115, 180))
+	var tap_ok := _selected_stage == "forest"
+	print("SWIPE TEST start=%d next=%s back=%s clamp=%s tap=%s selected=%s page=%d" % [
+		start_page, next_ok, back_ok, clamp_ok, tap_ok, _selected_stage, _page,
+	])
+	if not page_ok or not next_ok or not back_ok or not clamp_ok or not tap_ok:
+		push_error("SWIPE TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("SWIPE TEST OK")
+	get_tree().quit()
+
+
+func _swipe(from: Vector2, to: Vector2) -> void:
+	_send_button(from, true)
+	await get_tree().process_frame
+	_send_motion((from + to) * 0.5)
+	_send_motion(to)
+	await get_tree().process_frame
+	_send_button(to, false)
+	await get_tree().create_timer(0.45, true, false, true).timeout
+
+
+func _tap(pos: Vector2) -> void:
+	_send_button(pos, true)
+	await get_tree().process_frame
+	_send_button(pos, false)
+	await get_tree().process_frame
+
+
+func _send_button(pos: Vector2, pressed: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = pressed
+	e.position = _carousel.get_global_transform_with_canvas() * pos
+	e.global_position = e.position
+	get_viewport().push_input(e)
+
+
+func _send_motion(pos: Vector2) -> void:
+	var e := InputEventMouseMotion.new()
+	e.position = _carousel.get_global_transform_with_canvas() * pos
+	e.global_position = e.position
+	get_viewport().push_input(e)
+
+
 func _capture(shot: String = "stage_select") -> void:
 	await get_tree().create_timer(1.2, true, false, true).timeout
-	_ensure_visible(_selected_stage)
+	_ensure_page(_selected_stage, false)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var dir := ProjectSettings.globalize_path("res://screenshots")

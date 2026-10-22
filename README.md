@@ -66,7 +66,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | `ESC` | 일시정지 / 계속하기 / 장비·친구 화면에서 돌아가기 |
 | **터치** | 왼쪽 가상 조이스틱 이동 · 오른쪽 **대시/궁극기** · 우측 상단 **일시정지** |
 | `ENTER` | 타이틀·전선 선택에서 출격, 결과 화면에서 다음 전선/재도전 |
-| `1`~`9` `0` / 마우스 휠 / `←` `→` | 전선 선택 화면에서 스테이지(1~10)/난이도 선택 |
+| `1`~`9` `0` / 좌우 스와이프·휠·`Q` `E` / `←` `→` | 전선(1~10) / 페이지 / 난이도 선택 |
 | 게임패드 | 왼쪽 스틱 이동 지원 |
 
 ---
@@ -138,6 +138,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 심연 (NIGHTMARE) | ×1.75 | ×1.55 | ×0.70 (매우 빠름) | ×1.80 | ×0.85 | 7.0% |
 
 전선 선택 화면에서 난이도를 언제든 바꿀 수 있습니다. 기록은 **전선 × 난이도**별로 저장됩니다.
+전선 카드는 **좌우 스와이프**(마우스 드래그·터치), 마우스 휠, `Q`/`E`, 양끝 화살표로 넘길 수 있습니다.
 
 ---
 
@@ -456,6 +457,7 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --stage=dawn --capture-game
   godot --path . res://scenes/stage_select.tscn -- --capture-select
   godot --path . res://scenes/stage_select.tscn -- --capture-select-late
+  godot --path . res://scenes/stage_select.tscn -- --test-swipe
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression
   godot --path . res://scenes/main.tscn -- --test-late-balance
