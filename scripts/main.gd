@@ -781,6 +781,17 @@ func _test_progression() -> void:
 	diagonal_ok = diagonal_ok and player._row == 1 and player._flip
 	player._update_facing(Vector2(1, -1))
 	diagonal_ok = diagonal_ok and player._row == 3
+	# Diagonal rows must be their own art, not a copy of front/back.
+	var sheet_img := sheet.get_image()
+	var front_diag_differs := false
+	var back_diag_differs := false
+	for x in 32:
+		for y in 36:
+			if sheet_img.get_pixel(x, 36 + y) != sheet_img.get_pixel(x, y):
+				front_diag_differs = true
+			if sheet_img.get_pixel(x, 3 * 36 + y) != sheet_img.get_pixel(x, 4 * 36 + y):
+				back_diag_differs = true
+	diagonal_ok = diagonal_ok and front_diag_differs and back_diag_differs
 	var content_ok := GameData.STAGE_ORDER.size() == 15 \
 		and GameData.STAGES.size() == 15 \
 		and GameData.NEW_STAGE_ENEMIES.size() == 10 \
@@ -956,6 +967,11 @@ func _capture_game() -> void:
 		hud.warning_panel.visible = false
 	player.invuln = 999.0
 	await get_tree().create_timer(0.5, true, false, true).timeout
+	if "--capture-diagonal" in _args:
+		player._update_facing(Vector2(1, 1))
+		await get_tree().create_timer(0.3, true, false, true).timeout
+		await _capture("diagonal")
+		return
 	var shot := "gameplay" if Game.stage_id == "forest" else "stage_" + Game.stage_id
 	if "--touch" in _args:
 		shot = "touch_gameplay"

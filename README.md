@@ -221,6 +221,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 ### 8방향 모션
 - 정면·후면·좌우에 더해 **정면 대각선·후면 대각선** 스프라이트를 추가했습니다.
+- 대각선은 기울임 변형이 아니라 **3/4 시점 전용 포즈를 직접 작도**했습니다. (얼굴·어깨·스카프·제트팩이 대각선 방향으로 돌아감)
 - 대각선 이동 시 3/4 시점 프레임과 좌우 반전을 사용해 8방향 이동이 자연스럽게 보입니다.
 
 ### 대시 & 궁극기
@@ -372,6 +373,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
 `screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
+`screenshots/diagonal.png`,
 `screenshots/stage_select_late.png`, `screenshots/stage_dunes.png`, `screenshots/stage_frost.png`,
 `screenshots/stage_mire.png`, `screenshots/stage_ruins.png`, `screenshots/stage_citadel.png`,
 `screenshots/stage_trench.png`, `screenshots/stage_sunspot.png`, `screenshots/stage_maze.png`,
@@ -465,6 +467,7 @@ DalbearSurvival/
 - **디버그 캡처** (개발용):
   ```bash
   godot --path . res://scenes/main.tscn -- --capture-game
+  godot --path . res://scenes/main.tscn -- --stage=forest --capture-game --capture-diagonal
   godot --path . res://scenes/main.tscn -- --capture-hive
   godot --path . res://scenes/main.tscn -- --capture-ship
   godot --path . res://scenes/main.tscn -- --capture-queen

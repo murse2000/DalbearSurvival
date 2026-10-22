@@ -18,7 +18,7 @@ PLAYER_W, PLAYER_H = 32, 36
 
 # ------------------------------------------------------------------ player
 def bear_frame(direction: str, f: int) -> Image.Image:
-    """direction: front / side / back, f: 0..3 walk frame."""
+    """direction: front / front_diag / side / back_diag / back, f: 0..3 walk frame."""
     img = A.new(PLAYER_W, PLAYER_H)
     bob = 1 if f in (1, 3) else 0
     yoff = -bob
@@ -128,6 +128,105 @@ def bear_frame(direction: str, f: int) -> Image.Image:
         # jetpack nozzle glow
         rect(img, (7, 28 + yoff, 9, 30 + yoff), C["mint"])
 
+    elif direction == "front_diag":
+        # Front 3/4 view: face and near shoulder turned to the right.
+        lift_l = 1 if f == 1 else 0
+        lift_r = 1 if f == 3 else 0
+        # legs: far (left) tucked back, near (right) forward
+        rrect(img, (11, 28 + yoff + lift_l, 15, 34), C["cream2"], 2)
+        rrect(img, (18, 28 + yoff + lift_r, 22, 34), C["cream2"], 2)
+        ellipse(img, (11, 31 + lift_l, 15, 34), C["brown"])
+        ellipse(img, (18, 31 + lift_r, 22, 34), C["brown"])
+        # jetpack peeking from the far (left) side
+        rrect(img, (5, 19 + yoff, 10, 28 + yoff), C["ink"], 2)
+        rrect(img, (6, 20 + yoff, 9, 27 + yoff), C["teal"], 1)
+        rect(img, (6, 27 + yoff, 9, 29 + yoff), C["gold"])
+        # body turned right
+        ellipse(img, (9, 17 + yoff, 24, 31 + yoff), C["cream"])
+        ellipse(img, (9, 25 + yoff, 24, 32 + yoff), C["cream2"])
+        ellipse(img, (13, 21 + yoff, 22, 29 + yoff), C["cream3"])
+        # far arm small, near arm forward
+        ellipse(img, (6, 19 + yoff, 10, 27 + yoff), C["cream"])
+        ellipse(img, (6, 24 + yoff, 10, 27 + yoff), C["cream2"])
+        ellipse(img, (23, 18 + yoff, 28, 28 + yoff), C["cream"])
+        ellipse(img, (24, 24 + yoff, 28, 28 + yoff), C["cream2"])
+        # head shifted toward the turn
+        ellipse(img, (9, 4 + yoff, 27, 22 + yoff), C["cream"])
+        # ears: far one smaller, near one fuller
+        ellipse(img, (10, 2 + yoff, 16, 8 + yoff), C["cream"])
+        ellipse(img, (11, 3 + yoff, 15, 7 + yoff), C["brown"])
+        ellipse(img, (12, 4 + yoff, 14, 6 + yoff), C["pink"])
+        ellipse(img, (21, 2 + yoff, 27, 8 + yoff), C["cream"])
+        ellipse(img, (22, 3 + yoff, 26, 7 + yoff), C["brown"])
+        ellipse(img, (23, 4 + yoff, 25, 6 + yoff), C["pink"])
+        # muzzle + nose pushed to the near side
+        ellipse(img, (16, 13 + yoff, 24, 20 + yoff), C["cream3"])
+        ellipse(img, (19, 14 + yoff, 21, 17 + yoff), C["ink"])
+        line(img, [(20, 17 + yoff), (20, 18 + yoff)], C["ink"])
+        # eyes: far eye tighter, near eye wider
+        rect(img, (13, 10 + yoff, 15, 13 + yoff), C["ink"])
+        rect(img, (22, 10 + yoff, 24, 13 + yoff), C["ink"])
+        pixel(img, 13.5, 10.5, C["white"])
+        pixel(img, 22.5, 10.5, C["white"])
+        # cheeks
+        rect(img, (10, 14 + yoff, 11, 15 + yoff), C["pink"])
+        rect(img, (25, 14 + yoff, 26, 15 + yoff), C["pink"])
+        # scarf with the knot on the near side and the tail hanging right
+        rrect(img, (10, 18 + yoff, 26, 23 + yoff), C["ink"], 1)
+        rrect(img, (11, 19 + yoff, 25, 22 + yoff), C["coral"], 1)
+        rrect(img, (20, 21 + yoff, 26, 27 + yoff), C["ink"], 2)
+        rrect(img, (21, 22 + yoff, 25, 26 + yoff), C["coral_d"], 1)
+        poly(img, [(24, 23 + yoff), (29 + tail_sway, 29 + yoff), (25, 27 + yoff)], C["coral"])
+        poly(img, [(24, 25 + yoff), (27 + tail_sway, 28 + yoff), (25, 27 + yoff)], C["coral_d"])
+        pixel(img, 22, 23 + yoff, C["gold"])
+        # moon badge on the far side of the scarf
+        ellipse(img, (12, 19 + yoff, 17, 24 + yoff), C["ink"])
+        ellipse(img, (13, 20 + yoff, 16, 23 + yoff), C["gold"])
+        ellipse(img, (14, 20 + yoff, 17, 23 + yoff), C["coral"])
+        line(img, [(13, 5 + yoff), (18, 4 + yoff)], C["cream3"])
+
+    elif direction == "back_diag":
+        # Back 3/4 view: back of the head turned to the right.
+        lift_l = 1 if f == 1 else 0
+        lift_r = 1 if f == 3 else 0
+        rrect(img, (12, 28 + yoff + lift_l, 16, 34), C["cream2"], 2)
+        rrect(img, (18, 28 + yoff + lift_r, 22, 34), C["cream2"], 2)
+        ellipse(img, (12, 31 + lift_l, 16, 34), C["brown"])
+        ellipse(img, (18, 31 + lift_r, 22, 34), C["brown"])
+        # body turned right
+        ellipse(img, (9, 17 + yoff, 24, 31 + yoff), C["cream"])
+        ellipse(img, (9, 25 + yoff, 24, 32 + yoff), C["cream2"])
+        ellipse(img, (13, 22 + yoff, 22, 29 + yoff), C["cream3"])
+        # jetpack on the back, shifted with the turn
+        rrect(img, (13, 21 + yoff, 21, 30 + yoff), C["ink"], 2)
+        rrect(img, (14, 22 + yoff, 20, 29 + yoff), C["teal"], 2)
+        rect(img, (15, 24 + yoff, 19, 25 + yoff), C["gold_d"])
+        rect(img, (14, 28 + yoff, 16, 30 + yoff), C["gold"])
+        rect(img, (18, 28 + yoff, 20, 30 + yoff), C["gold"])
+        line(img, [(14, 22 + yoff), (19, 21 + yoff)], C["gold_d"])
+        # far arm small, near arm forward
+        ellipse(img, (6, 18 + yoff, 11, 27 + yoff), C["cream"])
+        ellipse(img, (6, 24 + yoff, 11, 27 + yoff), C["cream2"])
+        ellipse(img, (23, 18 + yoff, 28, 27 + yoff), C["cream"])
+        ellipse(img, (24, 24 + yoff, 28, 27 + yoff), C["cream2"])
+        # head turned away to the right
+        ellipse(img, (9, 4 + yoff, 27, 22 + yoff), C["cream"])
+        ellipse(img, (10, 2 + yoff, 16, 8 + yoff), C["cream"])
+        ellipse(img, (11, 3 + yoff, 15, 7 + yoff), C["brown"])
+        ellipse(img, (12, 4 + yoff, 14, 6 + yoff), C["pink"])
+        ellipse(img, (21, 2 + yoff, 27, 8 + yoff), C["cream"])
+        ellipse(img, (22, 3 + yoff, 26, 7 + yoff), C["brown"])
+        ellipse(img, (23, 4 + yoff, 25, 6 + yoff), C["pink"])
+        # scarf from behind + satchel on the near side
+        rrect(img, (10, 18 + yoff, 26, 23 + yoff), C["ink"], 1)
+        rrect(img, (11, 19 + yoff, 25, 22 + yoff), C["coral"], 1)
+        rrect(img, (16, 20 + yoff, 22, 27 + yoff), C["coral"])
+        rrect(img, (17, 22 + yoff, 21, 26 + yoff), C["coral_d"])
+        poly(img, [(19, 25 + yoff), (18 + tail_sway, 31 + yoff), (23, 28 + yoff)], C["coral"])
+        pixel(img, 19, 23 + yoff, C["gold"])
+        line(img, [(13, 5 + yoff), (18, 4 + yoff)], C["cream3"])
+        line(img, [(16, 12 + yoff), (19, 14 + yoff), (22, 12 + yoff)], C["cream2"])
+
     else:  # back
         lift_l = 1 if f == 1 else 0
         lift_r = 1 if f == 3 else 0
@@ -169,32 +268,11 @@ def bear_frame(direction: str, f: int) -> Image.Image:
     return A.finish(img, PLAYER_W, PLAYER_H)
 
 
-def diagonal_frame(direction: str, f: int) -> Image.Image:
-    """A 3/4 view derived from the front/back silhouette.
-
-    The slight shear turns the shoulders and head toward the movement
-    diagonal.  It keeps the same four-frame walk cycle and palette, so the
-    other friend sheets pick the new rows up automatically.
-    """
-    base = bear_frame("front" if direction == "front_diag" else "back", f)
-    shear = 0.20 if direction == "front_diag" else -0.20
-    # Keep the sprite centered on the 32px cell while shearing around y=18.
-    return base.transform(
-        (PLAYER_W, PLAYER_H),
-        Image.AFFINE,
-        (1.0, shear, -shear * 18.0, 0.0, 1.0, 0.0),
-        resample=Image.NEAREST,
-    )
-
-
 def player_sheet():
     rows = []
     for direction in ("front", "front_diag", "side", "back_diag", "back"):
         for f in range(4):
-            if direction in ("front_diag", "back_diag"):
-                rows.append(diagonal_frame(direction, f))
-            else:
-                rows.append(bear_frame(direction, f))
+            rows.append(bear_frame(direction, f))
     return A.make_sheet(rows, PLAYER_W, PLAYER_H, cols=4)
 
 
