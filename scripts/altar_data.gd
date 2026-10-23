@@ -76,5 +76,6 @@ static func effect_text(upgrade: Dictionary, level: int) -> String:
 		"companion":
 			if level <= 0:
 				return "미해금"
-			return "동료 Lv.%d" % level
+			var names := ["별이", "서리", "잿불", "그림자", "달"]
+			return "Lv.%d · %s" % [level, names[clampi(level - 1, 0, names.size() - 1)]]
 	return String(upgrade.get("desc", ""))

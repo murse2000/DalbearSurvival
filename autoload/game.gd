@@ -11,6 +11,7 @@ signal equipment_changed
 signal character_changed
 signal achievement_unlocked(id: String)
 signal altar_changed
+signal companion_changed(id: String)
 
 const SAVE_PATH := "user://dalbear_save.cfg"
 const RUN_SAVE_PATH := "user://dalbear_run.cfg"
@@ -23,6 +24,7 @@ const EQUIPMENT_SCENE := "res://scenes/equipment.tscn"
 const CHARACTER_SCENE := "res://scenes/characters.tscn"
 const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
 const ALTAR_SCENE := "res://scenes/altar.tscn"
+const COMPANIONS_SCENE := "res://scenes/companions.tscn"
 const REROLL_MAX := 2
 const BANISH_MAX := 1
 const STARTER_SHARDS := 150
@@ -67,6 +69,8 @@ var altar_levels := {}
 var altar_return := "stage_select"
 var weekly_key := ""
 var weekly_records := {}
+var selected_companion := "star"
+var companion_return := "altar"
 var stats := {
 	"total_kills": 0, "boss_kills": 0, "runs": 0, "wins": 0,
 	"daily_clears": 0, "max_level": 1, "max_evolutions": 0,
@@ -1355,6 +1359,45 @@ func close_altar() -> void:
 		go_stage_select()
 
 
+func companion_unlocked(id: String) -> bool:
+	var companion := CompanionData.get_companion(id)
+	return altar_level("companion") >= int(companion.get("unlock", 99))
+
+
+func companion_data() -> Dictionary:
+	return CompanionData.get_companion(selected_companion)
+
+
+func select_companion(id: String) -> Dictionary:
+	if not id in CompanionData.ids():
+		return {"ok": false, "message": "알 수 없는 동료입니다."}
+	if not companion_unlocked(id):
+		var need := int(CompanionData.get_companion(id).get("unlock", 5))
+		return {"ok": false, "message": "제단 동료 Lv.%d가 필요합니다." % need}
+	if selected_companion == id:
+		return {"ok": false, "message": "이미 함께하고 있습니다."}
+	selected_companion = id
+	save_settings()
+	companion_changed.emit(id)
+	return {"ok": true, "message": "%s가 함께합니다." % String(CompanionData.get_companion(id)["name"])}
+
+
+func go_companions(return_to: String = "altar") -> void:
+	companion_return = return_to
+	save_settings()
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	Audio.duck_music(false)
+	get_tree().change_scene_to_file(COMPANIONS_SCENE)
+
+
+func close_companions() -> void:
+	if companion_return == "stage_select":
+		go_stage_select()
+	else:
+		go_altar("altar")
+
+
 func signature_set_count(character_id: String) -> int:
 	var count := 0
 	for slot in EquipmentData.SLOT_ORDER:
@@ -1707,6 +1750,7 @@ func save_settings() -> void:
 	cfg.set_value("altar", "levels", altar_levels)
 	cfg.set_value("weekly", "key", weekly_key)
 	cfg.set_value("weekly", "records", weekly_records)
+	cfg.set_value("companion", "selected", selected_companion)
 	cfg.set_value("equipment", "inventory", inventory)
 	cfg.set_value("equipment", "equipped", equipped)
 	cfg.set_value("equipment", "loadouts", loadouts)
@@ -1763,6 +1807,11 @@ func load_record() -> void:
 		weekly_key = loaded_weekly_key
 		weekly_records = loaded_weekly
 	ensure_week()
+	var loaded_companion := String(cfg.get_value("companion", "selected", "star"))
+	if loaded_companion in CompanionData.ids() and companion_unlocked(loaded_companion):
+		selected_companion = loaded_companion
+	else:
+		selected_companion = "star"
 	var inv = cfg.get_value("equipment", "inventory", [])
 	if inv is Array:
 		inventory = inv

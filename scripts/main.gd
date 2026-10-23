@@ -187,6 +187,8 @@ func _ready() -> void:
 		_test_sets()
 	elif "--test-weekly" in _args:
 		_test_weekly()
+	elif "--test-companions" in _args:
+		_test_companions()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -272,7 +274,7 @@ func _build_companion() -> void:
 		return
 	companion = COMPANION_SCRIPT.new()
 	add_child(companion)
-	companion.setup(player, manager, level)
+	companion.setup(player, manager, level, Game.selected_companion)
 
 
 func _restore_run(snapshot: Dictionary) -> void:
@@ -1817,6 +1819,52 @@ func _test_upgrade() -> void:
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	print("UPGRADE TEST: weapons=", player.weapon_levels, " passives=", player.passive_levels,
 		" paused=", get_tree().paused, " running=", Game.running)
+	get_tree().quit()
+
+
+func _test_companions() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var old_altar: Dictionary = Game.altar_levels.duplicate(true)
+	var old_selected := Game.selected_companion
+	Game.altar_levels["companion"] = 0
+	Game.selected_companion = "star"
+	if Game.companion_unlocked("star"):
+		errors.append("star unlocked without altar level")
+	var locked := Game.select_companion("frost")
+	if locked.get("ok", false):
+		errors.append("frost selectable while locked")
+	Game.altar_levels["companion"] = 5
+	for id in CompanionData.ids():
+		if not Game.companion_unlocked(String(id)):
+			errors.append("not unlocked at max altar: %s" % id)
+	var picked := Game.select_companion("ember")
+	if not picked.get("ok", false) or Game.selected_companion != "ember":
+		errors.append("ember select failed")
+	if companion != null and is_instance_valid(companion):
+		companion.queue_free()
+		companion = null
+	_build_companion()
+	if companion == null or companion.companion_id != "ember":
+		errors.append("selected companion did not spawn")
+	if companion != null and is_instance_valid(companion):
+		companion.queue_free()
+		companion = null
+	if Game.select_companion("unknown").get("ok", false):
+		errors.append("unknown companion accepted")
+	Game.altar_levels = old_altar
+	Game.selected_companion = old_selected
+	Game.save_settings()
+	if errors.is_empty():
+		print("COMPANIONS TEST PASS roster=%d selected=%s" % [
+			CompanionData.all().size(), old_selected,
+		])
+		print("TEST PASS")
+	else:
+		print("COMPANIONS TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
 	get_tree().quit()
 
 

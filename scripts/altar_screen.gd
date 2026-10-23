@@ -89,6 +89,11 @@ func _build() -> void:
 	back.add_theme_font_size_override("font_size", 18)
 	back.pressed.connect(_go_back)
 	add_child(back)
+	var companion_btn := UIKit.button("동료 도감", Vector2(140, 34))
+	companion_btn.position = Vector2(540, 92) if _portrait else Vector2(920, 84)
+	companion_btn.add_theme_font_size_override("font_size", 13)
+	companion_btn.pressed.connect(func(): Game.go_companions("altar"))
+	add_child(companion_btn)
 
 	var line := ColorRect.new()
 	line.color = Color(0.85, 0.68, 0.35, 0.28)
