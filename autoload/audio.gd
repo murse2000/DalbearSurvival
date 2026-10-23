@@ -69,6 +69,7 @@ func play_pickup(value: int) -> void:
 
 func play_click() -> void:
 	play("click", randf_range(0.96, 1.05), -3.0)
+	Haptics.play("tick")
 
 
 func duck_music(on: bool) -> void:

@@ -159,6 +159,8 @@ func _ready() -> void:
 		_test_settings_effects()
 	elif "--test-platform-accessibility" in _args:
 		_test_platform_accessibility()
+	elif "--test-haptics" in _args:
+		_test_haptics()
 	elif "--test-settings-close" in _args:
 		_test_settings_close()
 	elif "--test-equipment-run" in _args:
@@ -485,6 +487,10 @@ func _process(delta: float) -> void:
 		var st := Game.stage_data()
 		var p := clampf(Game.time / float(st["duration"]), 0.0, 1.0)
 		canvas_mod.color = _ambient_color(p)
+		Haptics.set_low_hp(
+			Game.running and player.hp < player.max_hp * 0.3,
+			1.0 - clampf(player.hp / maxf(1.0, player.max_hp), 0.0, 1.0),
+		)
 		if hud != null and hud.has_method("tick"):
 			hud.tick(delta)
 		if Game.running and not _dev_mode and not get_tree().paused:
@@ -550,6 +556,7 @@ func _on_level_up_requested() -> void:
 	FX.levelup_burst(player.global_position + Vector2(0, -10))
 	FX.flash(Color(1.0, 0.9, 0.6), 0.28, 0.6)
 	Audio.play("levelup", 1.0, -2.0)
+	Haptics.play("levelup")
 	Audio.duck_music(true)
 	await get_tree().create_timer(0.32, true, false, true).timeout
 	_levelup_pending = false
@@ -1564,6 +1571,52 @@ func _test_platform_accessibility() -> void:
 		print("TEST PASS")
 	else:
 		print("PLATFORM ACCESSIBILITY TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
+func _test_haptics() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	var errors: Array = []
+	var old_haptics := Settings.haptics
+	var old_strength := Settings.haptic_strength
+	Settings.set_option("haptics", true)
+	Settings.set_choice("haptic_strength", "weak")
+	var weak := Settings.haptic_scale_value()
+	Settings.set_choice("haptic_strength", "strong")
+	var strong := Settings.haptic_scale_value()
+	if weak >= strong or not is_equal_approx(weak, 0.45):
+		errors.append("haptic strength scaling mismatch")
+	for event_id in ["tick", "dash", "hurt", "levelup", "relic", "boss", "boss_down", "ultimate"]:
+		if not Haptics.EVENTS.has(event_id):
+			errors.append("missing haptic event: %s" % event_id)
+	var before := Haptics.play_count()
+	Haptics.play("boss")
+	if Haptics.play_count() <= before or Haptics.last_event() != "boss":
+		errors.append("haptic event was not dispatched")
+	Settings.set_option("haptics", false)
+	var muted_count := Haptics.play_count()
+	Haptics.play("hurt")
+	if Haptics.play_count() != muted_count:
+		errors.append("haptics still fired while disabled")
+	Settings.set_choice("haptic_strength", "strong")
+	Settings.save_settings()
+	Settings.load_settings()
+	if Settings.haptics or Settings.haptic_strength != "strong":
+		errors.append("haptic settings did not persist")
+	Haptics.set_low_hp(false)
+	Settings.set_option("haptics", old_haptics)
+	Settings.set_choice("haptic_strength", old_strength)
+	Settings.save_settings()
+	if errors.is_empty():
+		print("HAPTICS TEST PASS weak=%.2f strong=%.2f events=%d" % [
+			weak, strong, Haptics.EVENTS.size(),
+		])
+		print("TEST PASS")
+	else:
+		print("HAPTICS TEST FAIL")
 		for error in errors:
 			print("  ", error)
 		print("TEST FAIL")

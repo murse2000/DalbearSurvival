@@ -432,6 +432,12 @@ func _test_settings() -> void:
 		Settings.set_choice("quality", old_quality)
 		get_tree().quit()
 		return
+	_settings_panel._switch_tab("controls")
+	if _settings_panel._tab != "controls" or not _settings_panel._buttons.has("haptics") \
+			or not _settings_panel._choice_buttons.has("haptic_strength"):
+		push_error("SETTINGS TEST: controls tab did not build")
+		get_tree().quit()
+		return
 	_settings_panel._switch_tab("access")
 	if _settings_panel._tab != "access" or not _settings_panel._buttons.has("high_contrast") \
 			or not _settings_panel._choice_buttons.has("colorblind"):

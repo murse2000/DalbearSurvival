@@ -13,6 +13,7 @@ const FPS_KEYS := ["60", "120", "144", "unlimited"]
 const FLASH_KEYS := ["off", "reduced", "normal"]
 const MOTION_KEYS := ["off", "reduced", "normal"]
 const COLORBLIND_KEYS := ["off", "deuteranopia", "protanopia", "tritanopia"]
+const HAPTIC_KEYS := ["weak", "normal", "strong"]
 
 var bloom := true
 var shake := true
@@ -29,6 +30,8 @@ var motion_intensity := "normal"
 var colorblind := "off"
 var high_contrast := false
 var focus_pause := true
+var haptics := true
+var haptic_strength := "normal"
 
 
 func _ready() -> void:
@@ -64,6 +67,10 @@ func set_option(key: String, value: bool) -> void:
 			if focus_pause == value:
 				return
 			focus_pause = value
+		"haptics":
+			if haptics == value:
+				return
+			haptics = value
 		_:
 			return
 	save_settings()
@@ -84,6 +91,8 @@ func get_option(key: String) -> bool:
 			return high_contrast
 		"focus_pause":
 			return focus_pause
+		"haptics":
+			return haptics
 	return true
 
 
@@ -133,6 +142,10 @@ func set_choice(key: String, value: String) -> void:
 			if not value in COLORBLIND_KEYS or colorblind == value:
 				return
 			colorblind = value
+		"haptic_strength":
+			if not value in HAPTIC_KEYS or haptic_strength == value:
+				return
+			haptic_strength = value
 		_:
 			return
 	save_settings()
@@ -159,6 +172,8 @@ func get_choice(key: String) -> String:
 			return motion_intensity
 		"colorblind":
 			return colorblind
+		"haptic_strength":
+			return haptic_strength
 	return ""
 
 
@@ -254,6 +269,17 @@ func colorblind_mode() -> String:
 	return colorblind
 
 
+func haptic_scale_value() -> float:
+	if not haptics:
+		return 0.0
+	match haptic_strength:
+		"weak":
+			return 0.45
+		"strong":
+			return 1.3
+	return 1.0
+
+
 func toggle_fullscreen() -> void:
 	set_choice("window_mode", "windowed" if window_mode == "fullscreen" else "fullscreen")
 
@@ -294,6 +320,8 @@ func save_settings() -> void:
 	cfg.set_value("display", "colorblind", colorblind)
 	cfg.set_value("display", "high_contrast", high_contrast)
 	cfg.set_value("display", "focus_pause", focus_pause)
+	cfg.set_value("feedback", "haptics", haptics)
+	cfg.set_value("feedback", "haptic_strength", haptic_strength)
 	cfg.set_value("ui", "hud_size", hud_size)
 	cfg.set_value("touch", "joystick_side", joystick_side)
 	cfg.set_value("touch", "joystick_size", joystick_size)
@@ -337,4 +365,8 @@ func load_settings() -> void:
 		colorblind = loaded_colorblind
 	high_contrast = bool(cfg.get_value("display", "high_contrast", false))
 	focus_pause = bool(cfg.get_value("display", "focus_pause", true))
+	haptics = bool(cfg.get_value("feedback", "haptics", true))
+	var loaded_haptic := String(cfg.get_value("feedback", "haptic_strength", "normal"))
+	if loaded_haptic in HAPTIC_KEYS:
+		haptic_strength = loaded_haptic
 	_apply_display()

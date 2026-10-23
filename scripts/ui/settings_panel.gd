@@ -50,6 +50,15 @@ const PAGES := {
 			]},
 	],
 	"controls": [
+		{"type": "toggle", "key": "haptics", "name": "진동 피드백",
+			"desc": "스마트폰과 연결된 게임패드에 상황별 진동을 전달합니다."},
+		{"type": "choice", "key": "haptic_strength", "name": "진동 세기",
+			"desc": "피격·보스·궁극기 진동의 강도를 조절합니다.",
+			"options": [
+				{"value": "weak", "label": "약하게"},
+				{"value": "normal", "label": "보통"},
+				{"value": "strong", "label": "강하게"},
+			]},
 		{"type": "choice", "key": "joystick_side", "name": "조이스틱 위치",
 			"desc": "왼손/오른손잡이에 맞춰 이동 버튼을 바꿉니다.",
 			"options": [

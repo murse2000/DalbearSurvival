@@ -477,6 +477,7 @@ func _choose(index: int) -> void:
 	player.apply_upgrade(choice)
 	Audio.play("click", 1.15, -2.0)
 	Audio.play("pickup", 1.25, -5.0)
+	Haptics.play("tick")
 	FX.flash(Color(1, 0.9, 0.7), 0.12, 0.3)
 	if Game.finish_levelup():
 		_close_all()
@@ -605,6 +606,7 @@ func _choose_relic(index: int) -> void:
 		Game.warning.emit("유물 · %s" % String(relic.get("name", "")), 2.6)
 	Audio.play("click", 1.15, -2.0)
 	Audio.play("pickup", 1.25, -5.0)
+	Haptics.play("relic")
 	FX.flash(Color(0.7, 0.9, 1.0), 0.14, 0.3)
 	FX.ring(player.global_position if player != null and is_instance_valid(player) else Vector2.ZERO,
 		Color(0.75, 0.9, 1.0), 70.0, 0.5, "halo")

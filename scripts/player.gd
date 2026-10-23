@@ -314,6 +314,7 @@ func _try_dash(input: Vector2) -> void:
 	invuln = maxf(invuln, DASH_TIME + 0.12)
 	var fx_color := character_color.lerp(Color.WHITE, 0.35)
 	Audio.play("dash", randf_range(0.96, 1.05), -3.0)
+	Haptics.play("dash")
 	FX.ring(global_position + Vector2(0, -10), fx_color, 30.0, 0.25)
 	FX.particles(global_position + Vector2(0, -12), "star", fx_color,
 		10, 0.35, 40, 130, 0.24, 180, Vector2(0, 60), true, 200)
@@ -357,6 +358,7 @@ func _try_ultimate() -> void:
 	var center := global_position + Vector2(0, -10)
 	var fx_color := character_color.lerp(Color.WHITE, 0.25)
 	Audio.play("ultimate", 1.0, -1.0)
+	Haptics.play("ultimate")
 	FX.rune(center, fx_color, 230.0, 0.9, 0.7)
 	FX.ring(center, fx_color, 120.0, 0.9)
 	FX.ring(center, fx_color, 260.0, 1.2, "halo")
@@ -808,6 +810,7 @@ func take_damage(amount: float) -> bool:
 	FX.hurt(global_position)
 	FX.damage_number(global_position + Vector2(0, -30), dmg, Color(1.0, 0.45, 0.42))
 	Audio.play("hurt", randf_range(0.9, 1.06), -2.0)
+	Haptics.play("hurt", clampf(dmg / maxf(1.0, max_hp) * 2.2, 0.35, 1.35))
 	FX.set_low_hp(hp < max_hp * 0.3)
 	if hp <= 0.0:
 		if revive_charges > 0:
@@ -820,6 +823,7 @@ func take_damage(amount: float) -> bool:
 			FX.enemy_death(global_position, Color(1.0, 0.8, 0.4), true)
 			Game.warning.emit("불굴의 심장 — 부활!", 2.8)
 			Audio.play("levelup", 0.7, -2.0)
+			Haptics.play("levelup", 1.2)
 		else:
 			_die()
 	return true
@@ -832,6 +836,7 @@ func heal(amount: float, show_fx: bool = true) -> void:
 	hp = minf(max_hp, hp + amount)
 	if hp > before:
 		hp_changed.emit(hp, max_hp)
+		Haptics.play("heal")
 		FX.set_low_hp(hp < max_hp * 0.3)
 		if show_fx:
 			FX.float_text(global_position + Vector2(0, -34), "+%d" % int(amount), Color(0.6, 1.0, 0.75), 20)

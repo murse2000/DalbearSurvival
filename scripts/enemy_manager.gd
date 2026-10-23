@@ -187,6 +187,7 @@ func _spawn_boss() -> void:
 	Audio.play("boss", 1.0, 0.0)
 	var boss_name := String(GameData.ENEMIES[kind]["name"])
 	Game.warning.emit("%s 접근 — 전선이 흔들린다" % boss_name, 4.0)
+	Haptics.play("boss")
 
 
 func restore_boss(kind: String, pos: Vector2, hp_ratio: float) -> void:
@@ -216,6 +217,7 @@ func _spawn_miniboss(kind: String) -> void:
 	FX.shake(8.0, 0.6)
 	Audio.play("boss", 0.82, -1.0)
 	Game.warning.emit("중간 보스 · %s 접근!" % e.display_name, 3.6)
+	Haptics.play("miniboss")
 
 
 func _create_miniboss(kind: String, pos: Vector2):
@@ -250,6 +252,7 @@ func on_miniboss_died(e: Node2D) -> void:
 	enemies.erase(e)
 	if Game.miniboss == e:
 		Game.miniboss = null
+	Haptics.play("boss_down", 0.55)
 
 
 func on_enemy_died(e: Node2D) -> void:
@@ -262,6 +265,7 @@ func on_boss_died(e: Node2D) -> void:
 	if Game.is_endless():
 		Game.warning.emit("보스 격추! 다음 보스가 접근 중...", 2.8)
 	Game.note_boss_kill()
+	Haptics.play("boss_down")
 	if not Game.is_endless():
 		Game.stage_clear(true)
 
