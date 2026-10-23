@@ -5,7 +5,8 @@
 > 외계 함대가 지구를 덮친 밤, 열다섯 개의 전선을 지켜낸다.
 
 **15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
-**무기 8종 + 진화 무기 8종**, **인런 유물**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
+**무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
+**대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
@@ -63,6 +64,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | `B` | 레벨 업 밴 모드 (런당 1회, `ESC` 취소) |
 | `I` | 타이틀·전선 선택에서 **장비 & 인벤토리** 열기 |
 | `C` | 타이틀·전선 선택·장비 화면에서 **친구 선택** 열기 |
+| `A` | 전선 선택에서 **업적** 열기 |
 | `ESC` | 일시정지 / 계속하기 / 장비·친구 화면에서 돌아가기 |
 | **터치** | 왼쪽 가상 조이스틱 이동 · 오른쪽 **대시/궁극기** · 우측 상단 **일시정지** |
 | `ENTER` | 타이틀·전선 선택에서 출격, 결과 화면에서 다음 전선/재도전 |
@@ -88,6 +90,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - 진행 중인 전투는 **8초마다 자동 저장**되고, 홈 화면/백그라운드 전환 시에도 즉시 저장됩니다.
 - 앱이 종료되거나 Android가 프로세스를 회수한 뒤 다시 실행하면 타이틀에 **이어하기** 버튼이 표시됩니다.
 - 이어하기는 **전선·난이도·생존 시간·레벨·경험치·킬·리롤/밴·무기/패시브/진화·체력·위치·궁극기 충전·보스 체력**을 복원합니다.
+- 무한 모드·일일 챌린지도 **모드·일일 변칙·무한 보스 웨이브**까지 함께 복원합니다.
+- 업적·누적 킬/보스 격추·최고 기록은 별도 진행도로 저장되어 새 모험을 시작해도 유지됩니다.
 - 복원 직후 2초 무적과 함께 주변 적은 새로 생성되며, 저장 시점의 일반 적/발사체/픽업은 복원하지 않습니다.
 - **새 모험**을 시작하거나 전선 선택·타이틀·결과 화면으로 이동하면 기존 저장은 삭제됩니다.
 - 저장 파일: `user://dalbear_run.cfg` (`%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_run.cfg`)
@@ -153,6 +157,44 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 전선 선택 화면에서 난이도를 언제든 바꿀 수 있습니다. 기록은 **전선 × 난이도**별로 저장됩니다.
 전선 카드는 **좌우 스와이프**(마우스 드래그·터치), 마우스 휠, `Q`/`E`, 양끝 화살표로 넘길 수 있습니다.
+
+---
+
+## 무한 모드 & 일일 챌린지
+
+### 무한 모드
+- **15전선을 완료하면 해금**됩니다. 전선 선택 화면의 **무한 모드** 버튼으로 진입합니다.
+- 4분 제한 없이 계속 싸웁니다. **240초부터 적 체력·피해량·출현 밀도가 계속 상승**합니다.
+- 첫 보스는 170초, 이후 **약 90초마다 보스가 다시 강림**하며 웨이브마다 체력·피해량이 증가합니다.
+- 160초 이후에는 중간 보스도 **75초 주기**로 등장합니다.
+- HUD 타이머가 남은 시간 대신 **생존 시간**을 표시하고, 결과 화면에 생존 시간·킬·전선별 최고 기록이 나옵니다.
+- 무한 모드에서도 유물·레벨업·장비 보상은 그대로 적용됩니다.
+
+### 일일 챌린지
+- **오늘의 날짜 시드**로 전선·난이도·변칙이 고정됩니다. 같은 날에는 누구나 같은 조합입니다.
+- 전선 선택 화면의 **오늘의 도전** 버튼으로 바로 시작합니다. (전선 선택 상태와 무관)
+- 변칙 6종: **떼몰이**(출현 +25%), **중갑**(체력 +20%), **광란**(이동 +15%),
+  **유리 대포**(피해 +20% · 체력 -10%), **자력 왜곡**(자력 -30), **정예 출현**(정예 +4%).
+- 결과 화면에 오늘의 최고 시간·킬·클리어 횟수가 표시되고, 날짜별 기록이 저장됩니다.
+
+### 업적
+전선 선택 화면의 **업적** 버튼(또는 `A`)에서 12종 업적과 진행도를 확인할 수 있습니다.
+달성 즉시 상단 알림이 뜨고 자동 저장됩니다. 오래된 세이브도 보유 기록을 기준으로 즉시 판정됩니다.
+
+| 업적 | 조건 |
+|---|---|
+| 첫 새벽 | 첫 전선 클리어 |
+| 지구 방위 | 15전선 완주 |
+| 사냥꾼 | 누적 1,000킬 |
+| 학살자 | 누적 10,000킬 |
+| 보스 헌터 | 보스 10회 격추 |
+| 한계 돌파 | 한 런 Lv.30 |
+| 완전체 | 한 런 무기 8개 진화 |
+| 유물 수집가 | 한 런 유물 3개 |
+| 전설의 장비 | 전설 등급 장비 장착 |
+| 무한의 끝 | 무한 모드 10분 생존 |
+| 오늘의 영웅 | 일일 챌린지 클리어 |
+| 단련 | 장비 Lv.5 강화 |
 
 ---
 
@@ -376,6 +418,10 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![세로 타이틀](screenshots/title_portrait.png) | ![세로 전선 선택](screenshots/stage_select_portrait.png) |
 | ![세로 전투](screenshots/stage_dunes_portrait.png) | ![세로 장비](screenshots/equipment_portrait.png) |
 | ![세로 친구 선택](screenshots/characters_portrait.png) | ![15개 전선 선택](screenshots/stage_select_late.png) |
+| ![업적](screenshots/achievements.png) | ![세로 업적](screenshots/achievements_portrait.png) |
+| ![무한 모드](screenshots/endless.png) | ![일일 챌린지](screenshots/daily.png) |
+| ![무한 모드 결과](screenshots/endless_end.png) | ![전선 선택](screenshots/stage_select.png) |
+| ![일일 도전 확인](screenshots/daily_modal.png) | ![세로 일일 도전](screenshots/daily_modal_portrait.png) |
 
 추가 캡처: `screenshots/gameplay.png`, `screenshots/levelup.png`, `screenshots/pause.png`,
 `screenshots/stage_clear.png`, `screenshots/defeat.png`, `screenshots/equipment.png`,
@@ -385,6 +431,9 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
 `screenshots/diagonal.png`, `screenshots/relics.png`,
+`screenshots/achievements.png`, `screenshots/achievements_portrait.png`,
+`screenshots/endless.png`, `screenshots/daily.png`, `screenshots/endless_end.png`,
+`screenshots/daily_modal.png`, `screenshots/daily_modal_portrait.png`,
 `screenshots/stage_select_late.png`, `screenshots/stage_dunes.png`, `screenshots/stage_frost.png`,
 `screenshots/stage_mire.png`, `screenshots/stage_ruins.png`, `screenshots/stage_citadel.png`,
 `screenshots/stage_trench.png`, `screenshots/stage_sunspot.png`, `screenshots/stage_maze.png`,
@@ -403,9 +452,12 @@ DalbearSurvival/
 │  ├─ stage_select.tscn          # 15개 전선 + 4개 난이도 선택
 │  ├─ equipment.tscn             # 장비 & 인벤토리 화면
 │  ├─ characters.tscn            # 달베어 친구 선택
+│  ├─ achievements.tscn          # 업적 보드
 │  ├─ main.tscn / player.tscn / enemy.tscn
 ├─ scripts/
-│  ├─ game_data.gd               # 15개 전선/난이도/무기/적/보스/패시브 데이터
+│  ├─ game_data.gd               # 15개 전선/난이도/무기/적/보스/패시브/일일 변칙 데이터
+│  ├─ achievement_data.gd        # 업적 12종 정의/진행도
+│  ├─ achievements_screen.gd     # 업적 보드 UI
 │  ├─ character_data.gd          # 친구 5명 능력치/특성/전용 장비
 │  ├─ character_select.gd        # 친구 선택 UI
 │  ├─ equipment_data.gd          # 장비 등급/슬롯/능력치/강화 계산
@@ -534,11 +586,20 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --test-equipment-run
   godot --path . res://scenes/equipment.tscn -- --test-equipment
   godot --path . res://scenes/characters.tscn -- --test-characters
+  godot --path . res://scenes/main.tscn -- --test-modes
+  godot --path . res://scenes/main.tscn -- --endless --capture-endless
+  godot --path . res://scenes/main.tscn -- --daily --capture-daily
+  godot --path . res://scenes/main.tscn -- --endless --capture-endless-end
+  godot --path . res://scenes/stage_select.tscn -- --capture-daily-modal
+  godot --path . --resolution 720x1280 res://scenes/stage_select.tscn -- --capture-daily-modal
+  godot --path . res://scenes/achievements.tscn -- --test-achievements
+  godot --path . res://scenes/achievements.tscn -- --capture-achievements
+  godot --path . --resolution 720x1280 res://scenes/achievements.tscn -- --capture-achievements
   godot --path . res://scenes/stage_select.tscn -- --capture-select
   ```
   결과는 `screenshots/`에 저장됩니다.
 - **기록 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_save.cfg`
-  (기록 · 장비 인벤토리 · 장착 슬롯 · 달빛 조각 · 장비 레벨 · 선택한 친구가 함께 저장됩니다)
+  (기록 · 장비 인벤토리 · 장착 슬롯 · 달빛 조각 · 장비 레벨 · 선택한 친구 · 무한/일일 기록 · 업적이 함께 저장됩니다)
 - **연출 설정 저장 위치**: `%APPDATA%\Godot\app_userdata\DALBEAR- Earth Defense\dalbear_settings.cfg`
 - **Android 생명주기**: 홈/백그라운드 진입 시 자동 일시정지 + 체크포인트 저장, 복귀 시 일시정지 유지. 프로세스가 종료되어도 타이틀에서 이어하기가 가능합니다. 적 발사체는 이동 경로 기반 연속 충돌 판정을 사용합니다.
 - **렌더러**: Windows는 **Forward+ + Lit 2D Lighting**, Android는 **GL Compatibility + 네이티브 CanvasModulate/PointLight2D 폴백**을 사용합니다.

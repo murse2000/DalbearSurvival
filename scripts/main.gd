@@ -68,6 +68,14 @@ func _ready() -> void:
 			Game.stage_id = "ship"
 	if "--test-checkpoint-resume" in _args:
 		Game.prepare_resume_checkpoint()
+	if "--endless" in _args:
+		Game.mode = "endless"
+	elif "--daily" in _args:
+		Game.prepare_daily()
+		Game.mode = "daily"
+		Game.stage_id = String(Game.daily_info.get("stage", "forest"))
+		Game.difficulty_id = String(Game.daily_info.get("diff", "normal"))
+		Game._apply_run_mods(Game.daily_info.get("modifier", {}))
 	var run_snapshot: Dictionary = Game.consume_run_snapshot()
 	Game.begin_run()
 	if run_snapshot.is_empty():
@@ -105,6 +113,12 @@ func _ready() -> void:
 		_test_checkpoint_resume()
 	elif "--capture-game" in _args:
 		_capture_game()
+	elif "--capture-endless" in _args:
+		_capture_endless()
+	elif "--capture-daily" in _args:
+		_capture_daily()
+	elif "--capture-endless-end" in _args:
+		_capture_endless_end()
 	elif "--capture-base" in _args:
 		_capture_base()
 	elif "--capture-lighting" in _args:
@@ -151,6 +165,8 @@ func _ready() -> void:
 		_capture_boss_clear()
 	elif "--test-patterns" in _args:
 		_test_patterns()
+	elif "--test-modes" in _args:
+		_test_modes()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -1773,6 +1789,186 @@ func _test_upgrade() -> void:
 	print("UPGRADE TEST: weapons=", player.weapon_levels, " passives=", player.passive_levels,
 		" paused=", get_tree().paused, " running=", Game.running)
 	get_tree().quit()
+
+
+func _test_modes() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var errors: Array = []
+	var old_mode := Game.mode
+	var old_info: Dictionary = Game.daily_info.duplicate(true)
+	var old_hp := Game.run_hp_mult
+	var old_damage := Game.run_damage_mult
+	var old_speed := Game.run_speed_mult
+	var old_spawn := Game.run_spawn_mult
+	var old_pickup := Game.run_pickup_bonus
+	var old_elite := Game.run_elite_bonus
+	var old_stats: Dictionary = Game.stats.duplicate(true)
+	var old_endless: Dictionary = Game.endless_records.duplicate(true)
+	var old_daily: Dictionary = Game.daily_records.duplicate(true)
+	var old_stages: Dictionary = Game.stage_records.duplicate(true)
+	var old_ach: Dictionary = Game.achievements.duplicate(true)
+	var old_time := Game.time
+	var old_wave := Game.endless_boss_wave
+
+	Game.prepare_daily()
+	var info: Dictionary = Game.daily_info
+	if String(info.get("date", "")) != Game.daily_key():
+		errors.append("daily date mismatch")
+	if not GameData.STAGES.has(String(info.get("stage", ""))):
+		errors.append("daily stage invalid")
+	if not GameData.DIFFICULTIES.has(String(info.get("diff", ""))):
+		errors.append("daily diff invalid")
+	var first_seed := int(info.get("seed", 0))
+	Game.prepare_daily()
+	if int(Game.daily_info.get("seed", 0)) != first_seed:
+		errors.append("daily seed not deterministic")
+	var mod: Dictionary = info.get("modifier", {})
+	if mod.is_empty() or String(mod.get("name", "")) == "":
+		errors.append("daily modifier missing")
+
+	Game.mode = "daily"
+	Game.stage_id = String(info.get("stage", "forest"))
+	Game.difficulty_id = String(info.get("diff", "normal"))
+	Game.record_daily_result(123.0, 7, 45, true)
+	var drec: Dictionary = Game.daily_record()
+	if int(drec.get("clears", 0)) < 1 or float(drec.get("best_time", 0.0)) < 123.0:
+		errors.append("daily record not written")
+
+	Game.mode = "endless"
+	Game.stage_id = "forest"
+	Game.record_endless_result(321.0, 12, 120)
+	var erec: Dictionary = Game.endless_best("forest")
+	if float(erec.get("best_time", 0.0)) < 321.0 or int(erec.get("best_kills", 0)) < 120:
+		errors.append("endless record not written")
+
+	Game.stage_records["dawn:normal"] = {"clears": 1}
+	if not Game.is_endless_unlocked():
+		errors.append("endless not unlocked by dawn clear")
+
+	Game.mode = "endless"
+	Game.time = 540.0
+	Game.run_hp_mult = 1.0
+	Game.run_damage_mult = 1.0
+	Game.run_speed_mult = 1.0
+	var scaled_enemy = load("res://scenes/enemy.tscn").instantiate()
+	add_child(scaled_enemy)
+	scaled_enemy.setup("blob", manager, false)
+	var scaled_hp := float(scaled_enemy.max_hp)
+	scaled_enemy.queue_free()
+	Game.mode = "campaign"
+	Game.time = 0.0
+	var base_enemy = load("res://scenes/enemy.tscn").instantiate()
+	add_child(base_enemy)
+	base_enemy.setup("blob", manager, false)
+	var base_hp := float(base_enemy.max_hp)
+	base_enemy.queue_free()
+	if scaled_hp <= base_hp * 1.1:
+		errors.append("endless scaling too weak: %.1f vs %.1f" % [scaled_hp, base_hp])
+
+	Game.mode = "endless"
+	Game.time = 170.0
+	Game.endless_boss_wave = 0
+	Game.running = true
+	manager.boss_spawned = true
+	manager._next_endless_boss = 170.0
+	manager._spawn_boss()
+	if Game.endless_boss_wave != 1:
+		errors.append("endless boss wave not counted")
+	var first_boss = Game.boss
+	if first_boss == null:
+		errors.append("endless first boss missing")
+	else:
+		manager.on_boss_died(first_boss)
+		if not Game.running:
+			errors.append("endless boss death ended the run")
+		if first_boss != null and is_instance_valid(first_boss):
+			first_boss.queue_free()
+	Game.time = 261.0
+	manager._process(0.0)
+	if Game.boss == null:
+		errors.append("endless next boss did not spawn")
+	if Game.boss != null and is_instance_valid(Game.boss):
+		Game.boss.queue_free()
+	Game.boss = null
+
+	Game.mode = old_mode
+	Game.daily_info = old_info
+	Game.run_hp_mult = old_hp
+	Game.run_damage_mult = old_damage
+	Game.run_speed_mult = old_speed
+	Game.run_spawn_mult = old_spawn
+	Game.run_pickup_bonus = old_pickup
+	Game.run_elite_bonus = old_elite
+	Game.stats = old_stats
+	Game.endless_records = old_endless
+	Game.daily_records = old_daily
+	Game.stage_records = old_stages
+	Game.achievements = old_ach
+	Game.time = old_time
+	Game.endless_boss_wave = old_wave
+	Game.save_settings()
+	if errors.is_empty():
+		print("MODES TEST PASS: daily=%s/%s/%s endless_best=%.0f" % [
+			String(info.get("stage", "")), String(info.get("diff", "")),
+			String(mod.get("name", "")), float(erec.get("best_time", 0.0)),
+		])
+		print("TEST PASS")
+	else:
+		print("MODES TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
+func _capture_endless() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	Game.mode = "endless"
+	Game.time = 312.0
+	Game.kills = 530
+	Game.level = 22
+	Game.kills_changed.emit(Game.kills)
+	var kinds := ["blob", "drone", "grey", "jelly", "spitter", "bomber", "brute", "sentinel"]
+	for i in 14:
+		var a := TAU * float(i) / 14.0 + 0.2
+		var d := 220.0 + (i % 5) * 42.0
+		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * d, i % 6 == 0)
+	manager.boss_spawned = true
+	await get_tree().create_timer(1.6, true, false, true).timeout
+	await _capture("endless")
+
+
+func _capture_daily() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	if not Game.is_daily():
+		Game.prepare_daily()
+		Game.mode = "daily"
+		Game.stage_id = String(Game.daily_info.get("stage", "forest"))
+		Game.difficulty_id = String(Game.daily_info.get("diff", "normal"))
+		Game._apply_run_mods(Game.daily_info.get("modifier", {}))
+	Game.time = 96.0
+	Game.kills = 148
+	Game.level = 11
+	Game.kills_changed.emit(Game.kills)
+	var kinds := ["blob", "drone", "grey", "jelly", "mech"]
+	for i in 10:
+		var a := TAU * float(i) / 10.0 + 0.1
+		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * (220.0 + (i % 4) * 40.0), i == 8)
+	await get_tree().create_timer(1.4, true, false, true).timeout
+	await _capture("daily")
+
+
+func _capture_endless_end() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	Game.mode = "endless"
+	Game.time = 487.0
+	Game.level = 19
+	Game.kills = 642
+	Game.record_endless_result(487.0, 19, 642)
+	Game.last_rewards = {}
+	overlay.show_end(false, false)
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	await _capture("endless_end")
 
 
 func _capture(name: String) -> void:

@@ -135,6 +135,17 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 			display_name += " · 정예"
 		if kind == "blobling":
 			visual_scale = 0.68
+	max_hp *= Game.run_hp_mult
+	damage *= Game.run_damage_mult
+	speed *= Game.run_speed_mult
+	if Game.is_endless():
+		var overtime := maxf(0.0, Game.time - 240.0)
+		if boss:
+			max_hp *= pow(1.10, float(maxi(0, Game.endless_boss_wave - 1)))
+			damage *= pow(1.05, float(maxi(0, Game.endless_boss_wave - 1)))
+		else:
+			max_hp *= pow(1.025, overtime / 10.0)
+			damage *= pow(1.015, overtime / 10.0)
 	hp = max_hp
 	attack_cd = randf_range(1.0, 2.0)
 	teleport_cd = randf_range(1.2, 2.4)

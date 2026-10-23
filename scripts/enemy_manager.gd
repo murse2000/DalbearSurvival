@@ -23,6 +23,9 @@ var spawn_timer := 1.0
 var boss_spawned := false
 var miniboss_spawned := {}
 var _grid_tick := 0
+var _next_endless_boss := 170.0
+var _next_endless_mini := 160.0
+var _endless_mini_index := 0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -45,6 +48,17 @@ func _process(delta: float) -> void:
 	if not boss_spawned and Game.time >= Game.stage_boss_time():
 		boss_spawned = true
 		_spawn_boss()
+	if Game.is_endless():
+		if (Game.boss == null or not is_instance_valid(Game.boss) or bool(Game.boss.get("dead"))) \
+				and Game.time >= _next_endless_boss:
+			_spawn_boss()
+		if (Game.miniboss == null or not is_instance_valid(Game.miniboss) or bool(Game.miniboss.get("dead"))) \
+				and Game.time >= _next_endless_mini:
+			var endless_schedule: Array = Game.stage_data().get("minibosses", [])
+			if not endless_schedule.is_empty():
+				_spawn_miniboss(String(endless_schedule[_endless_mini_index % endless_schedule.size()][1]))
+				_endless_mini_index += 1
+				_next_endless_mini = Game.time + 75.0
 	var schedule: Array = Game.stage_data().get("minibosses", [])
 	for i in schedule.size():
 		if not miniboss_spawned.has(i) and Game.time >= float(schedule[i][0]):
@@ -54,7 +68,11 @@ func _process(delta: float) -> void:
 	if spawn_timer > 0.0:
 		return
 	var stage := Game.stage_data()
-	spawn_timer = GameData.spawn_interval(Game.stage_id, Game.time, Game.difficulty_id)
+	var interval := GameData.spawn_interval(Game.stage_id, Game.time, Game.difficulty_id) \
+		* Game.run_spawn_mult
+	if Game.is_endless():
+		interval *= maxf(0.55, pow(0.97, maxf(0.0, Game.time - 240.0) / 10.0))
+	spawn_timer = interval
 	if enemies.size() >= _max_enemies:
 		return
 	var batch := GameData.spawn_batch(Game.time, float(stage["duration"]))
@@ -94,7 +112,7 @@ func _spawn_random() -> void:
 		if r <= 0.0:
 			kind = k
 			break
-	var elite_chance := float(Game.difficulty_data()["elite"])
+	var elite_chance := float(Game.difficulty_data()["elite"]) + Game.run_elite_bonus
 	var elite := Game.time > 40.0 and _rng.randf() < elite_chance
 	spawn_enemy(kind, _spawn_position(), elite)
 
@@ -151,6 +169,9 @@ func _spawn_boss() -> void:
 	var e = ENEMY_SCENE.instantiate()
 	actors.add_child(e)
 	e.global_position = pos
+	if Game.is_endless():
+		Game.endless_boss_wave += 1
+		_next_endless_boss = Game.time + 90.0
 	e.setup(kind, self, false)
 	enemies.append(e)
 	FX.boss_spawn(pos)
@@ -231,7 +252,11 @@ func on_enemy_died(e: Node2D) -> void:
 func on_boss_died(e: Node2D) -> void:
 	enemies.erase(e)
 	Game.boss = null
-	Game.stage_clear(true)
+	if Game.is_endless():
+		Game.warning.emit("보스 격추! 다음 보스가 접근 중...", 2.8)
+	Game.note_boss_kill()
+	if not Game.is_endless():
+		Game.stage_clear(true)
 
 
 func trigger_victory() -> void:

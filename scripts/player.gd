@@ -437,7 +437,7 @@ func recalc_stats() -> void:
 		* (1.0 - float(gear.get("cooldown_pct", 0.0))) \
 		* (1.0 - float(rm.get("cooldown_pct", 0.0))))
 	pickup_radius = base_pickup + magnet * 28.0 + float(gear.get("pickup", 0.0)) \
-		+ float(rm.get("pickup", 0.0))
+		+ float(rm.get("pickup", 0.0)) + Game.run_pickup_bonus
 	armor = base_armor + alloy * 1.0 + float(gear.get("armor", 0.0)) + float(rm.get("armor", 0.0))
 	crit = clampf(base_crit + star * 0.05 + float(gear.get("crit", 0.0)) \
 		+ float(rm.get("crit", 0.0)), 0.0, 0.9)
@@ -459,6 +459,7 @@ func add_relic(id: String) -> bool:
 	_rebuild_relic_mods()
 	recalc_stats()
 	stats_changed.emit()
+	Game.note_relics(relics.size())
 	return true
 
 
@@ -620,6 +621,7 @@ func evolve_weapon(base_id: String) -> void:
 	evolutions[base_id] = String(evo["id"])
 	_evo_notified[base_id + ":ready"] = true
 	stats_changed.emit()
+	Game.note_evolution(evolutions.size())
 	if not _restoring:
 		FX.levelup_burst(global_position + Vector2(0, -10))
 		FX.flash(Color(1.0, 0.9, 0.6), 0.35, 0.8)

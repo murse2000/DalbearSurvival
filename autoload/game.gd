@@ -9,6 +9,7 @@ signal run_ended(victory: bool, boss_killed: bool)
 signal warning(text: String, duration: float)
 signal equipment_changed
 signal character_changed
+signal achievement_unlocked(id: String)
 
 const SAVE_PATH := "user://dalbear_save.cfg"
 const RUN_SAVE_PATH := "user://dalbear_run.cfg"
@@ -19,6 +20,7 @@ const TITLE_SCENE := "res://scenes/title.tscn"
 const STAGE_SELECT_SCENE := "res://scenes/stage_select.tscn"
 const EQUIPMENT_SCENE := "res://scenes/equipment.tscn"
 const CHARACTER_SCENE := "res://scenes/characters.tscn"
+const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
 const REROLL_MAX := 2
 const BANISH_MAX := 1
 const STARTER_SHARDS := 150
@@ -36,6 +38,14 @@ var banishes := 1
 var boss: Node = null
 var miniboss: Node = null
 var last_boss_killed := false
+var mode := "campaign"
+var run_hp_mult := 1.0
+var run_damage_mult := 1.0
+var run_speed_mult := 1.0
+var run_spawn_mult := 1.0
+var run_pickup_bonus := 0.0
+var run_elite_bonus := 0.0
+var endless_boss_wave := 0
 
 var stage_id := "forest"
 var difficulty_id := "normal"
@@ -44,8 +54,19 @@ var selected_difficulty := "normal"
 
 var record := {"best_time": 0.0, "best_level": 0, "best_kills": 0, "victory": false}
 var stage_records := {}
+var endless_records := {}
+var daily_records := {}
+var daily_info := {}
 var _warned := {}
 var _pending_run_snapshot: Dictionary = {}
+var achievement_return := "stage_select"
+var achievements := {}
+var stats := {
+	"total_kills": 0, "boss_kills": 0, "runs": 0, "wins": 0,
+	"daily_clears": 0, "max_level": 1, "max_evolutions": 0,
+	"max_relics": 0, "max_enhance": 0, "legendary_equipped": false,
+	"endless_best": 0.0,
+}
 
 # ---------------------------------------------------------------- equipment
 var inventory: Array = []
@@ -70,7 +91,7 @@ func _process(delta: float) -> void:
 		return
 	time += delta
 	_check_warnings()
-	if time >= stage_duration():
+	if not is_endless() and time >= stage_duration():
 		end_run(true, false)
 
 
@@ -83,11 +104,71 @@ func difficulty_data() -> Dictionary:
 
 
 func stage_duration() -> float:
+	if is_endless():
+		return 999999.0
 	return GameData.stage_duration(stage_id)
 
 
 func stage_boss_time() -> float:
 	return GameData.stage_boss_time(stage_id)
+
+
+func is_endless() -> bool:
+	return mode == "endless"
+
+
+func is_daily() -> bool:
+	return mode == "daily"
+
+
+func is_endless_unlocked() -> bool:
+	return has_cleared(GameData.STAGE_ORDER[GameData.STAGE_ORDER.size() - 1])
+
+
+func daily_key() -> String:
+	return Time.get_date_string_from_system()
+
+
+func prepare_daily() -> void:
+	var key := daily_key()
+	var seed := int(key.replace("-", "").to_int())
+	var stage := String(GameData.STAGE_ORDER[seed % GameData.STAGE_ORDER.size()])
+	var diff := String(GameData.DIFFICULTY_ORDER[int(seed / 7.0) % GameData.DIFFICULTY_ORDER.size()])
+	var mod: Dictionary = GameData.DAILY_MODIFIERS[seed % GameData.DAILY_MODIFIERS.size()]
+	daily_info = {"date": key, "seed": seed, "stage": stage, "diff": diff, "modifier": mod}
+	_apply_run_mods(mod)
+
+
+func daily_record() -> Dictionary:
+	return daily_records.get(daily_key(), {})
+
+
+func endless_best(stage: String) -> Dictionary:
+	return endless_records.get(stage, {})
+
+
+func _apply_run_mods(mod: Dictionary) -> void:
+	run_hp_mult = float(mod.get("hp", 1.0))
+	run_damage_mult = float(mod.get("damage", 1.0))
+	run_speed_mult = float(mod.get("speed", 1.0))
+	run_spawn_mult = float(mod.get("spawn", 1.0))
+	run_pickup_bonus = float(mod.get("pickup", 0.0))
+	run_elite_bonus = float(mod.get("elite", 0.0))
+
+
+func _clear_run_mods() -> void:
+	run_hp_mult = 1.0
+	run_damage_mult = 1.0
+	run_speed_mult = 1.0
+	run_spawn_mult = 1.0
+	run_pickup_bonus = 0.0
+	run_elite_bonus = 0.0
+	endless_boss_wave = 0
+
+
+func start_daily() -> void:
+	prepare_daily()
+	new_run(String(daily_info["stage"]), String(daily_info["diff"]), "daily")
 
 
 func time_left() -> float:
@@ -104,8 +185,16 @@ func _check_warnings() -> void:
 			warning.emit(String(entry[1]), 3.2)
 
 
-func new_run(stage: String = "", diff: String = "") -> void:
+func new_run(stage: String = "", diff: String = "", run_mode: String = "campaign") -> void:
 	clear_run_checkpoint()
+	mode = run_mode
+	_clear_run_mods()
+	if mode == "daily":
+		if daily_info.is_empty() or String(daily_info.get("date", "")) != daily_key():
+			prepare_daily()
+		stage = String(daily_info.get("stage", "forest"))
+		diff = String(daily_info.get("diff", "normal"))
+		_apply_run_mods(daily_info.get("modifier", {}))
 	if stage != "" and GameData.STAGES.has(stage):
 		stage_id = stage
 	if diff != "" and GameData.DIFFICULTIES.has(diff):
@@ -140,7 +229,7 @@ func select_stage(stage: String, diff: String) -> void:
 
 
 func retry_stage() -> void:
-	new_run(stage_id, difficulty_id)
+	new_run(stage_id, difficulty_id, mode)
 
 
 func _reset() -> void:
@@ -174,6 +263,15 @@ func save_run_checkpoint(p) -> bool:
 	cfg.set_value("meta", "xp", xp)
 	cfg.set_value("meta", "xp_need", xp_need)
 	cfg.set_value("meta", "kills", kills)
+	cfg.set_value("meta", "mode", mode)
+	cfg.set_value("meta", "daily_info", daily_info.duplicate(true))
+	cfg.set_value("meta", "run_hp_mult", run_hp_mult)
+	cfg.set_value("meta", "run_damage_mult", run_damage_mult)
+	cfg.set_value("meta", "run_speed_mult", run_speed_mult)
+	cfg.set_value("meta", "run_spawn_mult", run_spawn_mult)
+	cfg.set_value("meta", "run_pickup_bonus", run_pickup_bonus)
+	cfg.set_value("meta", "run_elite_bonus", run_elite_bonus)
+	cfg.set_value("meta", "endless_boss_wave", endless_boss_wave)
 	cfg.set_value("meta", "pending_levelups", pending_levelups)
 	cfg.set_value("meta", "levelup_open", levelup_open)
 	cfg.set_value("meta", "rerolls", rerolls)
@@ -265,6 +363,15 @@ func load_run_checkpoint() -> Dictionary:
 			"rerolls": maxi(0, int(cfg.get_value("meta", "rerolls", REROLL_MAX))),
 			"banishes": maxi(0, int(cfg.get_value("meta", "banishes", BANISH_MAX))),
 			"warned": cfg.get_value("meta", "warned", {}),
+			"mode": String(cfg.get_value("meta", "mode", "campaign")),
+			"daily_info": cfg.get_value("meta", "daily_info", {}),
+			"run_hp_mult": float(cfg.get_value("meta", "run_hp_mult", 1.0)),
+			"run_damage_mult": float(cfg.get_value("meta", "run_damage_mult", 1.0)),
+			"run_speed_mult": float(cfg.get_value("meta", "run_speed_mult", 1.0)),
+			"run_spawn_mult": float(cfg.get_value("meta", "run_spawn_mult", 1.0)),
+			"run_pickup_bonus": float(cfg.get_value("meta", "run_pickup_bonus", 0.0)),
+			"run_elite_bonus": float(cfg.get_value("meta", "run_elite_bonus", 0.0)),
+			"endless_boss_wave": maxi(0, int(cfg.get_value("meta", "endless_boss_wave", 0))),
 		},
 		"player": {
 			"hp": maxf(1.0, float(cfg.get_value("player", "hp", 100.0))),
@@ -367,6 +474,19 @@ func _apply_run_meta(meta: Dictionary) -> void:
 	miniboss = null
 	var warned = meta.get("warned", {})
 	_warned = warned if warned is Dictionary else {}
+	mode = String(meta.get("mode", "campaign"))
+	if mode != "endless" and mode != "daily":
+		mode = "campaign"
+	var loaded_daily = meta.get("daily_info", {})
+	if loaded_daily is Dictionary:
+		daily_info = loaded_daily
+	run_hp_mult = float(meta.get("run_hp_mult", 1.0))
+	run_damage_mult = float(meta.get("run_damage_mult", 1.0))
+	run_speed_mult = float(meta.get("run_speed_mult", 1.0))
+	run_spawn_mult = float(meta.get("run_spawn_mult", 1.0))
+	run_pickup_bonus = float(meta.get("run_pickup_bonus", 0.0))
+	run_elite_bonus = float(meta.get("run_elite_bonus", 0.0))
+	endless_boss_wave = maxi(0, int(meta.get("endless_boss_wave", 0)))
 
 
 func add_xp(amount: int) -> void:
@@ -592,8 +712,10 @@ func equip_item(uid: String, target_slot: String = "") -> Dictionary:
 			equipped.erase(other)
 	equipped[slot] = uid
 	equipment_initialized = true
+	_note_legendary_gear()
 	save_settings()
 	equipment_changed.emit()
+	_check_achievements()
 	return {"ok": true, "slot": slot, "message": "장착했습니다."}
 
 
@@ -619,9 +741,11 @@ func enhance_item(uid: String) -> Dictionary:
 		return {"ok": false, "message": "달빛 조각이 부족합니다."}
 	shards -= cost
 	item["level"] = lv + 1
+	stats["max_enhance"] = maxi(int(stats.get("max_enhance", 0)), lv + 1)
 	equipment_initialized = true
 	save_settings()
 	equipment_changed.emit()
+	_check_achievements()
 	return {"ok": true, "message": "강화 완료! Lv.%d" % (lv + 1), "cost": cost}
 
 
@@ -643,6 +767,14 @@ func dismantle_item(uid: String) -> Dictionary:
 		equipment_changed.emit()
 		return {"ok": true, "message": "%s 분해 · 달빛 조각 +%d" % [name, value], "value": value}
 	return {"ok": false, "message": "장비를 찾을 수 없습니다."}
+
+
+func _note_legendary_gear() -> void:
+	for slot in EquipmentData.SLOT_ORDER:
+		var item := equipped_item(slot)
+		if not item.is_empty() and EquipmentData.is_legendary(item):
+			stats["legendary_equipped"] = true
+			return
 
 
 func equipment_bonuses() -> Dictionary:
@@ -891,8 +1023,10 @@ func auto_equip_best() -> Dictionary:
 
 	if changes > 0:
 		equipment_initialized = true
+		_note_legendary_gear()
 		save_settings()
 		equipment_changed.emit()
+		_check_achievements()
 	return {
 		"ok": changes > 0,
 		"changes": changes,
@@ -1027,6 +1161,38 @@ func go_characters(return_to: String = "stage_select") -> void:
 	get_tree().change_scene_to_file(CHARACTER_SCENE)
 
 
+func go_achievements(return_to: String = "stage_select") -> void:
+	achievement_return = return_to
+	save_settings()
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	Audio.duck_music(false)
+	get_tree().change_scene_to_file(ACHIEVEMENTS_SCENE)
+
+
+func close_achievements() -> void:
+	if achievement_return == "title":
+		go_title()
+	else:
+		go_stage_select()
+
+
+func _check_achievements(announce: bool = true) -> void:
+	var changed := false
+	for a in AchievementData.all():
+		var id := String(a["id"])
+		if achievements.has(id):
+			continue
+		if AchievementData.is_complete(a):
+			achievements[id] = true
+			changed = true
+			if announce:
+				warning.emit("업적 달성 · %s" % String(a["name"]), 3.4)
+			achievement_unlocked.emit(id)
+	if changed:
+		save_settings()
+
+
 func close_characters() -> void:
 	match character_return:
 		"stage_select":
@@ -1045,7 +1211,24 @@ func add_kill() -> void:
 	if not running:
 		return
 	kills += 1
+	stats["total_kills"] = int(stats.get("total_kills", 0)) + 1
 	kills_changed.emit(kills)
+	_check_achievements()
+
+
+func note_evolution(count: int) -> void:
+	stats["max_evolutions"] = maxi(int(stats.get("max_evolutions", 0)), count)
+	_check_achievements()
+
+
+func note_relics(count: int) -> void:
+	stats["max_relics"] = maxi(int(stats.get("max_relics", 0)), count)
+	_check_achievements()
+
+
+func note_boss_kill() -> void:
+	stats["boss_kills"] = int(stats.get("boss_kills", 0)) + 1
+	_check_achievements()
 
 
 func stage_clear(boss_killed: bool = false) -> void:
@@ -1065,15 +1248,57 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 	boss = null
 	miniboss = null
 	var survived := time
-	record_stage_result(stage_id, difficulty_id, victory, boss_killed, survived, level, kills)
+	if mode == "endless":
+		record_endless_result(survived, level, kills)
+	elif mode == "daily":
+		record_daily_result(survived, level, kills, victory)
+		record["best_time"] = maxf(float(record["best_time"]), survived)
+		record["best_level"] = maxi(int(record["best_level"]), level)
+		record["best_kills"] = maxi(int(record["best_kills"]), kills)
+	else:
+		record_stage_result(stage_id, difficulty_id, victory, boss_killed, survived, level, kills)
+		if victory:
+			record["victory"] = true
+		record["best_time"] = maxf(float(record["best_time"]), survived)
+		record["best_level"] = maxi(int(record["best_level"]), level)
+		record["best_kills"] = maxi(int(record["best_kills"]), kills)
+	stats["runs"] = int(stats.get("runs", 0)) + 1
 	if victory:
-		record["victory"] = true
-	record["best_time"] = maxf(float(record["best_time"]), survived)
-	record["best_level"] = maxi(int(record["best_level"]), level)
-	record["best_kills"] = maxi(int(record["best_kills"]), kills)
-	grant_run_rewards(victory, boss_killed)
+		stats["wins"] = int(stats.get("wins", 0)) + 1
+	stats["max_level"] = maxi(int(stats.get("max_level", 1)), level)
+	grant_run_rewards(victory and not is_endless(), boss_killed)
+	_check_achievements()
 	save_settings()
 	run_ended.emit(victory, boss_killed)
+
+
+func record_endless_result(survived: float, lv: int, kill_count: int) -> void:
+	var rec: Dictionary = endless_records.get(stage_id, {
+		"best_time": 0.0, "best_kills": 0, "best_level": 0, "runs": 0,
+	})
+	rec["runs"] = int(rec.get("runs", 0)) + 1
+	rec["best_time"] = maxf(float(rec.get("best_time", 0.0)), survived)
+	rec["best_kills"] = maxi(int(rec.get("best_kills", 0)), kill_count)
+	rec["best_level"] = maxi(int(rec.get("best_level", 0)), lv)
+	endless_records[stage_id] = rec
+	stats["endless_best"] = maxf(float(stats.get("endless_best", 0.0)), survived)
+
+
+func record_daily_result(survived: float, lv: int, kill_count: int, victory: bool) -> void:
+	var key := daily_key()
+	var rec: Dictionary = daily_records.get(key, {
+		"best_time": 0.0, "best_kills": 0, "best_level": 0, "clears": 0,
+		"stage": stage_id, "diff": difficulty_id,
+	})
+	rec["best_time"] = maxf(float(rec.get("best_time", 0.0)), survived)
+	rec["best_kills"] = maxi(int(rec.get("best_kills", 0)), kill_count)
+	rec["best_level"] = maxi(int(rec.get("best_level", 0)), lv)
+	if victory:
+		rec["clears"] = int(rec.get("clears", 0)) + 1
+		stats["daily_clears"] = int(stats.get("daily_clears", 0)) + 1
+	rec["stage"] = stage_id
+	rec["diff"] = difficulty_id
+	daily_records[key] = rec
 
 
 func record_stage_result(stage: String, diff: String, victory: bool,
@@ -1173,6 +1398,10 @@ func save_settings() -> void:
 	cfg.set_value("settings", "selected_stage", selected_stage)
 	cfg.set_value("settings", "selected_difficulty", selected_difficulty)
 	cfg.set_value("records", "stages", stage_records)
+	cfg.set_value("records", "endless", endless_records)
+	cfg.set_value("records", "daily", daily_records)
+	cfg.set_value("progress", "stats", stats)
+	cfg.set_value("progress", "achievements", achievements)
 	cfg.set_value("equipment", "inventory", inventory)
 	cfg.set_value("equipment", "equipped", equipped)
 	cfg.set_value("equipment", "shards", shards)
@@ -1206,6 +1435,19 @@ func load_record() -> void:
 	var rec = cfg.get_value("records", "stages", {})
 	if rec is Dictionary:
 		stage_records = rec
+	var endless = cfg.get_value("records", "endless", {})
+	if endless is Dictionary:
+		endless_records = endless
+	var daily = cfg.get_value("records", "daily", {})
+	if daily is Dictionary:
+		daily_records = daily
+	var loaded_stats = cfg.get_value("progress", "stats", {})
+	if loaded_stats is Dictionary:
+		for key in loaded_stats:
+			stats[key] = loaded_stats[key]
+	var loaded_ach = cfg.get_value("progress", "achievements", {})
+	if loaded_ach is Dictionary:
+		achievements = loaded_ach
 	var inv = cfg.get_value("equipment", "inventory", [])
 	if inv is Array:
 		inventory = inv
@@ -1223,3 +1465,8 @@ func load_record() -> void:
 		selected_character = cid
 	else:
 		selected_character = "dal"
+	for item in inventory:
+		stats["max_enhance"] = maxi(int(stats.get("max_enhance", 0)), int(item.get("level", 1)))
+	stats["max_level"] = maxi(int(stats.get("max_level", 1)), int(record["best_level"]))
+	_note_legendary_gear()
+	_check_achievements(false)

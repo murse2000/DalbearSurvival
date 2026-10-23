@@ -714,10 +714,21 @@ func _show_pause() -> void:
 	_set_hud_visible(false)
 	var st := Game.stage_data()
 	var diff := Game.difficulty_data()
-	pause_stats.text = "%s · %s\n%s · Lv.%d · %d 킬" % [
-		String(st["short"]), String(diff["name"]),
-		GameData.format_time(Game.time), Game.level, Game.kills,
-	]
+	if Game.is_endless():
+		pause_stats.text = "무한 모드 · %s\n생존 %s · Lv.%d · %d 킬" % [
+			String(st["short"]), GameData.format_time(Game.time), Game.level, Game.kills,
+		]
+	elif Game.is_daily():
+		var mod: Dictionary = Game.daily_info.get("modifier", {})
+		pause_stats.text = "오늘의 도전 · %s · %s\n%s · Lv.%d · %d 킬" % [
+			String(st["short"]), String(mod.get("name", "")),
+			GameData.format_time(Game.time), Game.level, Game.kills,
+		]
+	else:
+		pause_stats.text = "%s · %s\n%s · Lv.%d · %d 킬" % [
+			String(st["short"]), String(diff["name"]),
+			GameData.format_time(Game.time), Game.level, Game.kills,
+		]
 	if player != null and is_instance_valid(player) and not player.relics.is_empty():
 		var relic_names: Array = []
 		for id in player.relics:
@@ -794,9 +805,24 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 	var stage := Game.stage_data()
 	var diff := Game.difficulty_data()
 	var next := GameData.next_stage_id(Game.stage_id)
-	_end_has_next = victory and next != ""
+	var endless := Game.is_endless()
+	var daily := Game.is_daily()
+	_end_has_next = victory and next != "" and not endless and not daily
 	_next_button.visible = _end_has_next
-	if victory:
+	if endless:
+		end_title.text = "무한 모드 종료"
+		end_title.add_theme_color_override("font_color", UIKit.GOLD)
+		end_sub.text = "%s · 생존 기록을 세웠습니다" % String(stage["short"])
+		end_icon.texture = load("res://assets/art/ui/icon_trophy.png")
+		_end_panel.add_theme_stylebox_override("panel", UIKit.style(Color(0.047, 0.075, 0.114, 0.98), UIKit.GOLD, 2, 30))
+	elif daily:
+		end_title.text = ("오늘의 도전 성공!" if victory else "오늘의 도전 종료")
+		end_title.add_theme_color_override("font_color", UIKit.GOLD if victory else UIKit.CORAL)
+		var mod: Dictionary = Game.daily_info.get("modifier", {})
+		end_sub.text = "%s · %s · %s" % [String(stage["short"]), String(diff["name"]), String(mod.get("name", ""))]
+		end_icon.texture = load("res://assets/art/ui/icon_trophy.png" if victory else "res://assets/art/ui/icon_alien.png")
+		_end_panel.add_theme_stylebox_override("panel", UIKit.style(Color(0.047, 0.075, 0.114, 0.98), UIKit.GOLD if victory else UIKit.CORAL.darkened(0.25), 2, 30))
+	elif victory:
 		if next == "":
 			end_title.text = "지구를 지켜냈다!"
 			end_title.add_theme_color_override("font_color", UIKit.GOLD)
@@ -814,7 +840,20 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 		end_icon.texture = load("res://assets/art/ui/icon_alien.png")
 		_end_panel.add_theme_stylebox_override("panel", UIKit.style(Color(0.047, 0.075, 0.114, 0.98), UIKit.CORAL.darkened(0.25), 2, 30))
 	end_stats.text = "생존 %s      Lv.%d      %d 킬" % [GameData.format_time(Game.time), Game.level, Game.kills]
-	end_record.text = "%s · %s" % [String(diff["name"]), Game.stage_record_text(Game.stage_id, Game.difficulty_id)]
+	if endless:
+		var er: Dictionary = Game.endless_best(Game.stage_id)
+		end_record.text = "무한 · 최고 생존 %s · %d 킬" % [
+			GameData.format_time(float(er.get("best_time", 0.0))),
+			int(er.get("best_kills", 0)),
+		]
+	elif daily:
+		var dr: Dictionary = Game.daily_record()
+		end_record.text = "오늘의 도전 · 최고 %s · %d 킬 · 클리어 %d" % [
+			GameData.format_time(float(dr.get("best_time", 0.0))),
+			int(dr.get("best_kills", 0)), int(dr.get("clears", 0)),
+		]
+	else:
+		end_record.text = "%s · %s" % [String(diff["name"]), Game.stage_record_text(Game.stage_id, Game.difficulty_id)]
 	var reward_parts: Array = []
 	if not Game.last_rewards.is_empty():
 		reward_parts.append("◈ +%d" % int(Game.last_rewards.get("shards", 0)))

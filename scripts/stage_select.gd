@@ -20,6 +20,11 @@ var _carousel: Control
 var _strip: Control
 var _prev_btn: Button
 var _next_btn: Button
+var _endless_btn: Button
+var _daily_btn: Button
+var _daily_modal: Control
+var _daily_modal_desc: Label
+var _daily_modal_best: Label
 var _page_label: Label
 var _page := 0
 var _page_count := 1
@@ -91,6 +96,8 @@ func _ready() -> void:
 		_capture()
 	elif "--test-swipe" in _args:
 		_test_swipe.call_deferred()
+	elif "--capture-daily-modal" in _args:
+		_capture_daily_modal.call_deferred()
 	if "--smoke-start" in _args:
 		_start.call_deferred()
 
@@ -161,11 +168,12 @@ func _build() -> void:
 		_build_chips_landscape()
 		_build_footer_landscape()
 
+	_build_daily_modal()
 	_refresh()
 
 
 func _build_header_landscape() -> void:
-	var over := UIKit.label("CAMPAIGN MAP  ·  DALBEAR.COM", 13, UIKit.MINT)
+	var over := UIKit.label("CAMPAIGN & ENDLESS  ·  DALBEAR.COM", 13, UIKit.MINT)
 	over.position = Vector2(56, 30)
 	add_child(over)
 	var title := UIKit.label("전선 선택", 52, UIKit.GOLD, 7)
@@ -194,10 +202,15 @@ func _build_header_landscape() -> void:
 	_character_btn.add_theme_font_size_override("font_size", 13)
 	_character_btn.pressed.connect(_open_characters)
 	add_child(_character_btn)
+	var ach_btn := UIKit.button("업적", Vector2(120, 30))
+	ach_btn.position = Vector2(700, 78)
+	ach_btn.add_theme_font_size_override("font_size", 13)
+	ach_btn.pressed.connect(_open_achievements)
+	add_child(ach_btn)
 
 
 func _build_header_portrait() -> void:
-	var over := UIKit.label("CAMPAIGN MAP  ·  DALBEAR.COM", 11, UIKit.MINT)
+	var over := UIKit.label("CAMPAIGN & ENDLESS  ·  DALBEAR.COM", 11, UIKit.MINT)
 	over.position = Vector2(24, 20)
 	add_child(over)
 	var title := UIKit.label("전선 선택", 42, UIKit.GOLD, 6)
@@ -205,7 +218,7 @@ func _build_header_portrait() -> void:
 	add_child(title)
 	var sub := UIKit.label("열다섯 개의 전선 · 이전 전선을 클리어하면 다음이 열립니다.", 12, UIKit.CREAM)
 	sub.position = Vector2(24, 98)
-	sub.size = Vector2(560, 20)
+	sub.size = Vector2(530, 20)
 	add_child(sub)
 	_page_label = UIKit.label("", 12, UIKit.MUTED)
 	_page_label.position = Vector2(24, 130)
@@ -226,6 +239,11 @@ func _build_header_portrait() -> void:
 	back_top.add_theme_font_size_override("font_size", 13)
 	back_top.pressed.connect(_go_title)
 	add_child(back_top)
+	var ach_btn := UIKit.button("업적", Vector2(120, 30))
+	ach_btn.position = Vector2(568, 92)
+	ach_btn.add_theme_font_size_override("font_size", 13)
+	ach_btn.pressed.connect(_open_achievements)
+	add_child(ach_btn)
 
 
 func _build_chips_landscape() -> void:
@@ -255,18 +273,29 @@ func _build_chips_portrait() -> void:
 
 
 func _build_footer_landscape() -> void:
-	var start := UIKit.button("출격", Vector2(220, 58))
-	start.position = Vector2(500, 636)
-	start.add_theme_font_size_override("font_size", 26)
+	var start := UIKit.button("출격", Vector2(170, 58))
+	start.position = Vector2(430, 636)
+	start.add_theme_font_size_override("font_size", 24)
 	start.pressed.connect(_start)
 	add_child(start)
-	var equipment := UIKit.button("장비", Vector2(160, 58))
-	equipment.add_theme_font_size_override("font_size", 22)
-	equipment.position = Vector2(738, 636)
+	var equipment := UIKit.button("장비", Vector2(130, 58))
+	equipment.add_theme_font_size_override("font_size", 18)
+	equipment.position = Vector2(615, 636)
 	equipment.pressed.connect(_open_equipment)
 	add_child(equipment)
-	var back := UIKit.button("타이틀", Vector2(150, 58))
-	back.position = Vector2(916, 636)
+	_endless_btn = UIKit.button("무한 모드", Vector2(170, 58))
+	_endless_btn.position = Vector2(760, 636)
+	_endless_btn.add_theme_font_size_override("font_size", 18)
+	_endless_btn.pressed.connect(_start_endless)
+	add_child(_endless_btn)
+	_daily_btn = UIKit.button("오늘의 도전", Vector2(170, 58))
+	_daily_btn.position = Vector2(945, 636)
+	_daily_btn.add_theme_font_size_override("font_size", 16)
+	_daily_btn.pressed.connect(_start_daily)
+	add_child(_daily_btn)
+	var back := UIKit.button("타이틀", Vector2(130, 58))
+	back.position = Vector2(1130, 636)
+	back.add_theme_font_size_override("font_size", 16)
 	back.pressed.connect(_go_title)
 	add_child(back)
 	_stage_hint = UIKit.label("", 13, UIKit.MUTED)
@@ -286,19 +315,29 @@ func _build_footer_landscape() -> void:
 
 
 func _build_footer_portrait() -> void:
-	var start := UIKit.button("출격", Vector2(200, 62))
-	start.position = Vector2(115, 1066)
-	start.add_theme_font_size_override("font_size", 22)
+	var start := UIKit.button("출격", Vector2(130, 62))
+	start.position = Vector2(15, 1060)
+	start.add_theme_font_size_override("font_size", 20)
 	start.pressed.connect(_start)
 	add_child(start)
-	var equipment := UIKit.button("장비", Vector2(150, 62))
-	equipment.position = Vector2(335, 1066)
-	equipment.add_theme_font_size_override("font_size", 18)
+	var equipment := UIKit.button("장비", Vector2(130, 62))
+	equipment.position = Vector2(155, 1060)
+	equipment.add_theme_font_size_override("font_size", 16)
 	equipment.pressed.connect(_open_equipment)
 	add_child(equipment)
-	var back := UIKit.button("타이틀", Vector2(150, 62))
-	back.position = Vector2(505, 1066)
-	back.add_theme_font_size_override("font_size", 18)
+	_endless_btn = UIKit.button("무한", Vector2(130, 62))
+	_endless_btn.position = Vector2(295, 1060)
+	_endless_btn.add_theme_font_size_override("font_size", 16)
+	_endless_btn.pressed.connect(_start_endless)
+	add_child(_endless_btn)
+	_daily_btn = UIKit.button("일일", Vector2(130, 62))
+	_daily_btn.position = Vector2(435, 1060)
+	_daily_btn.add_theme_font_size_override("font_size", 16)
+	_daily_btn.pressed.connect(_start_daily)
+	add_child(_daily_btn)
+	var back := UIKit.button("타이틀", Vector2(130, 62))
+	back.position = Vector2(575, 1060)
+	back.add_theme_font_size_override("font_size", 16)
 	back.pressed.connect(_go_title)
 	add_child(back)
 	_stage_hint = UIKit.label("", 12, UIKit.MUTED)
@@ -315,6 +354,58 @@ func _build_footer_portrait() -> void:
 	ver.size = Vector2(516, 16)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(ver)
+
+
+func _build_daily_modal() -> void:
+	_daily_modal = Control.new()
+	_daily_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_daily_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_daily_modal.visible = false
+	add_child(_daily_modal)
+	var dim := UIKit.dimmer(0.72)
+	_daily_modal.add_child(dim)
+
+	var pw := 648.0 if _portrait else 600.0
+	var ph := 420.0 if _portrait else 340.0
+	var px := 36.0 if _portrait else 340.0
+	var py := 400.0 if _portrait else 180.0
+	var panel := UIKit.panel(Color(0.047, 0.075, 0.114, 0.99), UIKit.GOLD, 2)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.position = Vector2(px, py)
+	panel.size = Vector2(pw, ph)
+	_daily_modal.add_child(panel)
+
+	var over := UIKit.label("DAILY CHALLENGE", 12, UIKit.MINT)
+	over.position = Vector2(28, 22)
+	panel.add_child(over)
+	var title := UIKit.label("오늘의 도전", 30, UIKit.GOLD, 6)
+	title.position = Vector2(26, 42)
+	panel.add_child(title)
+	var date_label := UIKit.label(Game.daily_key(), 13, UIKit.MUTED)
+	date_label.position = Vector2(28, 86)
+	panel.add_child(date_label)
+
+	_daily_modal_desc = UIKit.label("", 16, UIKit.CREAM)
+	_daily_modal_desc.position = Vector2(28, 116)
+	_daily_modal_desc.size = Vector2(pw - 56.0, 110)
+	_daily_modal_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(_daily_modal_desc)
+
+	_daily_modal_best = UIKit.label("", 13, UIKit.MINT)
+	_daily_modal_best.position = Vector2(28, 236 if _portrait else 182)
+	_daily_modal_best.size = Vector2(pw - 56.0, 40)
+	panel.add_child(_daily_modal_best)
+
+	var confirm := UIKit.button("도전 시작", Vector2(240 if _portrait else 200, 56))
+	confirm.position = Vector2(28, 320 if _portrait else 258)
+	confirm.add_theme_font_size_override("font_size", 20)
+	confirm.pressed.connect(_confirm_daily)
+	panel.add_child(confirm)
+	var cancel := UIKit.button("취소", Vector2(160 if _portrait else 140, 56))
+	cancel.position = Vector2(290 if _portrait else 250, 320 if _portrait else 258)
+	cancel.add_theme_font_size_override("font_size", 18)
+	cancel.pressed.connect(_close_daily_modal)
+	panel.add_child(cancel)
 
 
 func _build_carousel() -> void:
@@ -731,6 +822,31 @@ func _refresh() -> void:
 		_shards_label.text = "◈ 달빛 조각  %d" % Game.shards
 	if _character_btn != null:
 		_character_btn.text = "친구 · %s" % CharacterData.display_name(Game.selected_character)
+	if _endless_btn != null:
+		var unlocked := Game.is_endless_unlocked()
+		if _portrait:
+			_endless_btn.text = "무한" if unlocked else "무한 잠금"
+		else:
+			_endless_btn.text = "무한 모드" if unlocked else "무한 잠금"
+		_endless_btn.tooltip_text = "끝없이 버티는 모드" if unlocked else "15전선을 완료하면 해금됩니다"
+		if unlocked:
+			var er: Dictionary = Game.endless_best(_selected_stage)
+			if float(er.get("best_time", 0.0)) > 0.0:
+				_endless_btn.tooltip_text = "무한 모드 · 최고 %s · %d 킬" % [
+					GameData.format_time(float(er.get("best_time", 0.0))),
+					int(er.get("best_kills", 0)),
+				]
+		_endless_btn.modulate = Color(1, 1, 1, 1) if unlocked else Color(0.7, 0.7, 0.75, 1)
+	if _daily_btn != null:
+		if Game.daily_info.is_empty() or String(Game.daily_info.get("date", "")) != Game.daily_key():
+			Game.prepare_daily()
+		var mod: Dictionary = Game.daily_info.get("modifier", {})
+		var daily_stage := GameData.stage(String(Game.daily_info.get("stage", "forest")))
+		_daily_btn.tooltip_text = "오늘의 도전 · %s · %s · %s" % [
+			String(daily_stage["short"]),
+			String(GameData.difficulty(String(Game.daily_info.get("diff", "normal")))["name"]),
+			String(mod.get("name", "")),
+		]
 	_update_page_ui()
 
 
@@ -745,6 +861,70 @@ func _start() -> void:
 	_starting = true
 	Audio.play_click()
 	Game.new_run(_selected_stage, _selected_diff)
+
+
+func _start_endless() -> void:
+	if _starting:
+		return
+	if not Game.is_endless_unlocked():
+		if _stage_hint != null:
+			_stage_hint.visible = true
+			_stage_hint.text = "15전선을 완료하면 무한 모드가 열립니다."
+		return
+	_starting = true
+	Audio.play_click()
+	Game.new_run(_selected_stage, _selected_diff, "endless")
+
+
+func _start_daily() -> void:
+	if _starting:
+		return
+	if Game.daily_info.is_empty() or String(Game.daily_info.get("date", "")) != Game.daily_key():
+		Game.prepare_daily()
+	var info := Game.daily_info
+	var stage := GameData.stage(String(info.get("stage", "forest")))
+	var diff := GameData.difficulty(String(info.get("diff", "normal")))
+	var mod: Dictionary = info.get("modifier", {})
+	_daily_modal_desc.text = "%s · %s\n%s — %s" % [
+		String(stage["short"]), String(diff["name"]),
+		String(mod.get("name", "")), String(mod.get("desc", "")),
+	]
+	var rec: Dictionary = Game.daily_record()
+	if rec.is_empty() or float(rec.get("best_time", 0.0)) <= 0.0:
+		_daily_modal_best.text = "오늘 아직 도전 기록이 없습니다"
+	elif int(rec.get("clears", 0)) <= 0:
+		_daily_modal_best.text = "오늘 최고 %s · %d 킬 · 클리어 전" % [
+			GameData.format_time(float(rec.get("best_time", 0.0))),
+			int(rec.get("best_kills", 0)),
+		]
+	else:
+		_daily_modal_best.text = "오늘 최고 %s · %d 킬 · 클리어 %d" % [
+			GameData.format_time(float(rec.get("best_time", 0.0))),
+			int(rec.get("best_kills", 0)), int(rec.get("clears", 0)),
+		]
+	Audio.play_click()
+	_daily_modal.visible = true
+
+
+func _confirm_daily() -> void:
+	if _starting:
+		return
+	_starting = true
+	_daily_modal.visible = false
+	Audio.play_click()
+	Game.start_daily()
+
+
+func _close_daily_modal() -> void:
+	_daily_modal.visible = false
+	Audio.play_click()
+
+
+func _open_achievements() -> void:
+	if _starting:
+		return
+	Audio.play_click()
+	Game.go_achievements("stage_select")
 
 
 func _open_equipment() -> void:
@@ -768,6 +948,13 @@ func _go_title() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if _daily_modal != null and _daily_modal.visible:
+			if event.keycode == KEY_ESCAPE:
+				_close_daily_modal()
+			elif event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
+				_confirm_daily()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
 			_start()
 			get_viewport().set_input_as_handled()
@@ -779,6 +966,9 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_C:
 			_open_characters()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_A:
+			_open_achievements()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_1:
 			_select_stage("forest")
@@ -894,6 +1084,13 @@ func _send_motion(pos: Vector2) -> void:
 	e.position = _carousel.get_global_transform_with_canvas() * pos
 	e.global_position = e.position
 	get_viewport().push_input(e, true)
+
+
+func _capture_daily_modal() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	_start_daily()
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	await _capture("daily_modal")
 
 
 func _capture(shot: String = "stage_select") -> void:

@@ -1491,6 +1491,22 @@ const STAGES := {
 	},
 }
 
+## One rotating twist per daily challenge, chosen from the date seed.
+const DAILY_MODIFIERS := [
+	{"id": "swarm", "name": "떼몰이", "desc": "적 출현 +25%", "spawn": 0.8,
+		"color": Color(0.9, 0.72, 0.4)},
+	{"id": "armored", "name": "중갑", "desc": "적 체력 +20%", "hp": 1.2,
+		"color": Color(0.55, 0.78, 1.0)},
+	{"id": "frenzy", "name": "광란", "desc": "적 이동 속도 +15%", "speed": 1.15,
+		"color": Color(1.0, 0.5, 0.42)},
+	{"id": "glass", "name": "유리 대포", "desc": "적 피해 +20% · 체력 -10%",
+		"damage": 1.2, "hp": 0.9, "color": Color(1.0, 0.82, 0.4)},
+	{"id": "magnet", "name": "자력 왜곡", "desc": "자력 범위 -30", "pickup": -30.0,
+		"color": Color(0.72, 0.62, 1.0)},
+	{"id": "elite", "name": "정예 출현", "desc": "정예 확률 +4%", "elite": 0.04,
+		"color": Color(0.62, 1.0, 0.72)},
+]
+
 const DIFFICULTY_ORDER := ["moon", "normal", "dark", "abyss"]
 const DIFFICULTIES := {
 	"moon": {

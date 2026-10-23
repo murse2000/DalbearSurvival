@@ -532,18 +532,30 @@ func tick(delta: float) -> void:
 			if _combo_banner != null:
 				_combo_banner.visible = false
 	if Game.running:
-		var t := Game.time_left()
-		timer_label.text = GameData.format_time(t)
 		var st := Game.stage_data()
-		if t <= 35.0:
-			var pulse := 0.65 + 0.35 * absf(sin(_time * 6.0))
-			timer_label.add_theme_color_override("font_color", UIKit.CORAL.lerp(UIKit.GOLD_L, pulse))
-			timer_sub.text = String(st.get("goal", "새벽까지"))
-			timer_sub.add_theme_color_override("font_color", UIKit.CORAL)
-		else:
-			timer_label.add_theme_color_override("font_color", UIKit.CREAM)
-			timer_sub.text = "%s · %s" % [String(st["short"]), String(Game.difficulty_data()["name"])]
+		if Game.is_endless():
+			timer_label.text = GameData.format_time(Game.time)
+			timer_label.add_theme_color_override("font_color", UIKit.GOLD_L)
+			timer_sub.text = "무한 모드 · 생존"
 			timer_sub.add_theme_color_override("font_color", UIKit.MUTED)
+		elif Game.is_daily():
+			timer_label.text = GameData.format_time(Game.time_left())
+			timer_label.add_theme_color_override("font_color", UIKit.GOLD_L)
+			var daily_mod: Dictionary = Game.daily_info.get("modifier", {})
+			timer_sub.text = "오늘의 도전 · %s" % String(daily_mod.get("name", ""))
+			timer_sub.add_theme_color_override("font_color", UIKit.MUTED)
+		else:
+			var t := Game.time_left()
+			timer_label.text = GameData.format_time(t)
+			if t <= 35.0:
+				var pulse := 0.65 + 0.35 * absf(sin(_time * 6.0))
+				timer_label.add_theme_color_override("font_color", UIKit.CORAL.lerp(UIKit.GOLD_L, pulse))
+				timer_sub.text = String(st.get("goal", "새벽까지"))
+				timer_sub.add_theme_color_override("font_color", UIKit.CORAL)
+			else:
+				timer_label.add_theme_color_override("font_color", UIKit.CREAM)
+				timer_sub.text = "%s · %s" % [String(st["short"]), String(Game.difficulty_data()["name"])]
+				timer_sub.add_theme_color_override("font_color", UIKit.MUTED)
 	var b = Game.boss
 	var is_miniboss := false
 	if b == null or not is_instance_valid(b) or b.dead:
@@ -586,6 +598,11 @@ func tick(delta: float) -> void:
 func show_warning(text: String, duration: float = 3.0) -> void:
 	_warning_id += 1
 	warning_label.text = text
+	var achievement := text.begins_with("업적 달성")
+	warning_panel.add_theme_stylebox_override("panel", UIKit.style(
+		Color(0.09, 0.08, 0.045, 0.96) if achievement else Color(0.10, 0.045, 0.055, 0.96),
+		UIKit.GOLD if achievement else Color(0.95, 0.45, 0.4, 0.95), 2))
+	warning_label.add_theme_color_override("font_color", UIKit.GOLD_L if achievement else Color(1.0, 0.82, 0.7))
 	warning_panel.visible = true
 	warning_panel.modulate.a = 0.0
 	warning_panel.scale = Vector2(0.92, 0.92)
