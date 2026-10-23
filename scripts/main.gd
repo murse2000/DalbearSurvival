@@ -9,10 +9,12 @@ const CAMERA_SCRIPT := preload("res://scripts/camera.gd")
 const HUD_SCRIPT := preload("res://scripts/ui/hud.gd")
 const OVERLAY_SCRIPT := preload("res://scripts/ui/overlay.gd")
 const TOUCH_SCRIPT := preload("res://scripts/ui/touch_controls.gd")
+const COMPANION_SCRIPT := preload("res://scripts/companion.gd")
 
 var player
 var world
 var manager
+var companion
 var camera: Camera2D
 var hud
 var overlay
@@ -59,6 +61,8 @@ func _ready() -> void:
 			Settings.joystick_size = "large"
 		elif a == "--hud-large":
 			Settings.hud_size = "large"
+		elif a == "--companion":
+			Game.altar_levels["companion"] = 3
 	var explicit_stage := false
 	for a in _args:
 		if a.begins_with("--stage="):
@@ -125,6 +129,8 @@ func _ready() -> void:
 		_capture_daily()
 	elif "--capture-endless-end" in _args:
 		_capture_endless_end()
+	elif "--capture-status" in _args:
+		_capture_status()
 	elif "--capture-base" in _args:
 		_capture_base()
 	elif "--capture-lighting" in _args:
@@ -175,6 +181,10 @@ func _ready() -> void:
 		_test_modes()
 	elif "--test-mobile-options" in _args:
 		_test_mobile_options()
+	elif "--test-status" in _args:
+		_test_status()
+	elif "--test-sets" in _args:
+		_test_sets()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -251,6 +261,16 @@ func _build_player() -> void:
 	manager.setup(player, world.actors, world.projectiles, world.pickups, world.obstacles)
 	player.setup(manager)
 	world.target = player
+	_build_companion()
+
+
+func _build_companion() -> void:
+	var level := Game.altar_level("companion")
+	if level <= 0:
+		return
+	companion = COMPANION_SCRIPT.new()
+	add_child(companion)
+	companion.setup(player, manager, level)
 
 
 func _restore_run(snapshot: Dictionary) -> void:
@@ -1798,6 +1818,110 @@ func _test_upgrade() -> void:
 	get_tree().quit()
 
 
+func _test_sets() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var old_inv: Array = Game.inventory.duplicate(true)
+	var old_eq: Dictionary = Game.equipped.duplicate(true)
+	var old_char := Game.selected_character
+	Game.selected_character = "star"
+	var added: Array = []
+	for template in EquipmentData.signature_set("star"):
+		var item := EquipmentData.make_signature_item("star", template, 1)
+		var stored := Game.add_item(item, false)
+		added.append(stored)
+		var target := String(template.get("slot", "weapon"))
+		var targets := EquipmentData.target_slots(target)
+		var result := Game.equip_item(String(stored.get("uid", "")), String(targets[0]))
+		if not result.get("ok", false):
+			errors.append("could not equip %s: %s" % [target, result.get("message", "")])
+	if Game.signature_set_count("star") < 3:
+		errors.append("signature count below 3")
+	var bonus := Game.set_bonuses()
+	if float(bonus.get("cooldown_pct", 0.0)) <= 0.0:
+		errors.append("2-set cooldown bonus missing")
+	if float(bonus.get("crit", 0.0)) <= 0.0:
+		errors.append("3-set crit bonus missing")
+	if not EquipmentData.set_bonus_text("star", 3).contains("별빛 추적"):
+		errors.append("set text missing")
+	Game.inventory = old_inv
+	Game.equipped = old_eq
+	Game.selected_character = old_char
+	Game.save_settings()
+	if errors.is_empty():
+		print("SETS TEST PASS count=%d cooldown=%.2f crit=%.2f" % [
+			Game.signature_set_count("star") if Game.selected_character == "star" else 3,
+			float(bonus.get("cooldown_pct", 0.0)), float(bonus.get("crit", 0.0)),
+		])
+		print("TEST PASS")
+	else:
+		print("SETS TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
+func _test_status() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	if GameData.weapon_element("meteor") != "fire":
+		errors.append("meteor element missing")
+	if GameData.weapon_element("singularity") != "void":
+		errors.append("singularity element missing")
+	var synergy := GameData.status_synergy("frost", "fire")
+	if String(synergy.get("name", "")) != "열충격":
+		errors.append("fire/frost synergy missing")
+	manager.spawn_timer = 999.0
+	manager.spawn_enemy("blob", player.global_position + Vector2(120, 0), false)
+	var e: Variant = manager.enemies.back() if not manager.enemies.is_empty() else null
+	if e == null:
+		errors.append("could not spawn test enemy")
+	else:
+		e.max_hp = 1000.0
+		e.hp = 1000.0
+		var hp_before: float = float(e.hp)
+		e.take_damage(1.0, false, player.global_position, 0.0, "fire")
+		if float(e.status_times.get("fire", 0.0)) <= 0.0:
+			errors.append("fire status not applied")
+		e.take_damage(1.0, false, player.global_position, 0.0, "frost")
+		if float(e.status_times.get("frost", 0.0)) <= 0.0:
+			errors.append("frost status not applied")
+		if e.hp >= hp_before:
+			errors.append("synergy did not deal damage")
+		e._update_statuses(0.1)
+		if e.speed >= e.base_speed:
+			errors.append("frost did not slow")
+		if not manager.enemies.has(e):
+			errors.append("test enemy lost")
+		manager.enemies.erase(e)
+		e.queue_free()
+	var old_companion := int(Game.altar_levels.get("companion", 0))
+	if companion != null and is_instance_valid(companion):
+		companion.queue_free()
+		companion = null
+	Game.altar_levels["companion"] = 1
+	_build_companion()
+	if companion == null or not is_instance_valid(companion):
+		errors.append("altar companion did not spawn")
+	elif companion.level < 1:
+		errors.append("altar companion level missing")
+	if companion != null and is_instance_valid(companion):
+		companion.queue_free()
+	companion = null
+	Game.altar_levels["companion"] = old_companion
+	manager.spawn_timer = 1.0
+	if errors.is_empty():
+		print("STATUS TEST PASS synergy=%s fire/frost active" % String(synergy.get("name", "")))
+		print("TEST PASS")
+	else:
+		print("STATUS TEST FAIL")
+		for err in errors:
+			print("  ", err)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
 func _test_mobile_options() -> void:
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	var errors: Array = []
@@ -2045,6 +2169,31 @@ func _capture_daily() -> void:
 		manager.spawn_enemy(kinds[i % kinds.size()], player.global_position + Vector2.from_angle(a) * (220.0 + (i % 4) * 40.0), i == 8)
 	await get_tree().create_timer(1.4, true, false, true).timeout
 	await _capture("daily")
+
+
+func _capture_status() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	player.invuln = 999.0
+	Game.time = 120.0
+	var kinds := ["blob", "drone", "grey", "jelly", "spitter", "bomber", "brute", "sentinel"]
+	for i in kinds.size():
+		var a := TAU * float(i) / float(kinds.size()) + 0.1
+		manager.spawn_enemy(kinds[i], player.global_position + Vector2.from_angle(a) * (150.0 + (i % 3) * 45.0), false)
+	var enemies: Array = manager.enemies.duplicate()
+	for i in enemies.size():
+		if i % 3 == 0:
+			enemies[i].apply_element("fire", player.global_position, 18.0)
+		elif i % 3 == 1:
+			enemies[i].apply_element("frost", player.global_position, 18.0)
+		else:
+			enemies[i].apply_element("void", player.global_position, 18.0)
+	await get_tree().create_timer(0.25, true, false, true).timeout
+	if enemies.size() >= 2:
+		enemies[0].take_damage(12.0, true, player.global_position, 60.0, "frost")
+		enemies[1].take_damage(12.0, true, player.global_position, 60.0, "shock")
+	await get_tree().create_timer(0.55, true, false, true).timeout
+	hud.warning_panel.visible = false
+	await _capture("status")
 
 
 func _capture_endless_end() -> void:

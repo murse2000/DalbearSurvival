@@ -64,7 +64,7 @@ func _cast() -> void:
 func _finish() -> void:
 	pulling = false
 	player.manager.damage_circle(pull_pos, float(data["radius"]), float(data["damage"]),
-		float(data["knock"]), player)
+		float(data["knock"]), player, element())
 	FX.explosion(pull_pos, Color(0.72, 0.45, 1.0), 1.25)
 	FX.flash(Color(0.7, 0.4, 1.0), 0.18, 0.4)
 	FX.shake(8.0, 0.5)

@@ -79,7 +79,7 @@ func tick(delta: float) -> void:
 				continue
 			hit_times[id] = now
 			var roll: Dictionary = player.roll_damage(float(data["damage"]))
-			enemy.take_damage(roll["damage"], roll["crit"], center, 95.0)
+			enemy.take_damage(roll["damage"], roll["crit"], center, 95.0, element())
 			FX.slash(enemy.global_position + Vector2(0, -8), a + PI * 0.5,
 				Color(0.65, 1.0, 0.85), 0.24)
 			Audio.play("hit", randf_range(0.95, 1.15), -9.0)
@@ -119,7 +119,7 @@ func _chain() -> void:
 		current = next
 	for e in victims:
 		var roll: Dictionary = player.roll_damage(float(data["chain_damage"]))
-		e.take_damage(roll["damage"], roll["crit"], origin_pos, 110.0)
+		e.take_damage(roll["damage"], roll["crit"], origin_pos, 110.0, element())
 		player.manager.damage_obstacles_circle(e.global_position, 22.0,
 			float(data["chain_damage"]) * 0.5)
 	FX.chain_lightning(chain_points, Color(0.61, 1.0, 0.82))

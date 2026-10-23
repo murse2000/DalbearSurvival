@@ -10,6 +10,7 @@ signal warning(text: String, duration: float)
 signal equipment_changed
 signal character_changed
 signal achievement_unlocked(id: String)
+signal altar_changed
 
 const SAVE_PATH := "user://dalbear_save.cfg"
 const RUN_SAVE_PATH := "user://dalbear_run.cfg"
@@ -21,6 +22,7 @@ const STAGE_SELECT_SCENE := "res://scenes/stage_select.tscn"
 const EQUIPMENT_SCENE := "res://scenes/equipment.tscn"
 const CHARACTER_SCENE := "res://scenes/characters.tscn"
 const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
+const ALTAR_SCENE := "res://scenes/altar.tscn"
 const REROLL_MAX := 2
 const BANISH_MAX := 1
 const STARTER_SHARDS := 150
@@ -61,6 +63,8 @@ var _warned := {}
 var _pending_run_snapshot: Dictionary = {}
 var achievement_return := "stage_select"
 var achievements := {}
+var altar_levels := {}
+var altar_return := "stage_select"
 var stats := {
 	"total_kills": 0, "boss_kills": 0, "runs": 0, "wins": 0,
 	"daily_clears": 0, "max_level": 1, "max_evolutions": 0,
@@ -1177,6 +1181,91 @@ func close_achievements() -> void:
 		go_stage_select()
 
 
+func altar_level(id: String) -> int:
+	return maxi(0, int(altar_levels.get(id, 0)))
+
+
+func altar_cost(id: String) -> int:
+	return AltarData.cost(id, altar_level(id))
+
+
+func altar_bonuses() -> Dictionary:
+	var out := {
+		"max_hp": 0.0, "damage_pct": 0.0, "speed_pct": 0.0,
+		"pickup": 0.0, "xp_pct": 0.0, "crit": 0.0, "companion": 0,
+	}
+	for upgrade in AltarData.all():
+		var id := String(upgrade["id"])
+		var lv := altar_level(id)
+		if lv <= 0:
+			continue
+		var stat := String(upgrade["stat"])
+		if stat == "companion":
+			out["companion"] = lv
+		else:
+			out[stat] = float(out.get(stat, 0.0)) + float(upgrade["per"]) * float(lv)
+	return out
+
+
+func buy_altar_upgrade(id: String) -> Dictionary:
+	var upgrade := AltarData.get_upgrade(id)
+	if upgrade.is_empty():
+		return {"ok": false, "message": "알 수 없는 제단 강화입니다."}
+	var lv := altar_level(id)
+	var cap := int(upgrade["max"])
+	if lv >= cap:
+		return {"ok": false, "message": "이미 최대 레벨입니다."}
+	var cost := AltarData.cost(id, lv)
+	if shards < cost:
+		return {"ok": false, "message": "달빛 조각이 부족합니다."}
+	shards -= cost
+	altar_levels[id] = lv + 1
+	save_settings()
+	altar_changed.emit()
+	return {
+		"ok": true, "level": lv + 1, "cost": cost,
+		"message": "%s Lv.%d" % [String(upgrade["name"]), lv + 1],
+	}
+
+
+func go_altar(return_to: String = "stage_select") -> void:
+	altar_return = return_to
+	save_settings()
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	Audio.duck_music(false)
+	get_tree().change_scene_to_file(ALTAR_SCENE)
+
+
+func close_altar() -> void:
+	if altar_return == "title":
+		go_title()
+	else:
+		go_stage_select()
+
+
+func signature_set_count(character_id: String) -> int:
+	var count := 0
+	for slot in EquipmentData.SLOT_ORDER:
+		var item := equipped_item(slot)
+		if not item.is_empty() and EquipmentData.is_signature(item) \
+				and EquipmentData.item_character(item) == character_id:
+			count += 1
+	return count
+
+
+func set_bonuses() -> Dictionary:
+	var out := {}
+	for character_id in CharacterData.ORDER:
+		var pieces := signature_set_count(character_id)
+		if pieces < 2:
+			continue
+		var bonus := EquipmentData.set_bonus_for(character_id, pieces)
+		for key in bonus:
+			out[key] = float(out.get(key, 0.0)) + float(bonus[key])
+	return out
+
+
 func _check_achievements(announce: bool = true) -> void:
 	var changed := false
 	for a in AchievementData.all():
@@ -1402,6 +1491,7 @@ func save_settings() -> void:
 	cfg.set_value("records", "daily", daily_records)
 	cfg.set_value("progress", "stats", stats)
 	cfg.set_value("progress", "achievements", achievements)
+	cfg.set_value("altar", "levels", altar_levels)
 	cfg.set_value("equipment", "inventory", inventory)
 	cfg.set_value("equipment", "equipped", equipped)
 	cfg.set_value("equipment", "shards", shards)
@@ -1448,6 +1538,9 @@ func load_record() -> void:
 	var loaded_ach = cfg.get_value("progress", "achievements", {})
 	if loaded_ach is Dictionary:
 		achievements = loaded_ach
+	var loaded_altar = cfg.get_value("altar", "levels", {})
+	if loaded_altar is Dictionary:
+		altar_levels = loaded_altar
 	var inv = cfg.get_value("equipment", "inventory", [])
 	if inv is Array:
 		inventory = inv

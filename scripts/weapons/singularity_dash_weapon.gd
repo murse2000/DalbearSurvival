@@ -36,7 +36,7 @@ func tick(delta: float) -> void:
 		if tick_cd <= 0.0:
 			tick_cd = float(data["tick_interval"])
 			player.manager.damage_circle(well_pos, float(data["pull_radius"]) * 0.65,
-				float(data["tick_damage"]), 30.0, player)
+				float(data["tick_damage"]), 30.0, player, element())
 		if well != null and is_instance_valid(well):
 			well.position = well_pos
 			well.rotation = spin
@@ -99,7 +99,7 @@ func _spawn_well() -> void:
 func _finish() -> void:
 	active = false
 	player.manager.damage_circle(well_pos, float(data["radius"]), float(data["damage"]),
-		320.0, player)
+		320.0, player, element())
 	FX.explosion(well_pos, COLOR, 1.35)
 	FX.ring(well_pos, Color.WHITE, float(data["radius"]) * 1.2, 0.55, "halo")
 	FX.flash(Color(0.74, 0.44, 1.0), 0.17, 0.34)

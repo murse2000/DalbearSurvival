@@ -68,7 +68,7 @@ func _strike(p: Vector2) -> void:
 		Vector2(0, -20), true, 140)
 	FX.flash(Color(0.72, 0.45, 1.0), 0.05, 0.16)
 	FX.shake(5.0, 0.25)
-	player.manager.damage_circle(p, radius, damage, 210.0, player)
+	player.manager.damage_circle(p, radius, damage, 210.0, player, element())
 	Audio.play("pulse", randf_range(0.7, 0.9), -4.0)
 	var burn := float(data.get("burn_damage", 0.0))
 	if burn > 0.0:
@@ -83,7 +83,7 @@ func _strike(p: Vector2) -> void:
 func _burn(p: Vector2, radius: float, burn: float) -> void:
 	if not is_inside_tree() or player == null or not is_instance_valid(player):
 		return
-	player.manager.damage_circle(p, radius * 0.9, burn, 40.0, player)
+	player.manager.damage_circle(p, radius * 0.9, burn, 40.0, player, element())
 	FX.ring(p, Color(0.9, 0.42, 1.0), radius * 0.7, 0.35)
 	FX.particles(p, "smoke2", Color(0.85, 0.45, 1.0), 10, 0.6, 20, 80, 0.4, 180,
 		Vector2(0, -26), true, 140)

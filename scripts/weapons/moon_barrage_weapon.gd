@@ -45,5 +45,5 @@ func _strike(p: Vector2) -> void:
 		return
 	FX.laser_fx(p + Vector2(0, -430), p, Color(1.0, 0.92, 0.62), 38.0)
 	FX.explosion(p, Color(1.0, 0.84, 0.42), 0.85)
-	player.manager.damage_circle(p, float(data["radius"]), float(data["damage"]), 120.0, player)
+	player.manager.damage_circle(p, float(data["radius"]), float(data["damage"]), 120.0, player, element())
 	Audio.play("pulse", 0.8, -4.0)

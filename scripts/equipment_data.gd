@@ -115,6 +115,29 @@ const ICON_PATHS := {
 	"necklace": "res://assets/art/ui/icon_equip_necklace.png",
 }
 
+const SET_BONUSES := {
+	"dal": {
+		"name": "달빛 수호", "two": {"max_hp": 20.0},
+		"three": {"damage_pct": 0.08},
+	},
+	"star": {
+		"name": "별빛 추적", "two": {"cooldown_pct": 0.06},
+		"three": {"crit": 0.08},
+	},
+	"frost": {
+		"name": "서리 방벽", "two": {"armor": 2.0},
+		"three": {"max_hp": 30.0},
+	},
+	"ember": {
+		"name": "잿불 사냥", "two": {"damage_pct": 0.08},
+		"three": {"cooldown_pct": 0.06},
+	},
+	"shade": {
+		"name": "그림자 춤", "two": {"speed_pct": 0.05},
+		"three": {"crit": 0.10},
+	},
+}
+
 const SIGNATURE_SETS := {
 	"dal": [
 		{
@@ -201,6 +224,46 @@ const SIGNATURE_SETS := {
 
 static func signature_set(character_id: String) -> Array:
 	return SIGNATURE_SETS.get(character_id, [])
+
+
+static func set_name(character_id: String) -> String:
+	return String(SET_BONUSES.get(character_id, {}).get("name", ""))
+
+
+static func set_bonus_for(character_id: String, count: int) -> Dictionary:
+	var info: Dictionary = SET_BONUSES.get(character_id, {})
+	if info.is_empty():
+		return {}
+	var out := {}
+	if count >= 2:
+		for key in info.get("two", {}):
+			out[key] = float(out.get(key, 0.0)) + float(info["two"][key])
+	if count >= 3:
+		for key in info.get("three", {}):
+			out[key] = float(out.get(key, 0.0)) + float(info["three"][key])
+	return out
+
+
+static func set_bonus_text(character_id: String, count: int) -> String:
+	var info: Dictionary = SET_BONUSES.get(character_id, {})
+	if info.is_empty():
+		return ""
+	var two: Dictionary = info.get("two", {})
+	var three: Dictionary = info.get("three", {})
+	var parts: Array = []
+	if not two.is_empty():
+		parts.append(("2세트 " + stat_summary_from(two)) if count >= 2 else ("2세트 " + stat_summary_from(two)))
+	if not three.is_empty():
+		parts.append(("3세트 " + stat_summary_from(three)))
+	return "%s %d/3 · %s" % [String(info["name"]), count, " / ".join(parts)]
+
+
+static func stat_summary_from(stats: Dictionary) -> String:
+	var parts: Array = []
+	for key in STAT_ORDER:
+		if stats.has(key):
+			parts.append(stat_line(key, float(stats[key])))
+	return " · ".join(parts)
 
 
 static func is_signature(item: Dictionary) -> bool:

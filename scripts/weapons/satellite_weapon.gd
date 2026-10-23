@@ -82,7 +82,7 @@ func tick(delta: float) -> void:
 				continue
 			hit_times[id] = now
 			var roll: Dictionary = player.roll_damage(float(data["damage"]))
-			enemy.take_damage(roll["damage"], roll["crit"], center, 95.0)
+			enemy.take_damage(roll["damage"], roll["crit"], center, 95.0, element())
 			FX.slash(enemy.global_position + Vector2(0, -8), a + PI * 0.5,
 				Color(0.6, 1.0, 0.82), 0.26)
 			Audio.play("hit", randf_range(0.95, 1.15), -8.0)

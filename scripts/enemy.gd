@@ -12,11 +12,17 @@ var hp := 10.0
 var max_hp := 10.0
 var damage := 4.0
 var speed := 40.0
+var base_speed := 40.0
 var xp_value := 1
 var radius := 10.0
 var height := 26.0
 var display_name := ""
 var color := Color.WHITE
+var status_times := {"fire": 0.0, "frost": 0.0, "shock": 0.0, "void": 0.0}
+var burn_dps := 0.0
+var burn_tick := 0.0
+var synergy_cd := 0.0
+var vulnerable := 0.0
 var elite := false
 var boss := false
 var miniboss := false
@@ -146,6 +152,7 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 		else:
 			max_hp *= pow(1.025, overtime / 10.0)
 			damage *= pow(1.015, overtime / 10.0)
+	base_speed = speed
 	hp = max_hp
 	attack_cd = randf_range(1.0, 2.0)
 	teleport_cd = randf_range(1.2, 2.4)
@@ -230,6 +237,9 @@ func _process(delta: float) -> void:
 	age += delta
 	contact_cd = maxf(0.0, contact_cd - delta)
 	flash = maxf(0.0, flash - delta)
+	_update_statuses(delta)
+	if dead:
+		return
 	if player == null or not is_instance_valid(player):
 		return
 	var player_pos: Vector2 = player.global_position
@@ -292,6 +302,9 @@ func _process(delta: float) -> void:
 		tint = Color(1.08, 1.04, 1.14)
 	elif elite:
 		tint = Color(1.08, 1.05, 1.18)
+	for status_key in ["fire", "frost", "shock", "void"]:
+		if float(status_times.get(status_key, 0.0)) > 0.0:
+			tint = tint.lerp(GameData.status_color(status_key), 0.42)
 	if _near or boss or miniboss:
 		var flash_mod := Color(2.6, 2.6, 2.6) if flash > 0.0 else tint
 		if sprite.modulate != flash_mod:
@@ -815,15 +828,82 @@ func _fire_beam() -> void:
 	FX.shake(6.0, 0.3)
 
 
+# ---------------------------------------------------------------- status
+func _update_statuses(delta: float) -> void:
+	synergy_cd = maxf(0.0, synergy_cd - delta)
+	vulnerable = maxf(0.0, vulnerable - delta)
+	for key in status_times.keys():
+		status_times[key] = maxf(0.0, float(status_times[key]) - delta)
+	speed = base_speed * (0.7 if float(status_times["frost"]) > 0.0 else 1.0)
+	if float(status_times["fire"]) > 0.0:
+		burn_tick -= delta
+		if burn_tick <= 0.0:
+			burn_tick = 0.45
+			var burn_damage := burn_dps * 0.45
+			hp -= burn_damage
+			FX.damage_number(global_position + Vector2(0, -height * visual_scale * 0.72),
+				burn_damage, Color(1.0, 0.55, 0.28), false)
+			if hp <= 0.0:
+				_die()
+	else:
+		burn_dps = 0.0
+
+
+func apply_element(element: String, source_pos: Vector2, base_damage: float) -> void:
+	if not GameData.STATUS_COLORS.has(element):
+		return
+	var status_color: Color = GameData.status_color(element)
+	var other := ""
+	for key in status_times.keys():
+		if String(key) != element and float(status_times[key]) > 0.0:
+			other = String(key)
+			break
+	var was_new := float(status_times.get(element, 0.0)) <= 0.0
+	status_times[element] = 3.0
+	if element == "fire":
+		burn_dps = maxf(burn_dps, maxf(2.0, base_damage * 0.08))
+		burn_tick = minf(burn_tick, 0.2)
+	elif element == "void":
+		vulnerable = maxf(vulnerable, 3.0)
+	if was_new:
+		FX.ring(global_position, status_color, radius + 20.0, 0.24)
+		FX.particles(global_position + Vector2(0, -height * visual_scale * 0.45), "star",
+			status_color, 4, 0.3, 28, 80, 0.22, 150, Vector2.ZERO, true)
+	if other != "" and synergy_cd <= 0.0:
+		synergy_cd = 1.6
+		_trigger_synergy(element, other, base_damage)
+
+
+func _trigger_synergy(a: String, b: String, base_damage: float) -> void:
+	var syn: Dictionary = GameData.status_synergy(a, b)
+	if syn.is_empty():
+		return
+	var syn_color: Color = syn["color"]
+	var syn_radius := float(syn["radius"])
+	FX.ring(global_position, syn_color, syn_radius, 0.36)
+	FX.float_text(global_position + Vector2(0, -height * visual_scale - 22.0),
+		String(syn["name"]), syn_color, 16)
+	FX.particles(global_position + Vector2(0, -height * visual_scale * 0.4), "star",
+		syn_color, 10, 0.45, 45, 150, 0.28, 180, Vector2.ZERO, true)
+	Audio.play("pulse", 0.9, -6.0)
+	if manager != null and manager.player != null and is_instance_valid(manager.player):
+		manager.damage_circle(global_position, syn_radius,
+			maxf(1.0, base_damage) * float(syn["mult"]), 80.0, manager.player, "")
+
+
 # ---------------------------------------------------------------- damage
-func take_damage(amount: float, crit: bool, source_pos: Vector2, knock: float = 90.0) -> void:
+func take_damage(amount: float, crit: bool, source_pos: Vector2, knock: float = 90.0,
+		element: String = "") -> void:
 	if dead or not targetable:
 		return
-	hp -= amount
+	var final_damage := amount * (1.25 if vulnerable > 0.0 else 1.0)
+	hp -= final_damage
 	flash = 0.08
 	var above := global_position + Vector2(0, -height * visual_scale * 0.72)
-	FX.damage_number(above, amount, Color(1.0, 0.18, 0.2) if crit else Color(0.97, 0.95, 0.9), crit)
+	FX.damage_number(above, final_damage, Color(1.0, 0.18, 0.2) if crit else Color(0.97, 0.95, 0.9), crit)
 	FX.hit(global_position + Vector2(0, -height * visual_scale * 0.4), color, crit)
+	if element != "":
+		apply_element(element, source_pos, final_damage)
 	if boss:
 		knockback += (global_position - source_pos).normalized() * knock * 0.06
 		FX.shake(1.2, 0.08)

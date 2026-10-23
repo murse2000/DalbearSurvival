@@ -21,7 +21,8 @@ func tick(delta: float) -> void:
 		radius,
 		float(data["damage"]),
 		float(data["knock"]),
-		player
+		player,
+		element()
 	)
 	FX.pulse_fx(player.global_position + Vector2(0, -6), radius, Color(0.58, 0.94, 1.0))
 	Audio.play("pulse", 1.0, -3.0)

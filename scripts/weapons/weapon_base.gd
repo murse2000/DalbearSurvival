@@ -25,6 +25,10 @@ func weapon_id() -> String:
 	return ""
 
 
+func element() -> String:
+	return GameData.weapon_element(weapon_id())
+
+
 func cooldown() -> float:
 	return float(data.get("cooldown", 1.0)) * player.cooldown_mult
 

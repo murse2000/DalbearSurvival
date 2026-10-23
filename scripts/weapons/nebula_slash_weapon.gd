@@ -30,7 +30,7 @@ func tick(delta: float) -> void:
 		var a := base + deg_to_rad(-8.0 + i * 8.0)
 		var d := Vector2.from_angle(a)
 		var end := o + d * float(data["length"])
-		player.manager.damage_line(o, end, float(data["width"]), float(data["damage"]), player)
+		player.manager.damage_line(o, end, float(data["width"]), float(data["damage"]), player, element())
 		FX.laser_fx(o, end, COLORS[i % COLORS.size()], float(data["width"]))
 	FX.impact(0.05, 0.025, 0.01)
 	FX.shake(4.0, 0.22)

@@ -19,7 +19,7 @@ func tick(delta: float) -> void:
 	var dir: Vector2 = (target.global_position - o).normalized()
 	var start := o
 	var end := o + dir * float(data["length"])
-	player.manager.damage_line(start, end, float(data["width"]), float(data["damage"]), player)
+	player.manager.damage_line(start, end, float(data["width"]), float(data["damage"]), player, element())
 	FX.laser_fx(start, end, Color(0.72, 1.0, 0.9), float(data["width"]))
 	Audio.play("laser", randf_range(0.96, 1.05), -4.0)
 	timer = cooldown()

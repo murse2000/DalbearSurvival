@@ -58,7 +58,7 @@ func tick(delta: float) -> void:
 		for i in victims.size():
 			var falloff := maxf(0.58, 1.0 - float(i) * 0.075)
 			var roll: Dictionary = player.roll_damage(float(data["damage"]) * falloff)
-			victims[i].take_damage(roll["damage"], roll["crit"], origin_pos, 85.0)
+			victims[i].take_damage(roll["damage"], roll["crit"], origin_pos, 85.0, element())
 			player.manager.damage_obstacles_circle(victims[i].global_position, 22.0,
 				float(data["damage"]) * falloff * 0.6)
 			healed += float(data["heal"])

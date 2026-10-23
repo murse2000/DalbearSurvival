@@ -77,7 +77,7 @@ func tick(delta: float) -> void:
 				continue
 			hit_times[id] = now
 			var roll: Dictionary = player.roll_damage(float(data["damage"]))
-			enemy.take_damage(roll["damage"], roll["crit"], center, 105.0)
+			enemy.take_damage(roll["damage"], roll["crit"], center, 105.0, element())
 			FX.slash(world, a + PI * 0.5, BLADE_COLOR, 0.26)
 			Audio.play("hit", randf_range(1.0, 1.16), -10.0)
 	if hit_times.size() > 260:
@@ -91,7 +91,7 @@ func tick(delta: float) -> void:
 func _slash_wave() -> void:
 	var center: Vector2 = player.global_position + Vector2(0, -14)
 	var radius := float(data["radius"]) + 54.0
-	player.manager.damage_circle(center, radius, float(data["wave_damage"]), 150.0, player)
+	player.manager.damage_circle(center, radius, float(data["wave_damage"]), 150.0, player, element())
 	for i in 10:
 		FX.slash(center, TAU * float(i) / 10.0 + angle * 0.2, BLADE_COLOR, 0.38)
 	FX.ring(center, BLADE_COLOR, radius, 0.42, "halo")

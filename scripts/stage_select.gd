@@ -207,6 +207,11 @@ func _build_header_landscape() -> void:
 	ach_btn.add_theme_font_size_override("font_size", 13)
 	ach_btn.pressed.connect(_open_achievements)
 	add_child(ach_btn)
+	var altar_btn := UIKit.button("달빛 제단", Vector2(126, 30))
+	altar_btn.position = Vector2(830, 78)
+	altar_btn.add_theme_font_size_override("font_size", 13)
+	altar_btn.pressed.connect(_open_altar)
+	add_child(altar_btn)
 
 
 func _build_header_portrait() -> void:
@@ -244,6 +249,11 @@ func _build_header_portrait() -> void:
 	ach_btn.add_theme_font_size_override("font_size", 13)
 	ach_btn.pressed.connect(_open_achievements)
 	add_child(ach_btn)
+	var altar_btn := UIKit.button("달빛 제단", Vector2(126, 28))
+	altar_btn.position = Vector2(450, 128)
+	altar_btn.add_theme_font_size_override("font_size", 12)
+	altar_btn.pressed.connect(_open_altar)
+	add_child(altar_btn)
 
 
 func _build_chips_landscape() -> void:
@@ -927,6 +937,13 @@ func _open_achievements() -> void:
 	Game.go_achievements("stage_select")
 
 
+func _open_altar() -> void:
+	if _starting:
+		return
+	Audio.play_click()
+	Game.go_altar("stage_select")
+
+
 func _open_equipment() -> void:
 	if _starting:
 		return
@@ -969,6 +986,9 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_A:
 			_open_achievements()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_T:
+			_open_altar()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_1:
 			_select_stage("forest")

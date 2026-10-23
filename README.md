@@ -6,6 +6,7 @@
 
 **15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
 **무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
+**속성 시너지 · 달빛 제단 · 달빛 동료 · 장비 세트**,
 **대시 & 궁극기**, **리롤·밴**, **그래픽 프리셋 · HUD 크기 · 조이스틱 배치**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
@@ -65,6 +66,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | `I` | 타이틀·전선 선택에서 **장비 & 인벤토리** 열기 |
 | `C` | 타이틀·전선 선택·장비 화면에서 **친구 선택** 열기 |
 | `A` | 전선 선택에서 **업적** 열기 |
+| `T` | 전선 선택에서 **달빛 제단** 열기 |
 | `ESC` | 일시정지 / 계속하기 / 장비·친구 화면에서 돌아가기 |
 | **터치** | 왼쪽 가상 조이스틱 이동 · 오른쪽 **대시/궁극기** · 우측 상단 **일시정지** |
 | `ENTER` | 타이틀·전선 선택에서 출격, 결과 화면에서 다음 전선/재도전 |
@@ -209,6 +211,54 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 무한의 끝 | 무한 모드 10분 생존 |
 | 오늘의 영웅 | 일일 챌린지 클리어 |
 | 단련 | 장비 Lv.5 강화 |
+
+### 속성 시너지
+무기마다 **불·서리·감전·공허** 속성이 붙고, 적에게 상태를 남깁니다.
+
+| 속성 | 상태 | 효과 |
+|---|---|---|
+| 불 | 화상 | 3초 동안 지속 피해 |
+| 서리 | 둔화 | 3초 동안 이동 속도 -30% |
+| 감전 | 감전 | 시너지 매개 |
+| 공허 | 균열 | 3초 동안 받는 피해 +25% |
+
+서로 다른 두 속성이 겹치면 적 위에 시너지 이름이 뜨고 주변에 폭발이 일어납니다.
+
+| 조합 | 시너지 | 효과 |
+|---|---|---|
+| 불 + 서리 | 열충격 | 주변 92px 폭발 |
+| 불 + 감전 | 과부하 | 주변 105px 폭발 |
+| 서리 + 감전 | 감전 | 주변 86px 연쇄 |
+| 불 + 공허 | 소멸 | 주변 110px 강타 |
+| 서리 + 공허 | 균열 | 주변 88px 폭발 |
+| 감전 + 공허 | 붕괴 | 주변 100px 폭발 |
+
+### 달빛 제단 & 동료
+전선 선택의 **달빛 제단** 버튼(또는 `T`)에서 달빛 조각으로 영구 강화를 구매합니다.
+
+| 강화 | 효과 | 최대 |
+|---|---|---|
+| 달빛 생명 | 최대 체력 +6 | 10 |
+| 달빛 분노 | 피해 +3% | 10 |
+| 달빛 걸음 | 이동 속도 +2% | 8 |
+| 달빛 자력 | 자력 범위 +8 | 8 |
+| 달빛 지혜 | 경험치 +3% | 8 |
+| 달빛 행운 | 치명타 +1% | 8 |
+| 달빛 동료 | 동료 해금 · 공격력/속도 증가 | 5 |
+
+- 제단 강화는 모든 모험에 영구 적용되며 저장됩니다.
+- **달빛 동료**를 해금하면 작은 동료가 따라다니며 가장 가까운 적에게 달빛 광선을 발사합니다. 레벨이 오르면 공격력과 공격 주기가 좋아집니다.
+
+### 장비 세트 효과
+친구 전용 장비 3종을 모두 갖추면 **2세트/3세트 효과**가 추가로 발동합니다. 장비 상세 화면에 현재 세트 진행도가 표시됩니다.
+
+| 세트 | 2세트 | 3세트 |
+|---|---|---|
+| 달빛 수호 (달) | 최대 체력 +20 | 피해 +8% |
+| 별빛 추적 (별) | 공격 대기 -6% | 치명타 +8% |
+| 서리 방벽 (서리) | 방어 +2 | 최대 체력 +30 |
+| 잿불 사냥 (잿불) | 피해 +8% | 공격 대기 -6% |
+| 그림자 춤 (그림자) | 이동 속도 +5% | 치명타 +10% |
 
 ---
 
@@ -434,6 +484,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![세로 전투](screenshots/stage_dunes_portrait.png) | ![세로 장비](screenshots/equipment_portrait.png) |
 | ![세로 친구 선택](screenshots/characters_portrait.png) | ![15개 전선 선택](screenshots/stage_select_late.png) |
 | ![업적](screenshots/achievements.png) | ![세로 업적](screenshots/achievements_portrait.png) |
+| ![달빛 제단](screenshots/altar.png) | ![세로 달빛 제단](screenshots/altar_portrait.png) |
+| ![달빛 동료](screenshots/companion.png) | ![속성 전투](screenshots/gameplay.png) |
 | ![무한 모드](screenshots/endless.png) | ![일일 챌린지](screenshots/daily.png) |
 | ![무한 모드 결과](screenshots/endless_end.png) | ![전선 선택](screenshots/stage_select.png) |
 | ![일일 도전 확인](screenshots/daily_modal.png) | ![세로 일일 도전](screenshots/daily_modal_portrait.png) |
@@ -447,6 +499,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
 `screenshots/diagonal.png`, `screenshots/relics.png`,
 `screenshots/achievements.png`, `screenshots/achievements_portrait.png`,
+`screenshots/altar.png`, `screenshots/altar_portrait.png`,
+`screenshots/companion.png`,
 `screenshots/settings.png`, `screenshots/settings_portrait.png`,
 `screenshots/touch_gameplay.png`, `screenshots/touch_gameplay_portrait.png`,
 `screenshots/endless.png`, `screenshots/daily.png`, `screenshots/endless_end.png`,
@@ -470,11 +524,15 @@ DalbearSurvival/
 │  ├─ equipment.tscn             # 장비 & 인벤토리 화면
 │  ├─ characters.tscn            # 달베어 친구 선택
 │  ├─ achievements.tscn          # 업적 보드
+│  ├─ altar.tscn                 # 달빛 제단
 │  ├─ main.tscn / player.tscn / enemy.tscn
 ├─ scripts/
 │  ├─ game_data.gd               # 15개 전선/난이도/무기/적/보스/패시브/일일 변칙 데이터
 │  ├─ achievement_data.gd        # 업적 12종 정의/진행도
 │  ├─ achievements_screen.gd     # 업적 보드 UI
+│  ├─ altar_data.gd              # 제단 영구 강화 7종
+│  ├─ altar_screen.gd            # 제단 UI
+│  ├─ companion.gd               # 달빛 동료
 │  ├─ character_data.gd          # 친구 5명 능력치/특성/전용 장비
 │  ├─ character_select.gd        # 친구 선택 UI
 │  ├─ equipment_data.gd          # 장비 등급/슬롯/능력치/강화 계산
@@ -608,6 +666,11 @@ DalbearSurvival/
   godot --path . res://scenes/characters.tscn -- --test-characters
   godot --path . res://scenes/main.tscn -- --test-modes
   godot --path . res://scenes/main.tscn -- --test-mobile-options
+  godot --path . res://scenes/main.tscn -- --test-status
+  godot --path . res://scenes/main.tscn -- --test-sets
+  godot --path . res://scenes/altar.tscn -- --test-altar
+  godot --path . res://scenes/altar.tscn -- --capture-altar
+  godot --path . --resolution 720x1280 res://scenes/altar.tscn -- --capture-altar
   godot --path . res://scenes/main.tscn -- --endless --capture-endless
   godot --path . res://scenes/main.tscn -- --daily --capture-daily
   godot --path . res://scenes/main.tscn -- --endless --capture-endless-end

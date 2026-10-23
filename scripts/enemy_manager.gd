@@ -491,16 +491,18 @@ func on_obstacle_died(o: Node2D) -> void:
 	obstacle_list.erase(o)
 
 
-func damage_circle(pos: Vector2, radius: float, base_damage: float, knock: float, source) -> void:
+func damage_circle(pos: Vector2, radius: float, base_damage: float, knock: float, source,
+		element: String = "") -> void:
 	for e in query_circle(pos, radius):
 		if not is_instance_valid(e) or e.dead:
 			continue
 		var roll: Dictionary = source.roll_damage(base_damage)
-		e.take_damage(roll["damage"], roll["crit"], pos, knock)
+		e.take_damage(roll["damage"], roll["crit"], pos, knock, element)
 	damage_obstacles_circle(pos, radius, base_damage)
 
 
-func damage_line(start: Vector2, end: Vector2, width: float, base_damage: float, source) -> void:
+func damage_line(start: Vector2, end: Vector2, width: float, base_damage: float, source,
+		element: String = "") -> void:
 	var dir := end - start
 	var length := dir.length()
 	if length < 1.0:
@@ -518,14 +520,14 @@ func damage_line(start: Vector2, end: Vector2, width: float, base_damage: float,
 				continue
 			hit[id] = true
 			var roll: Dictionary = source.roll_damage(base_damage)
-			e.take_damage(roll["damage"], roll["crit"], start, 120.0)
+			e.take_damage(roll["damage"], roll["crit"], start, 120.0, element)
 	damage_obstacles_line(start, end, width, base_damage)
 
 
-func damage_all(base_damage: float, source) -> void:
+func damage_all(base_damage: float, source, element: String = "") -> void:
 	for e in enemies.duplicate():
 		if not is_instance_valid(e) or e.dead or not e.targetable:
 			continue
 		var roll: Dictionary = source.roll_damage(base_damage)
-		e.take_damage(roll["damage"], roll["crit"], player.global_position, 120.0)
+		e.take_damage(roll["damage"], roll["crit"], player.global_position, 120.0, element)
 	damage_obstacles_circle(player.global_position, 1800.0, base_damage)

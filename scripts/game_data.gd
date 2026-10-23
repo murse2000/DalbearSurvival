@@ -1507,6 +1507,41 @@ const DAILY_MODIFIERS := [
 		"color": Color(0.62, 1.0, 0.72)},
 ]
 
+## Weapon elements drive status effects and pair synergies.
+const WEAPON_ELEMENTS := {
+	"moon_shot": "frost", "moon_barrage": "frost",
+	"satellite": "frost", "orbit_constellation": "frost",
+	"pulse": "frost", "moonlight_tempest": "frost",
+	"laser": "shock", "nebula_slash": "shock",
+	"chain": "shock", "life_circuit": "shock",
+	"meteor": "fire", "galaxy_meteor": "fire",
+	"singularity": "void", "gravity_collapse": "void",
+	"singularity_dash": "void", "blades": "void",
+}
+
+const STATUS_COLORS := {
+	"fire": Color(1.0, 0.48, 0.22),
+	"frost": Color(0.52, 0.82, 1.0),
+	"shock": Color(1.0, 0.86, 0.3),
+	"void": Color(0.72, 0.46, 1.0),
+}
+
+## Pairs are checked in either order. Base damage is the hit that triggered them.
+const STATUS_SYNERGIES := [
+	{"a": "fire", "b": "frost", "name": "열충격", "radius": 92.0, "mult": 1.5,
+		"color": Color(1.0, 0.72, 0.35)},
+	{"a": "fire", "b": "shock", "name": "과부하", "radius": 105.0, "mult": 1.4,
+		"color": Color(1.0, 0.6, 0.2)},
+	{"a": "frost", "b": "shock", "name": "감전", "radius": 86.0, "mult": 1.25,
+		"color": Color(0.55, 0.9, 1.0)},
+	{"a": "fire", "b": "void", "name": "소멸", "radius": 110.0, "mult": 1.8,
+		"color": Color(0.95, 0.35, 0.55)},
+	{"a": "frost", "b": "void", "name": "균열", "radius": 88.0, "mult": 1.5,
+		"color": Color(0.7, 0.62, 1.0)},
+	{"a": "shock", "b": "void", "name": "붕괴", "radius": 100.0, "mult": 1.7,
+		"color": Color(0.8, 0.52, 1.0)},
+]
+
 const DIFFICULTY_ORDER := ["moon", "normal", "dark", "abyss"]
 const DIFFICULTIES := {
 	"moon": {
@@ -1612,6 +1647,25 @@ static func spawn_interval(stage_id: String, t: float, diff_id: String) -> float
 static func spawn_batch(t: float, duration: float = 240.0) -> int:
 	var p := clampf(t / maxf(1.0, duration), 0.0, 1.0)
 	return 1 + int(p * 2.2) + (1 if p > 0.72 else 0)
+
+
+static func weapon_element(weapon_id: String) -> String:
+	return String(WEAPON_ELEMENTS.get(weapon_id, ""))
+
+
+static func status_color(element: String) -> Color:
+	return STATUS_COLORS.get(element, Color.WHITE)
+
+
+static func status_synergy(a: String, b: String) -> Dictionary:
+	if a == "" or b == "" or a == b:
+		return {}
+	for synergy in STATUS_SYNERGIES:
+		var sa := String(synergy["a"])
+		var sb := String(synergy["b"])
+		if (sa == a and sb == b) or (sa == b and sb == a):
+			return synergy
+	return {}
 
 
 static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:

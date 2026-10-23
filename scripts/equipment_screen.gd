@@ -884,10 +884,17 @@ func _refresh_detail() -> void:
 		_detail_stats.text = _plain_stats_bbcode(item)
 	else:
 		_detail_stats.text = _comparison_bbcode(item, Game.equipped_item(_compare_slot_for(item)))
-	if item_slot == "weapon":
+	if affinity != "":
+		var set_character := EquipmentData.item_character(item)
+		var set_pieces := Game.signature_set_count(set_character)
+		_detail_weapon.text = "%s 전용 · %s %d/3%s" % [
+			CharacterData.display_name(set_character),
+			EquipmentData.set_name(set_character), set_pieces,
+			" · 세트 효과" if set_pieces >= 2 else "",
+		]
+		_detail_weapon.tooltip_text = EquipmentData.set_bonus_text(set_character, set_pieces)
+	elif item_slot == "weapon":
 		_detail_weapon.text = "시작 무기 Lv.%d · 강화로 시작 레벨 상승" % EquipmentData.starting_weapon_level(item)
-	elif affinity != "":
-		_detail_weapon.text = "%s만 사용할 수 있는 전용 장비입니다." % CharacterData.display_name(EquipmentData.item_character(item))
 	else:
 		_detail_weapon.text = "장비 레벨이 오르면 능력치가 상승합니다."
 

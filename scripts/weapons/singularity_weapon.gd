@@ -92,7 +92,7 @@ func _finish() -> void:
 	pulling = false
 	var radius := float(data["radius"])
 	var damage := float(data["damage"])
-	player.manager.damage_circle(pull_pos, radius, damage, 320.0, player)
+	player.manager.damage_circle(pull_pos, radius, damage, 320.0, player, element())
 	FX.explosion(pull_pos, VOID_COLOR, 1.35)
 	FX.ring(pull_pos, Color.WHITE, radius * 1.25, 0.55, "halo")
 	FX.flash(Color(0.72, 0.42, 1.0), 0.17, 0.34)
