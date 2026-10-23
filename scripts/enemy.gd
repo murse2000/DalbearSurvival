@@ -992,6 +992,11 @@ func _start_beam(style: String = "ship") -> void:
 	var col2: Color = vis["core"]
 	var w1 := float(vis["width"])
 	var w2 := float(vis["core_width"])
+	if Settings.high_contrast_enabled():
+		w1 *= 1.25
+		w2 *= 1.5
+		col = Color(1, 1, 1, 0.95)
+		col2 = Color(1, 1, 1, 1)
 	if style == "sentinel":
 		Audio.play("laser", 0.55, -10.0)
 	elif style in ["mirror", "chrono", "grave", "heart", "genesis"]:
@@ -1053,6 +1058,9 @@ func _fire_beam() -> void:
 	var vis := _beam_visual(beam_style)
 	var width := float(vis["width"]) * (2.1 if boss else 1.9)
 	var col: Color = vis["core"]
+	if Settings.high_contrast_enabled():
+		width *= 1.2
+		col = Color(1, 1, 1, 1)
 	if player != null and is_instance_valid(player):
 		var closest := Geometry2D.get_closest_point_to_segment(player.global_position, start, end)
 		var hit_radius := width * 0.5

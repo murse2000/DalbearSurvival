@@ -17,6 +17,7 @@ var _hit_ids := {}
 var _sprite: Sprite2D
 var _glow: Sprite2D
 var _trail: Line2D
+var _outline: Line2D
 var _add_mat: CanvasItemMaterial
 var _trail_tick := 0
 
@@ -59,6 +60,18 @@ func _ready() -> void:
 	add_child(_sprite)
 	_sprite.z_index = 1
 
+	# High-contrast mode adds a stable white ring around enemy orbs. The ring
+	# is local to the projectile and therefore stays readable while it moves.
+	_outline = Line2D.new()
+	_outline.z_index = 3
+	_outline.width = 2.5
+	_outline.default_color = Color(1, 1, 1, 0.9)
+	_outline.visible = false
+	for i in 16:
+		_outline.add_point(Vector2.from_angle(TAU * float(i) / 16.0) * 17.0)
+	_outline.add_point(_outline.get_point_position(0))
+	add_child(_outline)
+
 
 func setup_friendly(p, m, pos: Vector2, vel: Vector2, damage: float, pierce: int) -> void:
 	player = p
@@ -72,8 +85,10 @@ func setup_friendly(p, m, pos: Vector2, vel: Vector2, damage: float, pierce: int
 	color = Color(1.0, 0.86, 0.5)
 	_sprite.texture = load("res://assets/art/fx/moon_bolt.png")
 	_sprite.scale = Vector2.ONE * 1.05
+	_sprite.modulate = Color.WHITE
 	_glow.modulate = Color(1.0, 0.85, 0.45, 0.4)
 	_glow.scale = Vector2.ONE * 0.5
+	_outline.visible = false
 	var grad := Gradient.new()
 	grad.set_color(0, Color(1.0, 0.86, 0.52, 0.62))
 	grad.set_color(1, Color(1.0, 0.7, 0.3, 0.0))
@@ -89,20 +104,37 @@ func setup_enemy(pos: Vector2, vel: Vector2, damage: float, p, variant: String =
 	friendly = false
 	life = 5.0
 	var acid := variant == "acid"
-	color = Color(0.55, 1.0, 0.6) if acid else Color(0.9, 0.45, 1.0)
-	_sprite.texture = load("res://assets/art/fx/orb_acid.png" if acid else "res://assets/art/fx/orb.png")
-	_sprite.scale = Vector2.ONE * 1.2
-	_glow.modulate = Color(0.5, 1.0, 0.55, 0.4) if acid else Color(0.8, 0.4, 1.0, 0.4)
-	_glow.scale = Vector2.ONE * 0.45
-	var grad := Gradient.new()
-	if acid:
-		grad.set_color(0, Color(0.5, 1.0, 0.55, 0.55))
-		grad.set_color(1, Color(0.2, 0.7, 0.4, 0.0))
+	var mode := Settings.colorblind_mode()
+	if mode in ["deuteranopia", "protanopia"]:
+		# Orange/cyan stay separable when red-green discrimination is reduced.
+		color = Color(0.2, 0.9, 1.0) if acid else Color(1.0, 0.62, 0.12)
+	elif mode == "tritanopia":
+		color = Color(0.45, 1.0, 0.5) if acid else Color(1.0, 0.45, 0.82)
 	else:
-		grad.set_color(0, Color(0.85, 0.5, 1.0, 0.55))
-		grad.set_color(1, Color(0.55, 0.2, 0.9, 0.0))
+		color = Color(0.55, 1.0, 0.6) if acid else Color(0.9, 0.45, 1.0)
+	_sprite.texture = load("res://assets/art/fx/orb_acid.png" if acid else "res://assets/art/fx/orb.png")
+	_sprite.scale = Vector2.ONE * (1.45 if Settings.high_contrast_enabled() else 1.2)
+	var sprite_tint := Color.WHITE if mode == "off" else color
+	if Settings.high_contrast_enabled():
+		sprite_tint = sprite_tint.lightened(0.28)
+	_sprite.modulate = sprite_tint
+	_glow.modulate = Color(color.r, color.g, color.b, 0.8 if Settings.high_contrast_enabled() else 0.4)
+	_glow.scale = Vector2.ONE * (0.72 if Settings.high_contrast_enabled() else 0.45)
+	_glow.visible = true
+	var grad := Gradient.new()
+	if mode != "off":
+		grad.set_color(0, Color(color.r, color.g, color.b, 0.72))
+		grad.set_color(1, Color(color.r * 0.45, color.g * 0.45, color.b * 0.45, 0.0))
+	else:
+		if acid:
+			grad.set_color(0, Color(0.5, 1.0, 0.55, 0.55))
+			grad.set_color(1, Color(0.2, 0.7, 0.4, 0.0))
+		else:
+			grad.set_color(0, Color(0.85, 0.5, 1.0, 0.55))
+			grad.set_color(1, Color(0.55, 0.2, 0.9, 0.0))
 	_trail.gradient = grad
-	_trail.width = 4.5
+	_trail.width = 7.0 if Settings.high_contrast_enabled() else 4.5
+	_outline.visible = Settings.high_contrast_enabled()
 
 
 func _process(delta: float) -> void:

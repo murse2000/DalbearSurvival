@@ -2,76 +2,111 @@ extends Control
 
 ## Reusable settings panel for the title and the pause menu.
 ## Lives above the screen it is opened from; works while the tree is paused.
-## Rebuilds itself for landscape / portrait so phones get readable controls.
+## Three tabs keep display, controls and accessibility options readable on
+## both desktop and portrait phones.
 
 signal closed
 
-const TOGGLE_ROWS := [
-	{
-		"key": "bloom",
-		"name": "블룸 (빛 번짐)",
-		"desc": "폭발과 달빛의 빛 번짐 연출을 켜거나 끕니다.",
-	},
-	{
-		"key": "shake",
-		"name": "화면 흔들림",
-		"desc": "피격과 폭발 시 카메라 흔들림을 켜거나 끕니다.",
-	},
-	{
-		"key": "damage_numbers",
-		"name": "데미지 숫자",
-		"desc": "적 위에 뜨는 피해량 숫자를 표시합니다.",
-	},
+const TABS := [
+	{"id": "display", "label": "화면"},
+	{"id": "controls", "label": "조작"},
+	{"id": "access", "label": "접근성"},
 ]
 
-const CHOICE_ROWS := [
-	{
-		"key": "quality",
-		"name": "그래픽 프리셋",
-		"desc": "연출 밀도와 전투 효과량을 조절합니다.",
-		"options": [
-			{"value": "low", "label": "절전"},
-			{"value": "balanced", "label": "균형"},
-			{"value": "high", "label": "고품질"},
-		],
-	},
-	{
-		"key": "hud_size",
-		"name": "전투 HUD 크기",
-		"desc": "타이머·체력·스킬 UI를 확대하거나 줄입니다.",
-		"options": [
-			{"value": "small", "label": "작게"},
-			{"value": "normal", "label": "보통"},
-			{"value": "large", "label": "크게"},
-		],
-	},
-	{
-		"key": "joystick_side",
-		"name": "조이스틱 위치",
-		"desc": "왼손/오른손에 맞춰 이동과 버튼을 바꿉니다.",
-		"options": [
-			{"value": "left", "label": "왼손"},
-			{"value": "right", "label": "오른손"},
-		],
-	},
-	{
-		"key": "joystick_size",
-		"name": "조이스틱 크기",
-		"desc": "이동·대시·궁극기 버튼 크기를 조절합니다.",
-		"options": [
-			{"value": "small", "label": "작게"},
-			{"value": "normal", "label": "보통"},
-			{"value": "large", "label": "크게"},
-		],
-	},
-]
+const PAGES := {
+	"display": [
+		{"type": "choice", "key": "quality", "name": "그래픽 품질",
+			"desc": "프레임과 연출 효과의 균형을 선택합니다.",
+			"options": [
+				{"value": "low", "label": "낮음"},
+				{"value": "balanced", "label": "보통"},
+				{"value": "high", "label": "고품질"},
+			]},
+		{"type": "choice", "key": "window_mode", "name": "창 모드",
+			"desc": "창·테두리 없음·전체 화면을 즉시 적용합니다. F11로도 전환됩니다.",
+			"options": [
+				{"value": "windowed", "label": "창"},
+				{"value": "borderless", "label": "테두리 없음"},
+				{"value": "fullscreen", "label": "전체 화면"},
+			]},
+		{"type": "choice", "key": "fps_limit", "name": "FPS 제한",
+			"desc": "프레임 상한을 제한해 발열과 전력 사용을 줄입니다.",
+			"options": [
+				{"value": "60", "label": "60"},
+				{"value": "120", "label": "120"},
+				{"value": "144", "label": "144"},
+				{"value": "unlimited", "label": "무제한"},
+			]},
+		{"type": "toggle", "key": "vsync", "name": "수직 동기화",
+			"desc": "화면 찢어짐을 줄입니다. 입력 지연이 느껴지면 끄세요."},
+		{"type": "toggle", "key": "bloom", "name": "블룸 (빛 번짐)",
+			"desc": "밝은 빛과 달빛의 번짐 효과를 켜거나 끕니다."},
+		{"type": "choice", "key": "hud_size", "name": "인게임 HUD 크기",
+			"desc": "타이머·체력·스킬 UI를 확대하거나 줄입니다.",
+			"options": [
+				{"value": "small", "label": "작게"},
+				{"value": "normal", "label": "보통"},
+				{"value": "large", "label": "크게"},
+			]},
+	],
+	"controls": [
+		{"type": "choice", "key": "joystick_side", "name": "조이스틱 위치",
+			"desc": "왼손/오른손잡이에 맞춰 이동 버튼을 바꿉니다.",
+			"options": [
+				{"value": "left", "label": "왼쪽"},
+				{"value": "right", "label": "오른쪽"},
+			]},
+		{"type": "choice", "key": "joystick_size", "name": "조이스틱 크기",
+			"desc": "이동 조이스틱과 대시·궁극기 버튼 크기를 조절합니다.",
+			"options": [
+				{"value": "small", "label": "작게"},
+				{"value": "normal", "label": "보통"},
+				{"value": "large", "label": "크게"},
+			]},
+		{"type": "toggle", "key": "focus_pause", "name": "포커스 상실 시 일시정지",
+			"desc": "다른 창으로 전환해도 전투가 계속되지 않도록 합니다."},
+	],
+	"access": [
+		{"type": "choice", "key": "flash_intensity", "name": "화면 플래시",
+			"desc": "폭발·보스 연출의 섬광 강도를 줄이거나 끕니다.",
+			"options": [
+				{"value": "off", "label": "끔"},
+				{"value": "reduced", "label": "약하게"},
+				{"value": "normal", "label": "보통"},
+			]},
+		{"type": "choice", "key": "motion_intensity", "name": "모션 강도",
+			"desc": "화면 흔들림·충격 줌·속도선의 강도를 조절합니다.",
+			"options": [
+				{"value": "off", "label": "끔"},
+				{"value": "reduced", "label": "약하게"},
+				{"value": "normal", "label": "보통"},
+			]},
+		{"type": "choice", "key": "colorblind", "name": "색약 팔레트",
+			"desc": "적 탄막의 산성/일반 색을 구분하기 쉬운 색으로 바꿉니다.",
+			"options": [
+				{"value": "off", "label": "기본"},
+				{"value": "deuteranopia", "label": "녹색약"},
+				{"value": "protanopia", "label": "적색약"},
+				{"value": "tritanopia", "label": "청색약"},
+			]},
+		{"type": "toggle", "key": "high_contrast", "name": "고대비 적 탄막",
+			"desc": "적 탄막에 흰색 외곽선과 더 밝은 궤적을 추가합니다."},
+		{"type": "toggle", "key": "shake", "name": "화면 흔들림 사용",
+			"desc": "모션 강도와 별개로 카메라 흔들림을 완전히 끕니다."},
+		{"type": "toggle", "key": "damage_numbers", "name": "데미지 숫자",
+			"desc": "적에게 들어간 피해 숫자를 표시합니다."},
+	],
+}
 
 var _buttons := {}
 var _choice_buttons := {}
+var _tab_buttons := {}
 var _close_button: Button
+var _page_root: Control
 var _portrait := false
-var _panel_w := 640.0
-var _panel_h := 690.0
+var _panel_w := 700.0
+var _panel_h := 720.0
+var _tab := "display"
 
 
 func _is_portrait() -> bool:
@@ -98,6 +133,7 @@ func _on_viewport_resized() -> void:
 		child.queue_free()
 	_buttons.clear()
 	_choice_buttons.clear()
+	_tab_buttons.clear()
 	_portrait = _is_portrait()
 	_build()
 	_sync()
@@ -105,8 +141,8 @@ func _on_viewport_resized() -> void:
 
 func _build() -> void:
 	var vp := get_viewport_rect().size
-	_panel_w = 660.0 if _portrait else 640.0
-	_panel_h = 800.0 if _portrait else 690.0
+	_panel_w = 680.0 if _portrait else 720.0
+	_panel_h = 840.0 if _portrait else 720.0
 
 	var dim := UIKit.dimmer(0.8)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -114,8 +150,6 @@ func _build() -> void:
 
 	var panel := UIKit.panel(Color(0.047, 0.075, 0.114, 0.99),
 		UIKit.GOLD.darkened(0.35), 3, 0)
-	# The project may scale 2D UI down on phones (e.g. 1280 logical width on a
-	# 720px screen). Counter-scale the panel so its physical size stays usable.
 	var stretch := get_viewport().get_final_transform().get_scale().x
 	var panel_scale := maxf(1.0, 1.0 / maxf(0.01, stretch))
 	var fit_scale := minf(vp.x / (_panel_w + 24.0), vp.y / (_panel_h + 24.0))
@@ -126,78 +160,102 @@ func _build() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(panel)
 
-	var title_size := 46 if _portrait else 42
-	var title := UIKit.label("설정", title_size, UIKit.GOLD, 7)
-	title.position = Vector2(28, 16)
-	title.size = Vector2(_panel_w - 56, 56)
+	var title := UIKit.label("설정", 44 if _portrait else 42, UIKit.GOLD, 7)
+	title.position = Vector2(28, 14)
+	title.size = Vector2(_panel_w - 56, 54)
 	panel.add_child(title)
 
-	var sub := UIKit.label("그래픽 · 조작 · 화면 크기를 기기에 맞게 조절합니다",
-		15 if _portrait else 14, UIKit.MUTED)
-	sub.position = Vector2(30, 70 if _portrait else 66)
+	var sub := UIKit.label("화면 · 조작 · 접근성", 14, UIKit.MUTED)
+	sub.position = Vector2(30, 66 if _portrait else 62)
 	sub.size = Vector2(_panel_w - 60, 24)
 	panel.add_child(sub)
 
 	var line := ColorRect.new()
 	line.color = Color(0.85, 0.68, 0.35, 0.32)
-	line.position = Vector2(28, 100 if _portrait else 94)
+	line.position = Vector2(28, 94 if _portrait else 90)
 	line.size = Vector2(_panel_w - 56, 1)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(line)
 
-	var row_h := 76.0 if _portrait else 64.0
-	var start_y := 116.0 if _portrait else 108.0
-	for i in CHOICE_ROWS.size():
-		_make_choice_row(panel, CHOICE_ROWS[i], start_y + i * row_h)
+	var tab_y := 106.0 if _portrait else 102.0
+	var tab_w := 132.0 if _portrait else 138.0
+	var gap := 8.0
+	for i in TABS.size():
+		var tab: Dictionary = TABS[i]
+		var tid := String(tab["id"])
+		var button := UIKit.button(String(tab["label"]), Vector2(tab_w, 38))
+		button.position = Vector2(28.0 + float(i) * (tab_w + gap), tab_y)
+		button.toggle_mode = true
+		button.add_theme_font_size_override("font_size", 17 if _portrait else 16)
+		button.pressed.connect(_switch_tab.bind(tid))
+		panel.add_child(button)
+		_tab_buttons[tid] = button
 
-	var sep_y := start_y + CHOICE_ROWS.size() * row_h + 4.0
-	var sep := ColorRect.new()
-	sep.color = Color(0.85, 0.68, 0.35, 0.22)
-	sep.position = Vector2(28, sep_y)
-	sep.size = Vector2(_panel_w - 56, 1)
-	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(sep)
+	_page_root = Control.new()
+	_page_root.position = Vector2(0, 158 if _portrait else 150)
+	_page_root.size = Vector2(_panel_w, _panel_h - 260.0)
+	panel.add_child(_page_root)
 
-	var toggle_y := sep_y + 12.0
-	for i in TOGGLE_ROWS.size():
-		_make_toggle_row(panel, TOGGLE_ROWS[i], toggle_y + i * row_h)
-
-	var close_y := toggle_y + TOGGLE_ROWS.size() * row_h + 6.0
 	_close_button = UIKit.button("닫기", Vector2(180, 48))
-	_close_button.position = Vector2((_panel_w - 180) * 0.5, close_y)
+	_close_button.position = Vector2((_panel_w - 180) * 0.5, _panel_h - 92.0)
 	_close_button.add_theme_font_size_override("font_size", 20 if _portrait else 19)
 	_close_button.add_theme_stylebox_override("focus",
 		UIKit.style(Color(0, 0, 0, 0), UIKit.GOLD, 2, 0))
 	_close_button.pressed.connect(close)
 	panel.add_child(_close_button)
 
-	var note := UIKit.label("설정은 자동으로 저장됩니다", 12, UIKit.MUTED)
-	note.position = Vector2(0, close_y + 58.0)
+	var note := UIKit.label("설정은 자동으로 저장됩니다 · 게임패드 A 확인 / B 닫기",
+		12, UIKit.MUTED)
+	note.position = Vector2(0, _panel_h - 38.0)
 	note.size = Vector2(_panel_w, 20)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(note)
 
-	var esc_hint := UIKit.label("ESC 닫기", 12, Color(0.46, 0.54, 0.62))
-	esc_hint.position = Vector2(_panel_w - 110, 20)
-	esc_hint.size = Vector2(84, 20)
-	esc_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	panel.add_child(esc_hint)
+	_build_page()
 
 
-func _make_choice_row(panel: Panel, row: Dictionary, y: float) -> void:
+func _build_page() -> void:
+	for child in _page_root.get_children():
+		_page_root.remove_child(child)
+		child.queue_free()
+	_buttons.clear()
+	_choice_buttons.clear()
+	var rows: Array = PAGES.get(_tab, [])
+	var row_h := 78.0 if _portrait else 72.0
+	for i in rows.size():
+		var row: Dictionary = rows[i]
+		if String(row["type"]) == "choice":
+			_make_choice_row(_page_root, row, float(i) * row_h)
+		else:
+			_make_toggle_row(_page_root, row, float(i) * row_h)
+	_add_input_hint(_page_root, float(rows.size()) * row_h + 8.0)
+	_update_tab_styles()
+	_sync()
+
+
+func _add_input_hint(parent: Control, y: float) -> void:
+	var text := "키보드: 방향키 · ENTER · ESC   |   게임패드: 스틱/D-PAD · A · B · START"
+	var hint := UIKit.label(text, 12, UIKit.MUTED)
+	hint.position = Vector2(30, y)
+	hint.size = Vector2(_panel_w - 60, 20)
+	parent.add_child(hint)
+
+
+func _make_choice_row(parent: Control, row: Dictionary, y: float) -> void:
 	var key := String(row["key"])
 	var name_label := UIKit.label(String(row["name"]), 20 if _portrait else 19, UIKit.CREAM)
 	name_label.position = Vector2(30, y)
 	name_label.size = Vector2(300, 26)
-	panel.add_child(name_label)
+	parent.add_child(name_label)
 
 	var desc := UIKit.label(String(row["desc"]), 12, UIKit.MUTED)
 	desc.position = Vector2(30, y + 27)
-	desc.size = Vector2(300, 22)
-	panel.add_child(desc)
+	desc.size = Vector2(300, 36)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(desc)
 
 	var options: Array = row["options"]
-	var area_w := 300.0 if _portrait else 270.0
+	var area_w := 300.0 if _portrait else 330.0
 	var gap := 6.0
 	var bw := (area_w - gap * float(options.size() - 1)) / float(options.size())
 	var bx := _panel_w - 28.0 - area_w
@@ -208,23 +266,24 @@ func _make_choice_row(panel: Panel, row: Dictionary, y: float) -> void:
 		var button := UIKit.button(String(opt["label"]), Vector2(bw, 40))
 		button.position = Vector2(bx + float(i) * (bw + gap), y - 2)
 		button.toggle_mode = true
-		button.add_theme_font_size_override("font_size", 15 if _portrait else 14)
+		button.add_theme_font_size_override("font_size", 14 if _portrait else 13)
 		button.pressed.connect(_on_choice.bind(key, value))
-		panel.add_child(button)
+		parent.add_child(button)
 		_choice_buttons[key][value] = button
 
 
-func _make_toggle_row(panel: Panel, row: Dictionary, y: float) -> void:
+func _make_toggle_row(parent: Control, row: Dictionary, y: float) -> void:
 	var key := String(row["key"])
 	var name_label := UIKit.label(String(row["name"]), 20 if _portrait else 19, UIKit.CREAM)
 	name_label.position = Vector2(30, y)
 	name_label.size = Vector2(360, 26)
-	panel.add_child(name_label)
+	parent.add_child(name_label)
 
 	var desc := UIKit.label(String(row["desc"]), 12, UIKit.MUTED)
 	desc.position = Vector2(30, y + 27)
-	desc.size = Vector2(_panel_w - 190, 22)
-	panel.add_child(desc)
+	desc.size = Vector2(_panel_w - 190, 32)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(desc)
 
 	var toggle := UIKit.button("", Vector2(104, 40))
 	toggle.position = Vector2(_panel_w - 132, y - 2)
@@ -234,8 +293,31 @@ func _make_toggle_row(panel: Panel, row: Dictionary, y: float) -> void:
 	toggle.button_pressed = Settings.get_option(key)
 	toggle.text = "켜짐" if toggle.button_pressed else "꺼짐"
 	toggle.toggled.connect(_on_toggle.bind(key))
-	panel.add_child(toggle)
+	parent.add_child(toggle)
 	_buttons[key] = toggle
+
+
+func _update_tab_styles() -> void:
+	for tid in _tab_buttons.keys():
+		var button: Button = _tab_buttons[tid]
+		var selected: bool = String(tid) == _tab
+		button.set_pressed_no_signal(selected)
+		button.add_theme_stylebox_override("normal", UIKit.style(
+			Color(0.11, 0.15, 0.20, 0.98) if selected else Color(0.055, 0.08, 0.12, 0.98),
+			UIKit.GOLD if selected else UIKit.BORDER, 2, 0, 0))
+		button.add_theme_stylebox_override("hover", UIKit.style(
+			Color(0.13, 0.18, 0.24, 0.98),
+			UIKit.GOLD if selected else UIKit.BORDER, 2, 0, 0))
+		button.add_theme_stylebox_override("pressed", UIKit.style(
+			Color(0.16, 0.20, 0.26, 0.98), UIKit.GOLD, 2, 0, 0))
+
+
+func _switch_tab(tid: String) -> void:
+	if tid == _tab:
+		return
+	_tab = tid
+	_build_page()
+	Audio.play_click()
 
 
 func open() -> void:
@@ -271,8 +353,9 @@ func _sync() -> void:
 
 func _on_toggle(pressed: bool, key: String) -> void:
 	Settings.set_option(key, pressed)
-	var b: Button = _buttons[key]
-	b.text = "켜짐" if pressed else "꺼짐"
+	var b: Button = _buttons.get(key)
+	if b != null:
+		b.text = "켜짐" if pressed else "꺼짐"
 	Audio.play("click", 1.2, -8.0)
 
 
@@ -285,6 +368,11 @@ func _on_choice(key: String, value: String) -> void:
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		close()
-		get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_ESCAPE or event.keycode == KEY_BACKSPACE:
+			close()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventJoypadButton and event.pressed:
+		if event.button_index == JOY_BUTTON_B:
+			close()
+			get_viewport().set_input_as_handled()

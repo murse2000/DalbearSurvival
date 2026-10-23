@@ -22,6 +22,8 @@ var _prev_btn: Button
 var _next_btn: Button
 var _endless_btn: Button
 var _daily_btn: Button
+var _start_btn: Button
+var _input_hint: Label
 var _daily_modal: Control
 var _daily_modal_desc: Label
 var _daily_modal_best: Label
@@ -60,6 +62,7 @@ func _ready() -> void:
 	Game.running = false
 	Engine.time_scale = 1.0
 	get_tree().paused = false
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_args = OS.get_cmdline_user_args()
 	Audio.set_music_volume(-18.0, 1.0)
 	Audio.set_music_pitch(1.0)
@@ -98,6 +101,8 @@ func _ready() -> void:
 		_capture()
 	elif "--test-swipe" in _args:
 		_test_swipe.call_deferred()
+	elif "--test-platform-input" in _args:
+		_test_platform_input.call_deferred()
 	elif "--capture-daily-modal" in _args:
 		_capture_daily_modal.call_deferred()
 	elif "--capture-weekly" in _args:
@@ -175,6 +180,7 @@ func _build() -> void:
 	_build_daily_modal()
 	_build_weekly_modal()
 	_refresh()
+	_refresh_input_hint()
 
 
 func _build_header_landscape() -> void:
@@ -299,6 +305,7 @@ func _build_chips_portrait() -> void:
 
 func _build_footer_landscape() -> void:
 	var start := UIKit.button("출격", Vector2(170, 58))
+	_start_btn = start
 	start.position = Vector2(430, 636)
 	start.add_theme_font_size_override("font_size", 24)
 	start.pressed.connect(_start)
@@ -333,6 +340,7 @@ func _build_footer_landscape() -> void:
 	domain.position = Vector2(56, 690)
 	add_child(domain)
 	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  C 친구  ·  Q/E 전선  ·  스와이프", 10, UIKit.MUTED)
+	_input_hint = ver
 	ver.position = Vector2(600, 698)
 	ver.size = Vector2(624, 18)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -341,6 +349,7 @@ func _build_footer_landscape() -> void:
 
 func _build_footer_portrait() -> void:
 	var start := UIKit.button("출격", Vector2(130, 62))
+	_start_btn = start
 	start.position = Vector2(15, 1060)
 	start.add_theme_font_size_override("font_size", 20)
 	start.pressed.connect(_start)
@@ -375,6 +384,7 @@ func _build_footer_portrait() -> void:
 	domain.position = Vector2(24, 1236)
 	add_child(domain)
 	var ver := UIKit.label("ENTER 출격  ·  I 장비  ·  Q/E 전선  ·  스와이프", 9, UIKit.MUTED)
+	_input_hint = ver
 	ver.position = Vector2(180, 1238)
 	ver.size = Vector2(516, 16)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -851,6 +861,27 @@ func _on_diff_input(event: InputEvent, id: String) -> void:
 		_select_diff(id)
 
 
+func _cycle_stage(direction: int) -> void:
+	var order: Array = GameData.STAGE_ORDER
+	var idx := order.find(_selected_stage)
+	if idx < 0:
+		return
+	for step in range(1, order.size() + 1):
+		var candidate := String(order[(idx + direction * step + order.size() * 2) % order.size()])
+		if Game.is_stage_unlocked(candidate):
+			_select_stage(candidate)
+			return
+
+
+func _cycle_difficulty(direction: int) -> void:
+	var order: Array = GameData.DIFFICULTY_ORDER
+	var idx := order.find(_selected_diff)
+	if idx < 0:
+		return
+	idx = clampi(idx + direction, 0, order.size() - 1)
+	_select_diff(String(order[idx]))
+
+
 func _select_stage(id: String) -> void:
 	if not Game.is_stage_unlocked(id):
 		if _stage_hint != null:
@@ -1032,6 +1063,9 @@ func _go_title() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton and event.pressed:
+		_handle_joy_button(event.button_index)
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if _daily_modal != null and _daily_modal.visible:
 			if event.keycode == KEY_ESCAPE:
@@ -1099,14 +1133,114 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_E or event.keycode == KEY_PAGEDOWN:
 			_go_page(_page + 1, true, true)
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
-			var idx := maxi(0, GameData.DIFFICULTY_ORDER.find(_selected_diff) - 1)
-			_select_diff(GameData.DIFFICULTY_ORDER[idx])
+		elif event.keycode == KEY_LEFT:
+			_cycle_difficulty(-1)
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_RIGHT or event.keycode == KEY_D:
-			var idx := mini(GameData.DIFFICULTY_ORDER.size() - 1, GameData.DIFFICULTY_ORDER.find(_selected_diff) + 1)
-			_select_diff(GameData.DIFFICULTY_ORDER[idx])
+			_cycle_difficulty(1)
 			get_viewport().set_input_as_handled()
+
+
+func _handle_joy_button(button: int) -> void:
+	if _daily_modal != null and _daily_modal.visible:
+		if button == JOY_BUTTON_A:
+			_confirm_daily()
+		elif button == JOY_BUTTON_B:
+			_close_daily_modal()
+		get_viewport().set_input_as_handled()
+		return
+	if _weekly_modal != null and _weekly_modal.visible:
+		if button == JOY_BUTTON_B:
+			_weekly_modal.visible = false
+		get_viewport().set_input_as_handled()
+		return
+	match button:
+		JOY_BUTTON_A:
+			_start()
+		JOY_BUTTON_B:
+			_go_title()
+		JOY_BUTTON_DPAD_LEFT:
+			_cycle_stage(-1)
+		JOY_BUTTON_DPAD_RIGHT:
+			_cycle_stage(1)
+		JOY_BUTTON_DPAD_UP:
+			_cycle_difficulty(-1)
+		JOY_BUTTON_DPAD_DOWN:
+			_cycle_difficulty(1)
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
+func _refresh_input_hint() -> void:
+	if _input_hint == null:
+		return
+	if Input.get_connected_joypads().size() > 0:
+		_input_hint.text = "스틱/D-PAD 선택  ·  A 출격  ·  B 뒤로  ·  START 일시정지"
+	else:
+		_input_hint.text = "ENTER 출격  ·  I 장비  ·  Q/E 전선  ·  좌우 난이도"
+
+
+func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
+	_refresh_input_hint()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if _daily_modal != null and _daily_modal.visible:
+			_close_daily_modal()
+		elif _weekly_modal != null and _weekly_modal.visible:
+			_weekly_modal.visible = false
+		else:
+			_go_title()
+
+
+func _test_platform_input() -> void:
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	var errors: Array = []
+	var old_stage := _selected_stage
+	var old_diff := _selected_diff
+	var old_forest = Game.stage_records.get("forest:normal", null)
+	var old_hive = Game.stage_records.get("hive:normal", null)
+	Game.stage_records["forest:normal"] = {"clears": 1}
+	Game.stage_records["hive:normal"] = {"clears": 1}
+	_selected_stage = "forest"
+	_selected_diff = "normal"
+	_handle_joy_button(JOY_BUTTON_DPAD_RIGHT)
+	if _selected_stage != "hive":
+		errors.append("D-PAD right did not select the next front")
+	_cycle_difficulty(1)
+	if _selected_diff != "dark":
+		errors.append("D-PAD difficulty cycle failed")
+	_cycle_difficulty(-1)
+	if _selected_diff != "normal":
+		errors.append("D-PAD difficulty restore failed")
+	_refresh_input_hint()
+	if _input_hint == null or _input_hint.text.is_empty():
+		errors.append("input hint missing")
+	if old_forest == null:
+		Game.stage_records.erase("forest:normal")
+	else:
+		Game.stage_records["forest:normal"] = old_forest
+	if old_hive == null:
+		Game.stage_records.erase("hive:normal")
+	else:
+		Game.stage_records["hive:normal"] = old_hive
+	_selected_stage = old_stage
+	_selected_diff = old_diff
+	Game.select_stage(_selected_stage, _selected_diff)
+	Game.save_settings()
+	_ensure_page(_selected_stage, false)
+	_refresh()
+	if errors.is_empty():
+		print("PLATFORM INPUT TEST PASS stage=%s diff=%s" % [_selected_stage, _selected_diff])
+		print("TEST PASS")
+	else:
+		print("PLATFORM INPUT TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
+	get_tree().quit()
 
 
 func _test_swipe() -> void:

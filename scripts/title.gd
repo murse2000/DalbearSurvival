@@ -30,7 +30,9 @@ func _ready() -> void:
 	get_tree().paused = false
 	_args = OS.get_cmdline_user_args()
 	Audio.set_music_volume(-18.0, 2.0)
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_build()
+	_refresh_input_hint()
 	_fit_title()
 	get_viewport().size_changed.connect(_fit_title)
 	if "--capture-title" in _args:
@@ -322,6 +324,27 @@ func _quit() -> void:
 	get_tree().quit()
 
 
+func _refresh_input_hint() -> void:
+	if _hint_label == null:
+		return
+	if Input.get_connected_joypads().size() > 0:
+		_hint_label.text = "스틱/D-PAD 선택  ·  A 확인  ·  B 뒤로  ·  START 일시정지"
+	else:
+		_hint_label.text = "이동 WASD / 방향키   대시 Space   궁극기 Q   장비 I   친구 C"
+
+
+func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
+	_refresh_input_hint()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if _settings_panel != null and _settings_panel.visible:
+			_settings_panel.close()
+		else:
+			_quit()
+
+
 func _open_settings() -> void:
 	if _settings_panel != null:
 		_settings_panel.open()
@@ -343,6 +366,11 @@ func _open_characters() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _settings_panel != null and _settings_panel.visible:
+		return
+	if event is InputEventJoypadButton and event.pressed:
+		if event.button_index == JOY_BUTTON_A:
+			_start()
+			get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_I:
@@ -402,6 +430,17 @@ func _test_settings() -> void:
 	if Settings.get_choice("quality") != "low":
 		push_error("SETTINGS TEST: quality choice did not persist")
 		Settings.set_choice("quality", old_quality)
+		get_tree().quit()
+		return
+	_settings_panel._switch_tab("access")
+	if _settings_panel._tab != "access" or not _settings_panel._buttons.has("high_contrast") \
+			or not _settings_panel._choice_buttons.has("colorblind"):
+		push_error("SETTINGS TEST: accessibility tab did not build")
+		get_tree().quit()
+		return
+	_settings_panel._switch_tab("display")
+	if _settings_panel._tab != "display" or not _settings_panel._buttons.has("bloom"):
+		push_error("SETTINGS TEST: display tab did not restore")
 		get_tree().quit()
 		return
 	_settings_panel._on_choice("quality", old_quality)

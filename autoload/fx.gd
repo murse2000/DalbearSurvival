@@ -243,15 +243,16 @@ func particles(pos: Vector2, key: String, color: Color, amount: int, lifetime: f
 
 # ------------------------------------------------------------------ screen
 func shake(amount: float, duration: float) -> void:
-	if not Settings.shake:
+	var motion := Settings.motion_scale_value()
+	if motion <= 0.0:
 		return
-	_shake_amp = maxf(_shake_amp, amount)
+	_shake_amp = maxf(_shake_amp, amount * motion)
 	_shake_dur = maxf(_shake_dur, duration)
 	_shake_time = maxf(_shake_time, duration)
 
 
 func get_shake_offset() -> Vector2:
-	if not Settings.shake:
+	if Settings.motion_scale_value() <= 0.0:
 		_shake_amp = 0.0
 		_shake_time = 0.0
 		return Vector2.ZERO
@@ -264,17 +265,24 @@ func get_shake_offset() -> Vector2:
 
 
 func punch(amount: float) -> void:
+	var motion := Settings.motion_scale_value()
+	if motion <= 0.0:
+		return
 	if camera != null and is_instance_valid(camera) and camera.has_method("punch"):
-		camera.punch(amount)
+		camera.punch(amount * motion)
 
 
 func flash(color: Color = Color(1, 1, 1), amount: float = 0.55, dur: float = 0.35) -> void:
 	if post == null:
 		return
+	var intensity := Settings.flash_scale_value()
+	if intensity <= 0.0:
+		return
+	var scaled := clampf(amount * intensity, 0.0, 1.0)
 	if _flash_tween != null and _flash_tween.is_valid():
 		_flash_tween.kill()
 	post.set_shader_parameter("flash_color", color)
-	post.set_shader_parameter("flash", amount)
+	post.set_shader_parameter("flash", scaled)
 	_flash_tween = create_tween()
 	_flash_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_flash_tween.tween_property(post, "shader_parameter/flash", 0.0, dur).set_ease(Tween.EASE_OUT)
@@ -301,13 +309,22 @@ func boost_bloom(amount: float) -> void:
 
 
 func impact(amount: float = 0.04, warp: float = 0.02, ab: float = 0.012) -> void:
+	var motion := Settings.motion_scale_value()
+	if motion <= 0.0:
+		return
 	punch(amount)
-	_warp = maxf(_warp, warp)
-	_ab = maxf(_ab, ab)
+	_warp = maxf(_warp, warp * motion)
+	_ab = maxf(_ab, ab * motion)
 
 
 func screen_shock(strength: float = 0.55, zoom_amount: float = 0.025,
 		line_amount: float = 0.0, color: Color = Color(1.0, 0.82, 0.45)) -> void:
+	var motion := Settings.motion_scale_value()
+	if motion <= 0.0:
+		return
+	strength *= motion
+	zoom_amount *= motion
+	line_amount *= motion
 	_shock = maxf(_shock, strength)
 	_zoom = maxf(_zoom, 1.0 + zoom_amount)
 	_speed_lines = maxf(_speed_lines, line_amount)
@@ -317,7 +334,10 @@ func screen_shock(strength: float = 0.55, zoom_amount: float = 0.025,
 
 
 func speed_lines(amount: float = 0.55, color: Color = Color(1.0, 0.82, 0.45)) -> void:
-	_speed_lines = maxf(_speed_lines, amount)
+	var motion := Settings.motion_scale_value()
+	if motion <= 0.0:
+		return
+	_speed_lines = maxf(_speed_lines, amount * motion)
 	_speed_color = color
 
 

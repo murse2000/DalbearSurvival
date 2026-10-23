@@ -36,6 +36,8 @@ var _relic_visible := false
 var _relic_choices: Array = []
 var _relic_cards: Array = []
 var _banish_mode := false
+var _pad_choice := 0
+var _relic_pad_choice := 0
 var _end_panel: PanelContainer
 var _next_button: Button
 var _end_key_hint: Label
@@ -289,6 +291,7 @@ func show_levelup(choices: Array) -> void:
 	_end_visible = false
 	_relic_visible = false
 	_banish_mode = false
+	_pad_choice = 0
 	pause_root.visible = false
 	end_root.visible = false
 	relic_root.visible = false
@@ -301,7 +304,7 @@ func show_levelup(choices: Array) -> void:
 	get_tree().paused = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	levelup_hint.visible = true
-	levelup_hint.text = "1 / 2 / 3 선택 · R 리롤 · B 밴"
+	levelup_hint.text = "1 / 2 / 3 또는 D-PAD + A 선택 · R 리롤 · B 밴"
 	levelup_sub.text = "달빛 강화를 선택하세요 · Lv.%d" % Game.level
 	levelup_sub.add_theme_color_override("font_color", UIKit.MUTED)
 	_update_levelup_buttons()
@@ -314,6 +317,7 @@ func show_levelup(choices: Array) -> void:
 		var card := _make_card(choices[i], i)
 		cards_box.add_child(card)
 		_cards.append(card)
+	_refresh_card_styles()
 	await get_tree().create_timer(0.02, true, false, true).timeout
 	for i in _cards.size():
 		var card: Control = _cards[i]
@@ -436,13 +440,24 @@ func _on_card_hover(card: PanelContainer, accent: Color, hovered: bool) -> void:
 
 
 func _refresh_card_styles() -> void:
-	for card in _cards:
+	for i in _cards.size():
+		var card: Control = _cards[i]
 		if not is_instance_valid(card):
 			continue
 		var accent: Color = card.get_meta("accent", UIKit.GOLD)
-		var bg := Color(0.095, 0.06, 0.075, 0.99) if _banish_mode else Color(0.06, 0.095, 0.14, 0.98)
-		var border := UIKit.CORAL.darkened(0.2) if _banish_mode else accent.darkened(0.25)
-		card.add_theme_stylebox_override("panel", UIKit.style(bg, border, 3, 0))
+		var selected := not _banish_mode and i == _pad_choice
+		var bg := Color(0.095, 0.06, 0.075, 0.99) if _banish_mode else (
+			Color(0.11, 0.16, 0.22, 0.99) if selected else Color(0.06, 0.095, 0.14, 0.98))
+		var border := UIKit.CORAL.darkened(0.2) if _banish_mode else (
+			UIKit.GOLD if selected else accent.darkened(0.25))
+		card.add_theme_stylebox_override("panel", UIKit.style(bg, border, 4 if selected else 3, 0))
+
+
+func _refresh_relic_styles() -> void:
+	for i in _relic_cards.size():
+		var card: Control = _relic_cards[i]
+		if is_instance_valid(card):
+			card.modulate = Color(1.14, 1.14, 1.14) if i == _relic_pad_choice else Color.WHITE
 
 
 func _on_card_input(event: InputEvent, index: int) -> void:
@@ -483,6 +498,7 @@ func show_relics(choices: Array) -> void:
 	_end_visible = false
 	_banish_mode = false
 	_relic_visible = true
+	_relic_pad_choice = 0
 	levelup_root.visible = false
 	pause_root.visible = false
 	end_root.visible = false
@@ -504,6 +520,7 @@ func show_relics(choices: Array) -> void:
 		var card := _make_relic_card(choices[i], i)
 		relic_box.add_child(card)
 		_relic_cards.append(card)
+	_refresh_relic_styles()
 
 
 func _make_relic_card(choice: Dictionary, index: int) -> PanelContainer:
@@ -651,7 +668,7 @@ func _set_banish_mode(on: bool) -> void:
 	else:
 		levelup_sub.text = "달빛 강화를 선택하세요 · Lv.%d" % Game.level
 		levelup_sub.add_theme_color_override("font_color", UIKit.MUTED)
-		levelup_hint.text = "1 / 2 / 3 선택 · R 리롤 · B 밴"
+		levelup_hint.text = "1 / 2 / 3 또는 D-PAD + A 선택 · R 리롤 · B 밴"
 	_refresh_card_styles()
 	_update_levelup_buttons()
 
@@ -878,6 +895,9 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 func _input(event: InputEvent) -> void:
 	if _settings_panel != null and _settings_panel.visible:
 		return
+	if event is InputEventJoypadButton and event.pressed:
+		_handle_joy_button(event.button_index)
+		return
 	if _relic_visible and event is InputEventKey and event.pressed and not event.echo:
 		var ridx := -1
 		match event.keycode:
@@ -928,5 +948,59 @@ func _input(event: InputEvent) -> void:
 				_restart()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_ESCAPE:
+			_go_stage_select()
+			get_viewport().set_input_as_handled()
+
+
+func _handle_joy_button(button: int) -> void:
+	if _levelup_visible:
+		if button in [JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_UP]:
+			_pad_choice = maxi(0, _pad_choice - 1)
+			_refresh_card_styles()
+			get_viewport().set_input_as_handled()
+		elif button in [JOY_BUTTON_DPAD_RIGHT, JOY_BUTTON_DPAD_DOWN]:
+			_pad_choice = mini(_choices.size() - 1, _pad_choice + 1)
+			_refresh_card_styles()
+			get_viewport().set_input_as_handled()
+		elif button == JOY_BUTTON_A:
+			if _banish_mode:
+				_banish(_pad_choice)
+			else:
+				_choose(_pad_choice)
+			get_viewport().set_input_as_handled()
+		elif button in [JOY_BUTTON_B, JOY_BUTTON_X]:
+			if _banish_mode:
+				_set_banish_mode(false)
+			else:
+				_toggle_banish()
+			get_viewport().set_input_as_handled()
+		elif button == JOY_BUTTON_Y:
+			_reroll()
+			get_viewport().set_input_as_handled()
+		return
+	if _relic_visible:
+		if button in [JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_UP]:
+			_relic_pad_choice = maxi(0, _relic_pad_choice - 1)
+			_refresh_relic_styles()
+			get_viewport().set_input_as_handled()
+		elif button in [JOY_BUTTON_DPAD_RIGHT, JOY_BUTTON_DPAD_DOWN]:
+			_relic_pad_choice = mini(_relic_choices.size() - 1, _relic_pad_choice + 1)
+			_refresh_relic_styles()
+			get_viewport().set_input_as_handled()
+		elif button == JOY_BUTTON_A:
+			_choose_relic(_relic_pad_choice)
+			get_viewport().set_input_as_handled()
+		return
+	if _pause_visible and button in [JOY_BUTTON_START, JOY_BUTTON_BACK, JOY_BUTTON_B]:
+		_resume()
+		get_viewport().set_input_as_handled()
+	elif _end_visible:
+		if button == JOY_BUTTON_A:
+			if _end_has_next:
+				_next_stage()
+			else:
+				_restart()
+			get_viewport().set_input_as_handled()
+		elif button == JOY_BUTTON_B:
 			_go_stage_select()
 			get_viewport().set_input_as_handled()

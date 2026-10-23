@@ -157,6 +157,8 @@ func _ready() -> void:
 		_test_reroll_banish()
 	elif "--test-settings-effects" in _args:
 		_test_settings_effects()
+	elif "--test-platform-accessibility" in _args:
+		_test_platform_accessibility()
 	elif "--test-settings-close" in _args:
 		_test_settings_close()
 	elif "--test-equipment-run" in _args:
@@ -409,11 +411,13 @@ func _notification(what: int) -> void:
 		NOTIFICATION_APPLICATION_RESUMED:
 			_on_app_foreground()
 		NOTIFICATION_APPLICATION_FOCUS_OUT:
-			if OS.has_feature("mobile"):
+			if OS.has_feature("mobile") or Settings.focus_pause:
 				_on_app_background()
 		NOTIFICATION_APPLICATION_FOCUS_IN:
-			if OS.has_feature("mobile"):
+			if OS.has_feature("mobile") or Settings.focus_pause:
 				_on_app_foreground()
+		NOTIFICATION_WM_GO_BACK_REQUEST:
+			_on_back_requested()
 
 
 func _on_app_background() -> void:
@@ -506,12 +510,36 @@ func _check_relics() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		if overlay == null or not Game.running:
-			return
-		if overlay.is_blocking():
-			return
-		overlay.toggle_pause()
-		get_viewport().set_input_as_handled()
+		_toggle_pause_from_input()
+	elif event is InputEventJoypadButton and event.pressed:
+		if event.button_index in [JOY_BUTTON_START, JOY_BUTTON_BACK]:
+			_toggle_pause_from_input()
+
+
+func _toggle_pause_from_input() -> void:
+	if overlay == null or not Game.running:
+		return
+	if overlay.is_blocking():
+		return
+	overlay.toggle_pause()
+	get_viewport().set_input_as_handled()
+
+
+func _on_back_requested() -> void:
+	# Android back: close settings, then pause, then leave the run.
+	if overlay != null and overlay._settings_panel != null and overlay._settings_panel.visible:
+		overlay._settings_panel.close()
+		return
+	if overlay != null and overlay._end_visible:
+		overlay._go_stage_select()
+		return
+	if overlay != null and Game.running:
+		if overlay._pause_visible:
+			overlay._resume()
+		elif not overlay.is_blocking():
+			overlay.toggle_pause()
+		return
+	Game.go_title()
 
 
 func _on_level_up_requested() -> void:
@@ -1416,6 +1444,129 @@ func _test_settings_effects() -> void:
 	_restore_settings(old_bloom, old_shake, old_numbers)
 	print("SETTINGS EFFECTS TEST OK bloom=", bloom_value, " shake_amp=", FX._shake_amp,
 		" damage_children=", after)
+	get_tree().quit()
+
+
+func _test_platform_accessibility() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	var errors: Array = []
+	var old := {
+		"window_mode": Settings.window_mode,
+		"vsync": Settings.vsync,
+		"fps_limit": Settings.fps_limit,
+		"flash_intensity": Settings.flash_intensity,
+		"motion_intensity": Settings.motion_intensity,
+		"colorblind": Settings.colorblind,
+		"high_contrast": Settings.high_contrast,
+		"focus_pause": Settings.focus_pause,
+		"shake": Settings.shake,
+	}
+	Settings.set_choice("window_mode", "borderless")
+	Settings.set_choice("fps_limit", "60")
+	Settings.set_option("vsync", false)
+	Settings.set_choice("flash_intensity", "reduced")
+	Settings.set_choice("motion_intensity", "reduced")
+	Settings.set_choice("colorblind", "deuteranopia")
+	Settings.set_option("high_contrast", true)
+	Settings.set_option("focus_pause", false)
+	Settings.save_settings()
+	Settings.load_settings()
+	if Settings.window_mode != "borderless":
+		errors.append("window mode did not persist")
+	if Settings.fps_limit != "60" or Settings.vsync:
+		errors.append("display pacing did not persist")
+	if Settings.flash_intensity != "reduced" or Settings.motion_intensity != "reduced":
+		errors.append("effect intensity did not persist")
+	if Settings.colorblind != "deuteranopia" or not Settings.high_contrast:
+		errors.append("accessibility palette did not persist")
+	if Settings.focus_pause:
+		errors.append("focus pause did not persist")
+	if not is_equal_approx(Settings.flash_scale_value(), 0.45):
+		errors.append("flash scale mismatch")
+	if not is_equal_approx(Settings.motion_scale_value(), 0.42):
+		errors.append("motion scale mismatch")
+	var window_before := Settings.window_mode
+	var f11 := InputEventKey.new()
+	f11.keycode = KEY_F11
+	f11.pressed = true
+	Settings._unhandled_input(f11)
+	if Settings.window_mode == window_before:
+		errors.append("F11 did not toggle window mode")
+	Settings.set_choice("window_mode", window_before)
+	if overlay != null:
+		overlay._settings_panel.open()
+		_on_back_requested()
+		if overlay._settings_panel.visible:
+			errors.append("Android back did not close settings")
+		overlay.toggle_pause()
+		_on_back_requested()
+		if overlay._pause_visible:
+			errors.append("Android back did not resume pause")
+		var pad_start := InputEventJoypadButton.new()
+		pad_start.button_index = JOY_BUTTON_START
+		pad_start.pressed = true
+		_unhandled_input(pad_start)
+		if not overlay._pause_visible:
+			errors.append("gamepad START did not pause")
+		overlay._resume()
+
+	Settings.set_choice("flash_intensity", "off")
+	Settings.set_option("high_contrast", false)
+	Settings.set_choice("colorblind", "deuteranopia")
+	manager.spawn_enemy_orb(player.global_position + Vector2(120, 0), Vector2.ZERO, 1.0)
+	var orb = manager.projectiles.get_child(manager.projectiles.get_child_count() - 1)
+	if orb == null or orb.color.b > 0.4:
+		errors.append("colorblind orb palette did not apply")
+	Settings.set_option("high_contrast", true)
+	manager.spawn_enemy_orb(player.global_position + Vector2(140, 0), Vector2.ZERO, 1.0)
+	var hc_orb = manager.projectiles.get_child(manager.projectiles.get_child_count() - 1)
+	if hc_orb == null or not hc_orb._outline.visible:
+		errors.append("high contrast orb outline did not apply")
+
+	FX._shake_amp = 0.0
+	FX._shake_time = 0.0
+	Settings.set_choice("motion_intensity", "off")
+	FX.shake(10.0, 1.0)
+	if FX._shake_amp > 0.0:
+		errors.append("motion off still shook the camera")
+	Settings.set_choice("motion_intensity", "normal")
+	FX.shake(10.0, 1.0)
+	if FX._shake_amp <= 0.0:
+		errors.append("motion normal did not shake the camera")
+	FX._shake_amp = 0.0
+	FX._shake_time = 0.0
+
+	post_mat.set_shader_parameter("flash", 0.0)
+	Settings.set_choice("flash_intensity", "off")
+	FX.flash(Color.WHITE, 0.8, 0.1)
+	if float(post_mat.get_shader_parameter("flash")) > 0.03:
+		errors.append("flash off still flashed")
+	Settings.set_choice("flash_intensity", "normal")
+	FX.flash(Color.WHITE, 0.8, 0.1)
+	if float(post_mat.get_shader_parameter("flash")) < 0.3:
+		errors.append("flash normal was too weak")
+
+	manager.clear_enemy_projectiles()
+	Settings.set_choice("window_mode", String(old["window_mode"]))
+	Settings.set_choice("fps_limit", String(old["fps_limit"]))
+	Settings.set_option("vsync", bool(old["vsync"]))
+	Settings.set_choice("flash_intensity", String(old["flash_intensity"]))
+	Settings.set_choice("motion_intensity", String(old["motion_intensity"]))
+	Settings.set_choice("colorblind", String(old["colorblind"]))
+	Settings.set_option("high_contrast", bool(old["high_contrast"]))
+	Settings.set_option("focus_pause", bool(old["focus_pause"]))
+	Settings.set_option("shake", bool(old["shake"]))
+	Settings.save_settings()
+	if errors.is_empty():
+		print("PLATFORM ACCESSIBILITY TEST PASS window=%s fps=%s colorblind=%s" % [
+			Settings.window_mode, Settings.fps_limit, Settings.colorblind,
+		])
+		print("TEST PASS")
+	else:
+		print("PLATFORM ACCESSIBILITY TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
 	get_tree().quit()
 
 

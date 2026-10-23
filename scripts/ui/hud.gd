@@ -73,6 +73,7 @@ func _hud_scale_for(vp: Vector2) -> float:
 func _ready() -> void:
 	layer = 20
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	root = Control.new()
 	root.name = "HUDRoot"
 	root.size = Vector2(1280, 720)
@@ -318,6 +319,7 @@ func bind(p, m, w) -> void:
 	player = p
 	manager = m
 	world = w
+	_refresh_input_hint()
 	player.hp_changed.connect(_on_hp)
 	player.stats_changed.connect(_refresh_skills)
 	Game.xp_changed.connect(_on_xp)
@@ -386,6 +388,22 @@ func _update_combo_anchor() -> void:
 	_combo_label.position = Vector2(x - 180.0, y - 102.0)
 	if _combo_banner != null:
 		_combo_banner.position = Vector2(x - 220.0, y - 154.0)
+
+
+func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
+	_refresh_input_hint()
+
+
+func _refresh_input_hint() -> void:
+	if _hint == null:
+		return
+	var pad := Input.get_connected_joypads().size() > 0
+	_hint.text = "스틱/D-PAD 이동 · B 대시 · Y 궁극기 · START 일시정지" if pad else (
+		"WASD 이동 · Space 대시 · Q 궁극기 · ESC 일시정지")
+	if _dash_key != null:
+		_dash_key.text = "B" if pad else "SPACE"
+	if _ult_key != null:
+		_ult_key.text = "Y" if pad else "Q"
 
 
 func set_touch_mode(enabled: bool) -> void:
