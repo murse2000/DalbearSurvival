@@ -6,7 +6,7 @@
 
 **15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
 **무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
-**대시 & 궁극기**, **리롤·밴**, **연출 설정**,
+**대시 & 궁극기**, **리롤·밴**, **그래픽 프리셋 · HUD 크기 · 조이스틱 배치**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
@@ -85,6 +85,20 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - Android 설정: **가로·세로 자동 회전(센서)**, 1280×720 기준 `canvas_items` 스트레치, ETC2/ASTC 텍스처 임포트, arm64-v8a.
 - 기기를 돌리면 화면이 따라 회전합니다. 전투 HUD·카메라·전선 선택 화면은 새 방향에 맞춰 다시 배치됩니다.
 - Android 빌드에는 Godot 4.7.1 Android export template, Android SDK, JDK, 디버그 키스토어가 필요합니다.
+
+### 모바일 설정
+설정 화면(타이틀·일시정지)에서 기기에 맞게 조절할 수 있습니다. 세로 화면에서는 설정 패널이 화면 폭에 맞춰 크게 표시됩니다.
+
+| 항목 | 값 | 설명 |
+|---|---|---|
+| 그래픽 프리셋 | 절전 / 균형 / 고품질 | FX 상한·파티클·라이트·데칼·데미지 숫자·블룸을 한 번에 조절 |
+| 전투 HUD 크기 | 작게 / 보통 / 크게 | 타이머·체력·스킬 UI를 0.9× / 1.0× / 1.12×로 확대 |
+| 조이스틱 위치 | 왼손 / 오른손 | 조이스틱과 대시·궁극기 버튼의 좌우를 교체 |
+| 조이스틱 크기 | 작게 / 보통 / 크게 | 조이스틱·버튼·판정 반경·라벨을 함께 조절 |
+
+- 그래픽 프리셋은 **절전**: FX 80·파티클 55%·라이트 2개·데칼/데미지 숫자 끔, **균형**: FX 160·파티클 85%, **고품질**: FX 260·파티클 100%·라이트 14개 기준입니다. (모바일은 상한을 70%로 낮춥니다.)
+- 설정은 즉시 저장되며, 전투 중 바꾸면 HUD·터치 버튼·연출에 바로 반영됩니다.
+- 블룸·화면 흔들림·데미지 숫자는 프리셋과 별도로 켜고 끌 수 있습니다.
 
 ### 저장 & 이어하기
 - 진행 중인 전투는 **8초마다 자동 저장**되고, 홈 화면/백그라운드 전환 시에도 즉시 저장됩니다.
@@ -403,10 +417,11 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![크리티컬](screenshots/crit.png) | ![잿빛 균열](screenshots/stage_crater.png) |
 | ![달의 뒷면](screenshots/stage_void.png) | ![50 콤보](screenshots/combo.png) |
 | ![대시·궁극기](screenshots/abilities.png) | ![리롤·밴 카드](screenshots/levelup.png) |
-| ![밴 모드](screenshots/banish.png) | ![연출 설정](screenshots/settings.png) |
-| ![일시정지 설정](screenshots/pause_settings.png) | ![장비 & 인벤토리](screenshots/equipment.png) |
-| ![장비 상세](screenshots/equipment_detail.png) | ![친구 선택](screenshots/characters.png) |
-| ![런 보상](screenshots/rewards.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
+| ![밴 모드](screenshots/banish.png) | ![모바일 설정](screenshots/settings.png) |
+| ![세로 설정](screenshots/settings_portrait.png) | ![일시정지 설정](screenshots/pause_settings.png) |
+| ![오른손·큰 조이스틱](screenshots/touch_gameplay.png) | ![세로 오른손 조작](screenshots/touch_gameplay_portrait.png) |
+| ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
+| ![친구 선택](screenshots/characters.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
 | ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
 | ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
 | ![15개 전선 선택](screenshots/stage_select_late.png) | ![붉은 사막](screenshots/stage_dunes.png) |
@@ -432,6 +447,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
 `screenshots/diagonal.png`, `screenshots/relics.png`,
 `screenshots/achievements.png`, `screenshots/achievements_portrait.png`,
+`screenshots/settings.png`, `screenshots/settings_portrait.png`,
+`screenshots/touch_gameplay.png`, `screenshots/touch_gameplay_portrait.png`,
 `screenshots/endless.png`, `screenshots/daily.png`, `screenshots/endless_end.png`,
 `screenshots/daily_modal.png`, `screenshots/daily_modal_portrait.png`,
 `screenshots/stage_select_late.png`, `screenshots/stage_dunes.png`, `screenshots/stage_frost.png`,
@@ -573,8 +590,11 @@ DalbearSurvival/
   godot --path . res://scenes/characters.tscn -- --capture-characters
   godot --path . res://scenes/main.tscn -- --friend=star --capture-game
   godot --path . res://scenes/main.tscn -- --touch --capture-game
+  godot --path . res://scenes/main.tscn -- --touch --touch-right --touch-large --hud-large --capture-game
+  godot --path . --resolution 720x1280 res://scenes/main.tscn -- --touch --touch-right --touch-large --hud-large --capture-game
   godot --path . res://scenes/main.tscn -- --touch --test-touch
   godot --path . -- --capture-settings
+  godot --path . --resolution 720x1280 res://scenes/title.tscn -- --capture-settings
   godot --path . res://scenes/main.tscn -- --test-reroll-banish
   godot --path . res://scenes/main.tscn -- --test-enemy-projectile
   godot --path . res://scenes/main.tscn -- --test-background-pause
@@ -587,6 +607,7 @@ DalbearSurvival/
   godot --path . res://scenes/equipment.tscn -- --test-equipment
   godot --path . res://scenes/characters.tscn -- --test-characters
   godot --path . res://scenes/main.tscn -- --test-modes
+  godot --path . res://scenes/main.tscn -- --test-mobile-options
   godot --path . res://scenes/main.tscn -- --endless --capture-endless
   godot --path . res://scenes/main.tscn -- --daily --capture-daily
   godot --path . res://scenes/main.tscn -- --endless --capture-endless-end

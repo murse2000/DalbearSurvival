@@ -36,6 +36,8 @@ var _joy_origin := _joy_c
 var _use_touch_events := false
 var _ui_scale := 1.0
 var _ui_offset := Vector2.ZERO
+var _touch_scale := 1.0
+var _text_scale := 1.0
 
 
 func _ready() -> void:
@@ -47,6 +49,12 @@ func _ready() -> void:
 		_font = ThemeDB.fallback_font
 	_use_touch_events = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	visible = false
+	Settings.changed.connect(_on_settings_changed)
+
+
+func _on_settings_changed() -> void:
+	_reset()
+	queue_redraw()
 
 
 func bind(player_ref: Node, overlay_ref: Node) -> void:
@@ -118,6 +126,16 @@ func _apply_layout(vp: Vector2) -> void:
 		_ult_r = 46.0
 		_pause_c = Vector2(1218, 146)
 		_pause_r = 22.0
+	_touch_scale = Settings.joystick_scale_value()
+	_text_scale = _touch_scale * Settings.hud_scale_value()
+	_joy_r *= _touch_scale
+	_joy_k *= _touch_scale
+	_dash_r *= _touch_scale
+	_ult_r *= _touch_scale
+	if Settings.joystick_right():
+		_joy_c.x = _design.x - _joy_c.x
+		_dash_c.x = _design.x - _dash_c.x
+		_ult_c.x = _design.x - _ult_c.x
 	if not _layout_ready or portrait != _portrait:
 		_layout_ready = true
 		_portrait = portrait
@@ -167,13 +185,13 @@ func _to_design(pos: Vector2) -> Vector2:
 func _handle_screen_touch(event: InputEventScreenTouch) -> void:
 	var pos := _to_design(event.position)
 	if event.pressed:
-		if _hit(pos, _dash_c, _dash_r + 18.0):
+		if _hit(pos, _dash_c, _dash_r + 18.0 * _touch_scale):
 			_dash_index = event.index
 			_dash_requested = true
 			_dash_down = true
 			queue_redraw()
 			get_viewport().set_input_as_handled()
-		elif _hit(pos, _ult_c, _ult_r + 18.0):
+		elif _hit(pos, _ult_c, _ult_r + 18.0 * _touch_scale):
 			_ult_index = event.index
 			_ult_requested = true
 			_ult_down = true
@@ -212,12 +230,12 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		return
 	var pos := _to_design(event.position)
 	if event.pressed:
-		if _hit(pos, _dash_c, _dash_r + 18.0):
+		if _hit(pos, _dash_c, _dash_r + 18.0 * _touch_scale):
 			_mouse_dash = true
 			_dash_requested = true
 			_dash_down = true
 			get_viewport().set_input_as_handled()
-		elif _hit(pos, _ult_c, _ult_r + 18.0):
+		elif _hit(pos, _ult_c, _ult_r + 18.0 * _touch_scale):
 			_mouse_ult = true
 			_ult_requested = true
 			_ult_down = true
@@ -306,11 +324,11 @@ func _draw() -> void:
 		Color(dash_color.r, dash_color.g, dash_color.b, 0.55 if ready_dash else 0.28), 3.0, true)
 	draw_arc(_dash_c, _dash_r + 6.0, -PI * 0.5, -PI * 0.5 + TAU * dash_ratio, 40,
 		Color(dash_color.r, dash_color.g, dash_color.b, 0.85), 3.0, true)
-	_draw_center_text("대시", _dash_c + Vector2(0, 2), 15,
+	_draw_center_text("대시", _dash_c + Vector2(0, 2), maxi(10, int(round(15.0 * _text_scale))),
 		Color(0.78, 1.0, 0.95) if ready_dash else Color(0.55, 0.66, 0.7))
 	if not ready_dash and player != null:
-		_draw_center_text("%.1f" % player.dash_cd, _dash_c + Vector2(0, 21), 9,
-			Color(0.6, 0.72, 0.76))
+		_draw_center_text("%.1f" % player.dash_cd, _dash_c + Vector2(0, 21 * _text_scale),
+			maxi(8, int(round(9.0 * _text_scale))), Color(0.6, 0.72, 0.76))
 
 	# Ultimate
 	var ult_ready := ult_ratio >= 1.0
@@ -323,10 +341,10 @@ func _draw() -> void:
 		Color(ult_color.r, ult_color.g, ult_color.b, 0.5 if ult_ready else 0.25), 3.0, true)
 	draw_arc(_ult_c, _ult_r + 6.0, -PI * 0.5, -PI * 0.5 + TAU * ult_ratio, 40,
 		Color(ult_color.r, ult_color.g, ult_color.b, 0.9), 3.0, true)
-	_draw_center_text("궁극기", _ult_c + Vector2(0, 0), 13,
+	_draw_center_text("궁극기", _ult_c + Vector2(0, 0), maxi(9, int(round(13.0 * _text_scale))),
 		Color(1.0, 0.93, 0.72) if ult_ready else Color(0.62, 0.62, 0.58))
-	_draw_center_text("%d%%" % int(round(ult_ratio * 100.0)), _ult_c + Vector2(0, 20), 9,
-		Color(0.72, 0.7, 0.62))
+	_draw_center_text("%d%%" % int(round(ult_ratio * 100.0)), _ult_c + Vector2(0, 20 * _text_scale),
+		maxi(8, int(round(9.0 * _text_scale))), Color(0.72, 0.7, 0.62))
 
 	# Pause
 	draw_circle(_pause_c, _pause_r, Color(0.02, 0.03, 0.05, 0.58))

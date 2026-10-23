@@ -65,7 +65,7 @@ var _number_count := 0
 
 
 func _fx_cap() -> int:
-	return MOBILE_FX if OS.has_feature("mobile") else MAX_FX
+	return Settings.fx_cap()
 
 
 func _ready() -> void:
@@ -76,6 +76,14 @@ func _ready() -> void:
 	_font = load("res://assets/fonts/Galmuri11.ttf")
 	_add_mat = CanvasItemMaterial.new()
 	_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	Settings.changed.connect(_on_settings_changed)
+
+
+func _on_settings_changed() -> void:
+	if post == null or not is_instance_valid(post):
+		return
+	post.set_shader_parameter("bloom_quality", Settings.bloom_quality())
+	post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom_enabled() else _bloom_base)
 
 
 func setup(cam: Camera2D, fx: Node2D, dmg: Node2D, decals: Node2D, post_mat: ShaderMaterial) -> void:
@@ -85,7 +93,8 @@ func setup(cam: Camera2D, fx: Node2D, dmg: Node2D, decals: Node2D, post_mat: Sha
 	decal_root = decals
 	post = post_mat
 	if post != null:
-		post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom else _bloom_base)
+		post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom_enabled() else _bloom_base)
+		post.set_shader_parameter("bloom_quality", Settings.bloom_quality())
 		post.set_shader_parameter("vignette", 0.62)
 
 
@@ -104,7 +113,7 @@ func _process(delta: float) -> void:
 		post.set_shader_parameter("aberration", _ab)
 		post.set_shader_parameter("warp", _warp)
 		post.set_shader_parameter("hurt", maxf(_hurt_pulse, _low_hp * 0.35))
-		post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom else _bloom_base + _bloom_boost)
+		post.set_shader_parameter("bloom_strength", 0.0 if not Settings.bloom_enabled() else _bloom_base + _bloom_boost)
 		post.set_shader_parameter("zoom", _zoom)
 		post.set_shader_parameter("shock", _shock)
 		post.set_shader_parameter("speed_lines", _speed_lines)
@@ -204,7 +213,7 @@ func particles(pos: Vector2, key: String, color: Color, amount: int, lifetime: f
 	var p := CPUParticles2D.new()
 	p.texture = _tex.get(key)
 	p.position = pos
-	p.amount = maxi(1, amount)
+	p.amount = maxi(1, int(round(float(amount) * Settings.particle_scale())))
 	p.lifetime = lifetime
 	p.one_shot = true
 	p.explosiveness = 0.92
@@ -316,7 +325,7 @@ func light_burst(pos: Vector2, color: Color, light_range: float = 180.0,
 		energy: float = 1.4, duration: float = 0.3) -> void:
 	if fx_root == null or not is_instance_valid(fx_root):
 		return
-	var cap := 14 if LightRig.lit_enabled() else 6
+	var cap := mini(Settings.light_cap(), 14 if LightRig.lit_enabled() else 6)
 	if _light_burst_count >= cap:
 		return
 	var light := LightRig.add_point_light(fx_root, color, light_range, energy, false, pos)
@@ -373,12 +382,13 @@ func combo_burst(pos: Vector2, combo: int) -> void:
 
 # ------------------------------------------------------------------ combat fx
 func damage_number(pos: Vector2, amount: float, color: Color, crit: bool = false) -> void:
-	if not Settings.damage_numbers:
+	if not Settings.damage_numbers_enabled():
 		return
 	if damage_root == null or not is_instance_valid(damage_root):
 		return
 	var mobile := OS.has_feature("mobile")
-	var max_numbers := 24 if mobile else 55
+	var q := Settings.quality_index()
+	var max_numbers := maxi(8, int(float([12, 24, 55][q]) * (0.6 if mobile else 1.0)))
 	while _numbers.size() > max_numbers:
 		var old = _numbers.pop_front()
 		if is_instance_valid(old):
@@ -389,7 +399,7 @@ func damage_number(pos: Vector2, amount: float, color: Color, crit: bool = false
 	if frame != _number_frame:
 		_number_frame = frame
 		_number_count = 0
-	if _number_count >= (4 if mobile else 8):
+	if _number_count >= maxi(2, int(float(4 if mobile else 8) * (0.6 if q == 0 else 1.0))):
 		return
 	_number_count += 1
 	var l := Label.new()
@@ -522,6 +532,8 @@ func enemy_death(pos: Vector2, color: Color, big: bool = false) -> void:
 
 
 func death_decal(pos: Vector2, color: Color) -> void:
+	if not Settings.decals_enabled():
+		return
 	if decal_root == null or not is_instance_valid(decal_root):
 		return
 	var s := Sprite2D.new()

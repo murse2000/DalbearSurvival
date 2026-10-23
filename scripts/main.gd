@@ -53,6 +53,12 @@ func _ready() -> void:
 			var fid := a.substr(9)
 			if CharacterData.CHARACTERS.has(fid):
 				Game.select_character(fid)
+		elif a == "--touch-right":
+			Settings.joystick_side = "right"
+		elif a == "--touch-large":
+			Settings.joystick_size = "large"
+		elif a == "--hud-large":
+			Settings.hud_size = "large"
 	var explicit_stage := false
 	for a in _args:
 		if a.begins_with("--stage="):
@@ -167,6 +173,8 @@ func _ready() -> void:
 		_test_patterns()
 	elif "--test-modes" in _args:
 		_test_modes()
+	elif "--test-mobile-options" in _args:
+		_test_mobile_options()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -305,9 +313,8 @@ func _build_post() -> void:
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	post_mat = ShaderMaterial.new()
 	post_mat.shader = load("res://assets/shaders/post_fx.gdshader")
-	# Phones skip the 16-tap bloom ring; the rest of the grade stays.
-	if OS.has_feature("mobile"):
-		post_mat.set_shader_parameter("bloom_quality", 0.0)
+	# Phones skip the 16-tap bloom ring; desktop uses the selected preset.
+	post_mat.set_shader_parameter("bloom_quality", Settings.bloom_quality())
 	rect.material = post_mat
 	layer.add_child(rect)
 	FX.setup(camera, world.fx_root, world.damage_root, world.decals, post_mat)
@@ -1788,6 +1795,88 @@ func _test_upgrade() -> void:
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	print("UPGRADE TEST: weapons=", player.weapon_levels, " passives=", player.passive_levels,
 		" paused=", get_tree().paused, " running=", Game.running)
+	get_tree().quit()
+
+
+func _test_mobile_options() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var errors: Array = []
+	var old_quality := Settings.get_choice("quality")
+	var old_hud := Settings.get_choice("hud_size")
+	var old_side := Settings.get_choice("joystick_side")
+	var old_size := Settings.get_choice("joystick_size")
+	var old_bloom := Settings.bloom
+	var old_numbers := Settings.damage_numbers
+
+	Settings.set_choice("quality", "low")
+	var low_cap := Settings.fx_cap()
+	var low_particles := Settings.particle_scale()
+	if Settings.damage_numbers_enabled():
+		errors.append("low preset still shows damage numbers")
+	if low_cap >= 200:
+		errors.append("low preset FX cap too high: %d" % low_cap)
+	if not is_equal_approx(Settings.particle_scale(), low_particles):
+		errors.append("particle scale unstable")
+	Settings.set_choice("quality", "high")
+	var high_cap := Settings.fx_cap()
+	if high_cap <= low_cap:
+		errors.append("high preset FX cap not larger")
+	if Settings.particle_scale() <= low_particles:
+		errors.append("high preset particles not larger")
+	if not Settings.damage_numbers_enabled():
+		errors.append("high preset damage numbers disabled")
+
+	Settings.set_choice("hud_size", "large")
+	hud._fit_ui()
+	if hud._hud_scale <= 1.0:
+		errors.append("large HUD scale not applied")
+	Settings.set_choice("hud_size", "small")
+	hud._fit_ui()
+	if hud._hud_scale >= 1.0:
+		errors.append("small HUD scale not applied")
+	Settings.set_choice("hud_size", "normal")
+	hud._fit_ui()
+
+	var tc = TOUCH_SCRIPT.new()
+	add_child(tc)
+	tc.bind(player, overlay)
+	tc.set_active(true)
+	Settings.set_choice("joystick_side", "right")
+	Settings.set_choice("joystick_size", "large")
+	tc._apply_layout(Vector2(1280, 720))
+	if tc._joy_c.x < 640.0:
+		errors.append("right-handed joystick did not mirror")
+	if tc._joy_r <= 80.0:
+		errors.append("large joystick did not grow")
+	Settings.set_choice("joystick_side", "left")
+	Settings.set_choice("joystick_size", "normal")
+	tc._apply_layout(Vector2(1280, 720))
+	if tc._joy_c.x > 640.0 or tc._joy_r > 80.0:
+		errors.append("normal joystick did not restore")
+	tc.queue_free()
+
+	Settings.save_settings()
+	Settings.load_settings()
+	if Settings.get_choice("hud_size") != "normal" or Settings.get_choice("joystick_side") != "left":
+		errors.append("choices did not persist")
+
+	Settings.set_choice("quality", old_quality)
+	Settings.set_choice("hud_size", old_hud)
+	Settings.set_choice("joystick_side", old_side)
+	Settings.set_choice("joystick_size", old_size)
+	Settings.set_option("bloom", old_bloom)
+	Settings.set_option("damage_numbers", old_numbers)
+	hud._fit_ui()
+	if errors.is_empty():
+		print("MOBILE OPTIONS TEST PASS low_fx=%d high_fx=%d hud=%.2f touch=%.2f" % [
+			low_cap, high_cap, hud._hud_scale, Settings.joystick_scale_value(),
+		])
+		print("TEST PASS")
+	else:
+		print("MOBILE OPTIONS TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
 	get_tree().quit()
 
 

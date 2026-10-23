@@ -270,7 +270,7 @@ func _build() -> void:
 	ev.add_child(_end_key_hint)
 
 	_settings_panel = SettingsPanel.new()
-	root.add_child(_settings_panel)
+	add_child(_settings_panel)
 
 
 func is_blocking() -> bool:

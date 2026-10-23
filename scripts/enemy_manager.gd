@@ -29,7 +29,14 @@ var _endless_mini_index := 0
 var _rng := RandomNumberGenerator.new()
 
 
+func _refresh_enemy_cap() -> void:
+	var base := MAX_ENEMIES_MOBILE if OS.has_feature("mobile") else MAX_ENEMIES
+	_max_enemies = Settings.enemy_cap(base)
+
+
 func _ready() -> void:
+	_refresh_enemy_cap()
+	Settings.changed.connect(_refresh_enemy_cap)
 	_rng.randomize()
 
 

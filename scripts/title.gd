@@ -216,7 +216,6 @@ func _build() -> void:
 
 	_settings_panel = SettingsPanel.new()
 	add_child(_settings_panel)
-	UIFit.fit_canvas_control(_settings_panel)
 	_refresh_continue()
 
 	# intro animation (fade only; positioning is handled by _fit_title)
@@ -366,14 +365,16 @@ func _capture_settings() -> void:
 	var dir := ProjectSettings.globalize_path("res://screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var img := get_viewport().get_texture().get_image()
-	img.save_png(dir + "/settings.png")
-	print("CAPTURED: ", dir + "/settings.png")
+	var shot := "settings" + ("_portrait" if get_viewport_rect().size.y > get_viewport_rect().size.x else "")
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
 	get_tree().quit()
 
 
 func _test_settings() -> void:
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	var original := Settings.bloom
+	var original_numbers := Settings.damage_numbers
 	_settings_panel.open()
 	_settings_panel._on_toggle(not original, "bloom")
 	var target := not original
@@ -391,7 +392,23 @@ func _test_settings() -> void:
 		get_tree().quit()
 		return
 	Settings.set_option("bloom", original)
-	print("SETTINGS TEST OK bloom=", target, " persisted and restored=", original)
+	var old_quality := Settings.get_choice("quality")
+	_settings_panel._on_choice("quality", "low")
+	if Settings.get_choice("quality") != "low":
+		push_error("SETTINGS TEST: quality choice did not update")
+		get_tree().quit()
+		return
+	Settings.load_settings()
+	if Settings.get_choice("quality") != "low":
+		push_error("SETTINGS TEST: quality choice did not persist")
+		Settings.set_choice("quality", old_quality)
+		get_tree().quit()
+		return
+	_settings_panel._on_choice("quality", old_quality)
+	Settings.set_option("bloom", original)
+	Settings.set_option("damage_numbers", original_numbers)
+	print("SETTINGS TEST OK bloom=", target, " persisted and restored=", original,
+		" quality_restored=", Settings.get_choice("quality"))
 	get_tree().quit()
 
 
