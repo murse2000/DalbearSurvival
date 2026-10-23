@@ -191,6 +191,23 @@ const WEAPON_STATS := {
 	"nebula_slash": [
 		{"cooldown": 1.7, "damage": 52.0, "width": 26.0, "length": 700.0, "beams": 3},
 	],
+	"galaxy_meteor": [
+		{"cooldown": 1.7, "damage": 92.0, "radius": 84.0, "strikes": 5,
+			"burn_damage": 22.0, "pull_radius": 150.0},
+	],
+	"life_circuit": [
+		{"cooldown": 1.5, "damage": 120.0, "chains": 3, "jumps": 8, "range": 260.0,
+			"heal": 1.2, "max_heal": 12.0},
+	],
+	"singularity_dash": [
+		{"cooldown": 4.2, "damage": 168.0, "radius": 138.0, "pull_radius": 210.0,
+			"pull_time": 0.95, "pull_speed": 210.0, "tick_damage": 12.0,
+			"tick_interval": 0.15, "travel_speed": 260.0},
+	],
+	"moonlight_tempest": [
+		{"damage": 38.0, "count": 7, "radius": 102.0, "spin": 5.2, "hit_cd": 0.2,
+			"wave_cd": 2.2, "wave_damage": 108.0, "wave_heal": 4.0},
+	],
 }
 
 const PASSIVES := {
@@ -1170,6 +1187,50 @@ const EVOLUTIONS := {
 		"icon": "res://assets/art/ui/icon_evo_nebula.png",
 		"color": Color(0.62, 0.95, 0.95),
 		"scene": "res://scripts/weapons/nebula_slash_weapon.gd",
+	},
+	"meteor": {
+		"id": "galaxy_meteor",
+		"name": "은하 유성우",
+		"tag": "GALAXY METEOR",
+		"passive": "magnet",
+		"passive_level": 3,
+		"desc": "보랏빛 유성 5발이 적을 끌어당긴 뒤 폭발하고 잔불을 남깁니다.",
+		"icon": "res://assets/art/ui/icon_evo_galaxy.png",
+		"color": Color(0.86, 0.58, 1.0),
+		"scene": "res://scripts/weapons/galaxy_meteor_weapon.gd",
+	},
+	"chain": {
+		"id": "life_circuit",
+		"name": "생명 회로",
+		"tag": "LIFE CIRCUIT",
+		"passive": "nano",
+		"passive_level": 3,
+		"desc": "초록 생명 전류가 적을 연쇄로 감전시키고 맞힌 수만큼 체력을 회복합니다.",
+		"icon": "res://assets/art/ui/icon_evo_life.png",
+		"color": Color(0.55, 1.0, 0.72),
+		"scene": "res://scripts/weapons/life_circuit_weapon.gd",
+	},
+	"singularity": {
+		"id": "singularity_dash",
+		"name": "특이점 질주",
+		"tag": "SINGULARITY DASH",
+		"passive": "boots",
+		"passive_level": 3,
+		"desc": "특이점이 적을 향해 질주하며 끌어당기고, 도달하면 거대하게 붕괴합니다.",
+		"icon": "res://assets/art/ui/icon_evo_dash.png",
+		"color": Color(0.74, 0.44, 1.0),
+		"scene": "res://scripts/weapons/singularity_dash_weapon.gd",
+	},
+	"blades": {
+		"id": "moonlight_tempest",
+		"name": "월광 회오리",
+		"tag": "MOONLIGHT TEMPEST",
+		"passive": "heart",
+		"passive_level": 3,
+		"desc": "일곱 칼날이 더 넓게 회전하고, 참격파가 적중할 때마다 체력을 회복합니다.",
+		"icon": "res://assets/art/ui/icon_evo_tempest.png",
+		"color": Color(1.0, 0.86, 0.48),
+		"scene": "res://scripts/weapons/moonlight_tempest_weapon.gd",
 	},
 }
 

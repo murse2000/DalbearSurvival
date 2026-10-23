@@ -99,6 +99,74 @@ def icon_nebula() -> Image.Image:
     return A.finish(img, 32, 32)
 
 
+def icon_galaxy() -> Image.Image:
+    img = base()
+    # crescent
+    A.ellipse(img, (5, 5, 19, 21), C["gold"])
+    A.ellipse(img, (9, 4, 22, 19), (30, 42, 64))
+    # violet meteor shower with pull rings
+    for i, (x, y) in enumerate(((20, 6), (25, 10), (17, 12), (23, 18))):
+        A.line(img, [(x - 3, y - 3), (x, y)], C["purple_l"], 1)
+        A.ellipse(img, (x - 2, y - 2, x + 2, y + 2), C["purple"] if i % 2 else C["gold"])
+        A.pixel(img, x, y - 1, C["white"])
+    A.arc(img, (8, 14, 28, 30), 30, 300, C["purple"], 1)
+    A.arc(img, (12, 18, 24, 26), 30, 300, C["gold_d"], 1)
+    return A.finish(img, 32, 32)
+
+
+def icon_life() -> Image.Image:
+    img = base()
+    # heart
+    A.ellipse(img, (8, 8, 16, 16), C["mint"])
+    A.ellipse(img, (16, 8, 24, 16), C["mint"])
+    A.poly(img, [(8, 13), (16, 24), (24, 13)], C["mint"])
+    A.ellipse(img, (11, 11, 14, 14), C["white"])
+    # circuit lightning
+    A.line(img, [(22, 5), (18, 14), (22, 16), (17, 27)], C["acid"], 2)
+    A.pixel(img, 18, 14, C["white"])
+    A.pixel(img, 22, 16, C["white"])
+    # plus
+    A.line(img, [(6, 24), (11, 24)], C["mint_d"], 1)
+    A.line(img, [(8, 22), (8, 26)], C["mint_d"], 1)
+    return A.finish(img, 32, 32)
+
+
+def icon_dash() -> Image.Image:
+    img = base()
+    # comet core
+    A.ellipse(img, (14, 10, 24, 20), C["purple_dd"])
+    A.ellipse(img, (15, 11, 23, 19), C["purple"])
+    A.ellipse(img, (17, 13, 21, 17), C["white"])
+    # speed tail
+    for i, y in enumerate((12, 16, 20)):
+        A.line(img, [(13, y), (4 + i, y + 2)], C["purple_l"], 2 if i == 1 else 1)
+    # orbit ring + sparks
+    A.arc(img, (6, 8, 30, 26), 200, 340, C["mint"], 1)
+    A.pixel(img, 27, 8, C["mint"])
+    A.pixel(img, 29, 12, C["white"])
+    return A.finish(img, 32, 32)
+
+
+def icon_tempest() -> Image.Image:
+    img = base()
+    # three crescents in a spin
+    for i in range(3):
+        a = math.tau * i / 3
+        cx = 16 + math.cos(a) * 8
+        cy = 16 + math.sin(a) * 8
+        A.arc(img, (cx - 7, cy - 7, cx + 7, cy + 7), 200, 340, C["gold"], 2)
+        A.pixel(img, cx + 4, cy - 4, C["white"])
+    # heart in the middle
+    A.ellipse(img, (12, 12, 17, 17), C["mint"])
+    A.ellipse(img, (16, 12, 20, 17), C["mint"])
+    A.poly(img, [(12, 15), (16, 21), (20, 15)], C["mint"])
+    A.pixel(img, 15, 14, C["white"])
+    # wind arcs
+    A.arc(img, (2, 4, 30, 30), 20, 120, C["mint_d"], 1)
+    A.arc(img, (2, 4, 30, 30), 200, 300, C["mint_d"], 1)
+    return A.finish(img, 32, 32)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(PREVIEW, exist_ok=True)
@@ -107,6 +175,10 @@ def main():
         "icon_evo_orbit": icon_orbit(),
         "icon_evo_gravity": icon_gravity(),
         "icon_evo_nebula": icon_nebula(),
+        "icon_evo_galaxy": icon_galaxy(),
+        "icon_evo_life": icon_life(),
+        "icon_evo_dash": icon_dash(),
+        "icon_evo_tempest": icon_tempest(),
     }
     for name, img in icons.items():
         A.save(img, os.path.join(OUT, name + ".png"))

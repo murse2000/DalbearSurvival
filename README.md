@@ -5,7 +5,7 @@
 > 외계 함대가 지구를 덮친 밤, 열다섯 개의 전선을 지켜낸다.
 
 **15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
-**무기 8종 + 진화 무기 4종**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
+**무기 8종 + 진화 무기 8종**, **인런 유물**, **대시 & 궁극기**, **리롤·밴**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
@@ -196,9 +196,19 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 위성 드론 6 + 냉각 장치 3 | **궤도 위성군** | 위성 6기 + 주기적 연쇄 감전 |
 | 문 펄스 6 + 합금 외피 3 | **중력 붕괴** | 적을 끌어당긴 뒤 대폭발 |
 | 성광 레이저 6 + 행운의 별 3 | **성운 절단** | 3갈래 관통 성운 빔 |
+| 유성 낙하 6 + 자력 코일 3 | **은하 유성우** | 보랏빛 유성 5발 + 끌어당김 + 잔불 |
+| 성운 연쇄 6 + 나노 재생 3 | **생명 회로** | 초록 연쇄 감전 + 적중 시 체력 회복 |
+| 월식 특이점 6 + 제트 부츠 3 | **특이점 질주** | 특이점이 적을 향해 질주 후 붕괴 |
+| 월광 칼날 6 + 곰의 심장 3 | **월광 회오리** | 칼날 7개 + 참격파 체력 회복 |
 
 조건을 충족하면 화면에 진화 힌트가 표시되고, 일시정지 화면에도 규칙이 나옵니다.
-신규 4종(유성 낙하·성운 연쇄·월식 특이점·월광 칼날)은 진화 없이 **6레벨**까지 성장합니다.
+
+### 인런 유물
+- 전선에 입장하면 **45초·100초·155초**에 유물 3개 중 1개를 선택합니다. (게임 일시정지)
+- 유물은 그 런에서만 유지되고, 체크포인트 저장·이어하기에도 포함됩니다.
+- 능력치형 유물은 장단점이 함께 있습니다. 예: 달의 심장(피해 +25%, 최대 체력 -20), 밤의 장막(방어 +3, 이동 -8%).
+- 특수형: **불굴의 심장**(치명적 피해 1회 무효), **달빛 렌즈**(경험치 +20%).
+- 보유 유물은 일시정지 화면에 이름으로 표시되고, 획득 시 상단에 알림이 뜹니다.
 
 ### 중간 보스
 - 각 전선 **1분 10초 / 2분 15초**에 맵 전용 중간 보스가 출현합니다.
@@ -347,6 +357,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![무기 진화](screenshots/evolution.png) | ![진화 전투](screenshots/evolution_gameplay.png) |
 | ![Lit 2D 조명](screenshots/lighting.png) | ![신규 스킬](screenshots/new_skills.png) |
 | ![중간 보스·지형](screenshots/world_expansion.png) | ![게임플레이](screenshots/gameplay.png) |
+| ![유물 선택](screenshots/relics.png) | ![대각선 이동](screenshots/diagonal.png) |
 | ![크리티컬](screenshots/crit.png) | ![잿빛 균열](screenshots/stage_crater.png) |
 | ![달의 뒷면](screenshots/stage_void.png) | ![50 콤보](screenshots/combo.png) |
 | ![대시·궁극기](screenshots/abilities.png) | ![리롤·밴 카드](screenshots/levelup.png) |
@@ -373,7 +384,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/title_fold.png`, `screenshots/title_continue.png`, `screenshots/new_skills.png`,
 `screenshots/lighting.png`, `screenshots/world_expansion.png`, `screenshots/combo.png`,
 `screenshots/crit.png`, `screenshots/stage_crater.png`, `screenshots/stage_void.png`,
-`screenshots/diagonal.png`,
+`screenshots/diagonal.png`, `screenshots/relics.png`,
 `screenshots/stage_select_late.png`, `screenshots/stage_dunes.png`, `screenshots/stage_frost.png`,
 `screenshots/stage_mire.png`, `screenshots/stage_ruins.png`, `screenshots/stage_citadel.png`,
 `screenshots/stage_trench.png`, `screenshots/stage_sunspot.png`, `screenshots/stage_maze.png`,
@@ -468,6 +479,7 @@ DalbearSurvival/
   ```bash
   godot --path . res://scenes/main.tscn -- --capture-game
   godot --path . res://scenes/main.tscn -- --stage=forest --capture-game --capture-diagonal
+  godot --path . res://scenes/main.tscn -- --stage=forest --capture-relics
   godot --path . res://scenes/main.tscn -- --capture-hive
   godot --path . res://scenes/main.tscn -- --capture-ship
   godot --path . res://scenes/main.tscn -- --capture-queen
@@ -493,6 +505,8 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression
   godot --path . res://scenes/main.tscn -- --test-late-balance
+  godot --path . res://scenes/main.tscn -- --test-evolutions
+  godot --path . res://scenes/main.tscn -- --test-relics
   godot --path . res://scenes/main.tscn -- --test-new-skills
   godot --path . res://scenes/main.tscn -- --test-balance
   godot --path . res://scenes/main.tscn -- --stage=ship --capture-clear

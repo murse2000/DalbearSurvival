@@ -10,6 +10,8 @@ var hud
 var root: Control
 var dim: ColorRect
 var levelup_root: Control
+var relic_root: Control
+var relic_box: HBoxContainer
 var pause_root: Control
 var end_root: Control
 var levelup_hint: Label
@@ -30,6 +32,9 @@ var _cards: Array = []
 var _pause_visible := false
 var _end_visible := false
 var _levelup_visible := false
+var _relic_visible := false
+var _relic_choices: Array = []
+var _relic_cards: Array = []
 var _banish_mode := false
 var _end_panel: PanelContainer
 var _next_button: Button
@@ -118,6 +123,47 @@ func _build() -> void:
 	_banish_button.pressed.connect(_toggle_banish)
 	levelup_root.add_child(_banish_button)
 
+	# ---------------------------------------------------------- relics
+	relic_root = Control.new()
+	relic_root.size = Vector2(1280, 720)
+	relic_root.visible = false
+	relic_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(relic_root)
+
+	var relic_glow := TextureRect.new()
+	relic_glow.texture = load("res://assets/art/fx/glow_green.png")
+	relic_glow.position = Vector2(390, -30)
+	relic_glow.size = Vector2(500, 300)
+	relic_glow.modulate = Color(0.72, 0.65, 1.0, 0.2)
+	relic_glow.stretch_mode = TextureRect.STRETCH_SCALE
+	relic_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	relic_root.add_child(relic_glow)
+
+	var relic_header := UIKit.label("유물 발견!", 56, UIKit.GOLD, 8)
+	relic_header.position = Vector2(0, 70)
+	relic_header.size = Vector2(1280, 70)
+	relic_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	relic_root.add_child(relic_header)
+
+	var relic_sub := UIKit.label("이번 런의 방향을 바꿀 유물을 하나 선택하세요", 22, UIKit.MUTED)
+	relic_sub.position = Vector2(0, 148)
+	relic_sub.size = Vector2(1280, 30)
+	relic_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	relic_root.add_child(relic_sub)
+
+	relic_box = HBoxContainer.new()
+	relic_box.position = Vector2(170, 216)
+	relic_box.size = Vector2(940, 396)
+	relic_box.add_theme_constant_override("separation", 30)
+	relic_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	relic_root.add_child(relic_box)
+
+	var relic_hint := UIKit.label("1 / 2 / 3 선택", 17, UIKit.MUTED)
+	relic_hint.position = Vector2(0, 674)
+	relic_hint.size = Vector2(1280, 26)
+	relic_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	relic_root.add_child(relic_hint)
+
 	# ---------------------------------------------------------- pause
 	pause_root = Control.new()
 	pause_root.size = Vector2(1280, 720)
@@ -140,6 +186,8 @@ func _build() -> void:
 	pv.add_child(psub)
 	pause_stats = UIKit.label("", 16, UIKit.MINT)
 	pause_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pause_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pause_stats.custom_minimum_size = Vector2(380, 0)
 	pv.add_child(pause_stats)
 	var spacer := Control.new()
 	spacer.custom_minimum_size.y = 8
@@ -226,7 +274,7 @@ func _build() -> void:
 
 
 func is_blocking() -> bool:
-	return _levelup_visible or _pause_visible or _end_visible
+	return _levelup_visible or _pause_visible or _end_visible or _relic_visible
 
 
 func _set_hud_visible(v: bool) -> void:
@@ -239,9 +287,11 @@ func show_levelup(choices: Array) -> void:
 	_choices = choices
 	_pause_visible = false
 	_end_visible = false
+	_relic_visible = false
 	_banish_mode = false
 	pause_root.visible = false
 	end_root.visible = false
+	relic_root.visible = false
 	_levelup_visible = true
 	root.visible = true
 	dim.visible = true
@@ -424,12 +474,138 @@ func _choose(index: int) -> void:
 		show_levelup(player.get_upgrade_choices(3))
 
 
-func _close_all() -> void:
+func show_relics(choices: Array) -> void:
+	if choices.is_empty():
+		return
+	_relic_choices = choices
 	_levelup_visible = false
 	_pause_visible = false
 	_end_visible = false
 	_banish_mode = false
+	_relic_visible = true
 	levelup_root.visible = false
+	pause_root.visible = false
+	end_root.visible = false
+	root.visible = true
+	dim.visible = true
+	_backdrop.visible = true
+	relic_root.visible = true
+	_set_hud_visible(false)
+	get_tree().paused = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	Audio.duck_music(true)
+	Audio.play("levelup", 1.1, -3.0)
+	for c in _relic_cards:
+		if is_instance_valid(c):
+			relic_box.remove_child(c)
+			c.queue_free()
+	_relic_cards.clear()
+	for i in choices.size():
+		var card := _make_relic_card(choices[i], i)
+		relic_box.add_child(card)
+		_relic_cards.append(card)
+
+
+func _make_relic_card(choice: Dictionary, index: int) -> PanelContainer:
+	var accent: Color = choice.get("color", UIKit.GOLD)
+	var card := UIKit.panel_container(Color(0.06, 0.095, 0.14, 0.98), accent.darkened(0.25), 3, 16)
+	card.custom_minimum_size = Vector2(290, 386)
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(v)
+
+	var stripe := ColorRect.new()
+	stripe.color = accent
+	stripe.custom_minimum_size = Vector2(0, 4)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(stripe)
+
+	var icon_center := CenterContainer.new()
+	icon_center.custom_minimum_size = Vector2(0, 120)
+	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(icon_center)
+	var glow := TextureRect.new()
+	glow.texture = load("res://assets/art/fx/glow_gold.png")
+	glow.custom_minimum_size = Vector2(120, 120)
+	glow.modulate = Color(accent.r, accent.g, accent.b, 0.24)
+	glow.stretch_mode = TextureRect.STRETCH_SCALE
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_center.add_child(glow)
+	var icon := UIKit.icon(String(choice.get("icon", "")), 88)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_center.add_child(icon)
+
+	var type_label := UIKit.label("유물", 14, accent)
+	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(type_label)
+
+	var name_label := UIKit.label(String(choice.get("name", "")), 25, UIKit.CREAM, 3)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(name_label)
+
+	var tag_label := UIKit.label(String(choice.get("tag", "")), 13, UIKit.MUTED)
+	tag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(tag_label)
+
+	var desc := UIKit.label(String(choice.get("desc", "")), 16, Color(0.82, 0.85, 0.88))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.custom_minimum_size = Vector2(244, 80)
+	desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	v.add_child(desc)
+
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(fill)
+
+	var pick := UIKit.label("[%d]" % (index + 1), 16, accent)
+	pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(pick)
+
+	card.gui_input.connect(_on_relic_input.bind(index))
+	return card
+
+
+func _on_relic_input(event: InputEvent, index: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_choose_relic(index)
+
+
+func _choose_relic(index: int) -> void:
+	if not _relic_visible or index < 0 or index >= _relic_choices.size():
+		return
+	_relic_visible = false
+	relic_root.visible = false
+	var relic: Dictionary = _relic_choices[index]
+	if player != null and is_instance_valid(player):
+		player.add_relic(String(relic.get("id", "")))
+		Game.warning.emit("유물 · %s" % String(relic.get("name", "")), 2.6)
+	Audio.play("click", 1.15, -2.0)
+	Audio.play("pickup", 1.25, -5.0)
+	FX.flash(Color(0.7, 0.9, 1.0), 0.14, 0.3)
+	FX.ring(player.global_position if player != null and is_instance_valid(player) else Vector2.ZERO,
+		Color(0.75, 0.9, 1.0), 70.0, 0.5, "halo")
+	_close_all()
+	if Game.running:
+		get_tree().paused = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
+	Audio.duck_music(false)
+
+
+func _close_all() -> void:
+	_levelup_visible = false
+	_pause_visible = false
+	_end_visible = false
+	_relic_visible = false
+	_banish_mode = false
+	levelup_root.visible = false
+	relic_root.visible = false
 	pause_root.visible = false
 	end_root.visible = false
 	root.visible = false
@@ -521,7 +697,7 @@ func _open_settings() -> void:
 
 # ------------------------------------------------------------------ pause
 func toggle_pause() -> void:
-	if _levelup_visible or _end_visible:
+	if _levelup_visible or _end_visible or _relic_visible:
 		return
 	if _pause_visible:
 		_resume()
@@ -542,6 +718,11 @@ func _show_pause() -> void:
 		String(st["short"]), String(diff["name"]),
 		GameData.format_time(Game.time), Game.level, Game.kills,
 	]
+	if player != null and is_instance_valid(player) and not player.relics.is_empty():
+		var relic_names: Array = []
+		for id in player.relics:
+			relic_names.append(String(RelicData.get_relic(String(id)).get("name", id)))
+		pause_stats.text += "\n유물 · " + ", ".join(relic_names)
 	get_tree().paused = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	Audio.duck_music(true)
@@ -597,7 +778,9 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 	_end_visible = true
 	_levelup_visible = false
 	_pause_visible = false
+	_relic_visible = false
 	levelup_root.visible = false
+	relic_root.visible = false
 	pause_root.visible = false
 	root.visible = true
 	dim.visible = true
@@ -655,6 +838,19 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 
 func _input(event: InputEvent) -> void:
 	if _settings_panel != null and _settings_panel.visible:
+		return
+	if _relic_visible and event is InputEventKey and event.pressed and not event.echo:
+		var ridx := -1
+		match event.keycode:
+			KEY_1, KEY_KP_1:
+				ridx = 0
+			KEY_2, KEY_KP_2:
+				ridx = 1
+			KEY_3, KEY_KP_3:
+				ridx = 2
+		if ridx >= 0:
+			_choose_relic(ridx)
+			get_viewport().set_input_as_handled()
 		return
 	if _levelup_visible and event is InputEventKey and event.pressed and not event.echo:
 		var idx := -1

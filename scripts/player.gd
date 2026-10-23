@@ -41,6 +41,10 @@ var passive_levels := {}
 var weapons := {}
 var evolutions := {}
 var banned := {}
+var relics: Array = []
+var relic_mods := {}
+var revive_charges := 0
+var xp_mult := 1.0
 var _evo_notified := {}
 var character: Dictionary = {}
 var character_color := Color(1.0, 0.82, 0.45)
@@ -415,6 +419,7 @@ func recalc_stats() -> void:
 	var alloy := int(passive_levels.get("armor", 0))
 	var nano := int(passive_levels.get("nano", 0))
 	var gear: Dictionary = Game.equipment_bonuses()
+	var rm := relic_mods
 	var base_hp := float(character.get("max_hp", GameData.BASE_STATS["max_hp"]))
 	var base_speed := float(character.get("speed", GameData.BASE_STATS["speed"]))
 	var base_damage := float(character.get("damage", 1.0))
@@ -423,21 +428,52 @@ func recalc_stats() -> void:
 	var base_armor := float(character.get("armor", 0.0))
 	var base_crit := float(character.get("crit", 0.05))
 	var base_regen := float(character.get("regen", 0.0))
-	max_hp = base_hp + heart * 20.0 + float(gear.get("max_hp", 0.0))
-	speed = base_speed * (1.0 + boots * 0.08) * (1.0 + float(gear.get("speed_pct", 0.0)))
-	damage_mult = base_damage * (1.0 + core * 0.12) * (1.0 + float(gear.get("damage_pct", 0.0)))
-	cooldown_mult = maxf(0.3, base_cooldown * (1.0 - coolant * 0.07) * (1.0 - float(gear.get("cooldown_pct", 0.0))))
-	pickup_radius = base_pickup + magnet * 28.0 + float(gear.get("pickup", 0.0))
-	armor = base_armor + alloy * 1.0 + float(gear.get("armor", 0.0))
-	crit = clampf(base_crit + star * 0.05 + float(gear.get("crit", 0.0)), 0.0, 0.9)
+	max_hp = base_hp + heart * 20.0 + float(gear.get("max_hp", 0.0)) + float(rm.get("max_hp", 0.0))
+	speed = base_speed * (1.0 + boots * 0.08) * (1.0 + float(gear.get("speed_pct", 0.0))) \
+		* (1.0 + float(rm.get("speed_pct", 0.0)))
+	damage_mult = base_damage * (1.0 + core * 0.12) * (1.0 + float(gear.get("damage_pct", 0.0))) \
+		* (1.0 + float(rm.get("damage_pct", 0.0)))
+	cooldown_mult = maxf(0.3, base_cooldown * (1.0 - coolant * 0.07) \
+		* (1.0 - float(gear.get("cooldown_pct", 0.0))) \
+		* (1.0 - float(rm.get("cooldown_pct", 0.0))))
+	pickup_radius = base_pickup + magnet * 28.0 + float(gear.get("pickup", 0.0)) \
+		+ float(rm.get("pickup", 0.0))
+	armor = base_armor + alloy * 1.0 + float(gear.get("armor", 0.0)) + float(rm.get("armor", 0.0))
+	crit = clampf(base_crit + star * 0.05 + float(gear.get("crit", 0.0)) \
+		+ float(rm.get("crit", 0.0)), 0.0, 0.9)
 	crit_mult = 1.75
-	regen = base_regen + nano * 0.5 + float(gear.get("regen", 0.0))
+	regen = base_regen + nano * 0.5 + float(gear.get("regen", 0.0)) + float(rm.get("regen", 0.0))
+	xp_mult = 1.0 + float(rm.get("xp_mult", 0.0))
 	dash_cd_max = float(character.get("dash_cd", DASH_COOLDOWN))
 	if max_hp > old_max:
 		hp += max_hp - old_max
 	hp = clampf(hp, 0.0, max_hp)
 	hp_changed.emit(hp, max_hp)
 	stats_changed.emit()
+
+
+func add_relic(id: String) -> bool:
+	if id == "" or id in relics or not RelicData.RELICS.has(id):
+		return false
+	relics.append(id)
+	_rebuild_relic_mods()
+	recalc_stats()
+	stats_changed.emit()
+	return true
+
+
+func _rebuild_relic_mods() -> void:
+	relic_mods.clear()
+	revive_charges = 0
+	for id in relics:
+		var info := RelicData.get_relic(String(id))
+		var mods: Dictionary = info.get("mods", {})
+		for key in mods:
+			var value := float(mods[key])
+			if key == "revive":
+				revive_charges += int(value)
+			else:
+				relic_mods[key] = float(relic_mods.get(key, 0.0)) + value
 
 
 func _equip_starting_weapons() -> void:
@@ -477,6 +513,14 @@ func restore_run_state(snap: Dictionary) -> bool:
 	evolutions.clear()
 	banned.clear()
 	_evo_notified.clear()
+	relics.clear()
+	var relic_data = snap.get("relics", [])
+	if relic_data is Array:
+		for id in relic_data:
+			var rid := String(id)
+			if RelicData.RELICS.has(rid) and not (rid in relics):
+				relics.append(rid)
+	_rebuild_relic_mods()
 
 	var banned_data = snap.get("banned", {})
 	if banned_data is Dictionary:
@@ -755,7 +799,18 @@ func take_damage(amount: float) -> bool:
 	Audio.play("hurt", randf_range(0.9, 1.06), -2.0)
 	FX.set_low_hp(hp < max_hp * 0.3)
 	if hp <= 0.0:
-		_die()
+		if revive_charges > 0:
+			revive_charges -= 1
+			hp = maxf(1.0, max_hp * 0.5)
+			invuln = 2.5
+			hp_changed.emit(hp, max_hp)
+			FX.flash(Color(1.0, 0.75, 0.35), 0.3, 0.7)
+			FX.ring(global_position, Color(1.0, 0.82, 0.4), 120.0, 0.6, "halo")
+			FX.enemy_death(global_position, Color(1.0, 0.8, 0.4), true)
+			Game.warning.emit("불굴의 심장 — 부활!", 2.8)
+			Audio.play("levelup", 0.7, -2.0)
+		else:
+			_die()
 	return true
 
 
@@ -800,7 +855,7 @@ func collect(value: int, kind: String = "xp") -> void:
 		Audio.play("heal", 1.0, -2.0)
 		FX.pickup_fx(global_position, Color(1.0, 0.5, 0.5), 5)
 	else:
-		Game.add_xp(value)
+		Game.add_xp(maxi(1, int(round(float(value) * xp_mult))))
 		Audio.play_pickup(value)
 		FX.pickup_fx(global_position + Vector2(0, -8), Color(0.65, 0.9, 1.0), value)
 

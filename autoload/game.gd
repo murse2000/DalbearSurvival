@@ -190,6 +190,7 @@ func save_run_checkpoint(p) -> bool:
 	cfg.set_value("player", "passive_levels", passive_levels.duplicate(true))
 	cfg.set_value("player", "evolutions", evolutions.duplicate(true))
 	cfg.set_value("player", "banned", banned.duplicate(true))
+	cfg.set_value("player", "relics", p.relics.duplicate())
 	var boss_data := {}
 	if boss != null and is_instance_valid(boss) and not bool(boss.get("dead")):
 		boss_data = {
@@ -273,6 +274,7 @@ func load_run_checkpoint() -> Dictionary:
 			"passive_levels": passive_levels,
 			"evolutions": evolutions,
 			"banned": banned,
+			"relics": cfg.get_value("player", "relics", []),
 		},
 		"boss": boss_data,
 		"miniboss": mini_data,

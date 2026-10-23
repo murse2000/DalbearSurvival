@@ -23,6 +23,9 @@ var canvas_mod: Node
 var _end_shown := false
 var _levelup_pending := false
 var _backgrounded := false
+const RELIC_TIMES := [45.0, 100.0, 155.0]
+
+var _relic_index := 0
 var _checkpoint_timer := 8.0
 var _dev_mode := false
 var _fade: ColorRect
@@ -89,6 +92,9 @@ func _ready() -> void:
 		_finish_restore()
 	elif not _dev_mode:
 		Game.save_run_checkpoint(player)
+	for t in RELIC_TIMES:
+		if Game.time >= float(t):
+			_relic_index += 1
 	var stage := Game.stage_data()
 	Game.warning.emit("%s · %s — %s" % [String(stage["name"]), String(stage["short"]), String(stage["subtitle"])], 4.5)
 	Audio.set_music_volume(-16.0, 2.0)
@@ -159,6 +165,12 @@ func _ready() -> void:
 		_capture_new_skills()
 	elif "--test-new-skills" in _args:
 		_test_new_skills()
+	elif "--test-evolutions" in _args:
+		_test_evolutions()
+	elif "--test-relics" in _args:
+		_test_relics()
+	elif "--capture-relics" in _args:
+		_capture_relics()
 	elif "--test-balance" in _args:
 		_test_balance()
 	elif "--bench-enemies" in _args or _has_bench_arg():
@@ -425,6 +437,20 @@ func _process(delta: float) -> void:
 			if _checkpoint_timer <= 0.0:
 				_checkpoint_timer = 8.0
 				Game.save_run_checkpoint(player)
+			_check_relics()
+
+
+func _check_relics() -> void:
+	if overlay == null or overlay.is_blocking() or player == null:
+		return
+	if _relic_index >= RELIC_TIMES.size():
+		return
+	if Game.time < float(RELIC_TIMES[_relic_index]):
+		return
+	var choices: Array = RelicData.random_choices(3, player.relics)
+	_relic_index += 1
+	if not choices.is_empty():
+		overlay.show_relics(choices)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -685,6 +711,79 @@ func _bench_enemies() -> void:
 	get_tree().quit()
 
 
+func _test_relics() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	player.invuln = 999.0
+	var errors: Array = []
+	var hp_before: float = player.max_hp
+	var damage_before: float = player.damage_mult
+	if not player.add_relic("moon_heart"):
+		errors.append("moon_heart add failed")
+	if player.damage_mult <= damage_before:
+		errors.append("moon_heart did not raise damage")
+	if player.max_hp >= hp_before:
+		errors.append("moon_heart did not lower max hp")
+	if not player.add_relic("phoenix_heart"):
+		errors.append("phoenix_heart add failed")
+	if player.revive_charges != 1:
+		errors.append("revive charges=%d" % player.revive_charges)
+	if not player.add_relic("moon_lens"):
+		errors.append("moon_lens add failed")
+	if player.xp_mult <= 1.0:
+		errors.append("xp mult=%.2f" % player.xp_mult)
+	if player.add_relic("moon_heart"):
+		errors.append("duplicate relic accepted")
+	player.invuln = 0.0
+	player.hp = 1.0
+	player.take_damage(999.0)
+	if player.dead or player.hp <= 0.0:
+		errors.append("revive did not save the bear")
+	if player.revive_charges != 0:
+		errors.append("revive not consumed")
+	var choices: Array = RelicData.random_choices(3, player.relics)
+	if choices.size() != 3:
+		errors.append("choices=%d" % choices.size())
+	else:
+		overlay.show_relics(choices)
+		await get_tree().process_frame
+		if not overlay.is_blocking():
+			errors.append("relic overlay not blocking")
+		overlay._choose_relic(0)
+		await get_tree().process_frame
+		if player.relics.size() != 4:
+			errors.append("overlay choice not applied")
+	_relic_index = 0
+	Game.time = 45.1
+	var relics_before: int = player.relics.size()
+	_check_relics()
+	await get_tree().process_frame
+	if not overlay.is_blocking():
+		errors.append("timed relic trigger did not open")
+	else:
+		overlay._choose_relic(0)
+		await get_tree().process_frame
+		if player.relics.size() != relics_before + 1:
+			errors.append("timed relic choice not applied")
+	print("RELICS TEST relics=%s max_hp=%.0f damage=%.2f xp=%.2f errors=%s" % [
+		player.relics, player.max_hp, player.damage_mult, player.xp_mult, errors,
+	])
+	if not errors.is_empty():
+		push_error("RELICS TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("RELICS TEST OK")
+	get_tree().quit()
+
+
+func _capture_relics() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	player.invuln = 999.0
+	var choices: Array = RelicData.random_choices(3, [])
+	overlay.show_relics(choices)
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	await _capture("relics")
+
+
 func _test_world_expansion() -> void:
 	await get_tree().create_timer(0.8, true, false, true).timeout
 	player.invuln = 999.0
@@ -705,7 +804,7 @@ func _test_world_expansion() -> void:
 			var resolved: Vector2 = manager.resolve_obstacles(o.global_position, player.radius)
 			collision_ok = resolved.distance_to(o.global_position) >= o.radius + player.radius - 0.5
 	for kind in ["thorn", "moth", "larva", "sporeling", "crawler", "nullifier"]:
-		manager.spawn_enemy(kind, player.global_position + Vector2(randf_range(-260, 260), randf_range(-200, 200)), false)
+		manager.spawn_enemy(kind, player.global_position + Vector2(randf_range(-260, 260), randf_range(-200, 200)), true)
 	var schedule: Array = Game.stage_data().get("minibosses", [])
 	var first_mini := 70.0
 	if not schedule.is_empty():
@@ -899,6 +998,39 @@ func _setup_evolution(base_id: String, passive_id: String) -> void:
 	player.check_evolution_ready()
 
 
+func _test_evolutions() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	player.invuln = 999.0
+	var errors: Array = []
+	for base in GameData.EVOLUTIONS.keys():
+		var evo: Dictionary = GameData.EVOLUTIONS[base]
+		if not player.weapon_levels.has(base):
+			player.add_weapon(base)
+		while int(player.weapon_levels.get(base, 0)) < 6:
+			player.upgrade_weapon(base)
+		player.passive_levels[String(evo["passive"])] = 3
+		player.evolve_weapon(base)
+		if String(player.evolutions.get(base, "")) != String(evo["id"]):
+			errors.append("%s:evolve" % base)
+			continue
+		var weapon = player.weapons.get(base)
+		if weapon == null or String(weapon.weapon_id()) != String(evo["id"]):
+			errors.append("%s:id" % base)
+	for i in 14:
+		var a := TAU * float(i) / 14.0
+		manager.spawn_enemy("blob", player.global_position + Vector2.from_angle(a) * 170.0, false)
+	await get_tree().create_timer(3.0, true, false, true).timeout
+	print("EVOLUTIONS TEST evolved=%d/%d errors=%s" % [
+		player.evolutions.size(), GameData.EVOLUTIONS.size(), errors,
+	])
+	if player.evolutions.size() != GameData.EVOLUTIONS.size() or not errors.is_empty():
+		push_error("EVOLUTIONS TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("EVOLUTIONS TEST OK")
+	get_tree().quit()
+
+
 func _test_evolution(which: String) -> void:
 	var base := "moon_shot"
 	var passive := "core"
@@ -912,6 +1044,18 @@ func _test_evolution(which: String) -> void:
 		"nebula":
 			base = "laser"
 			passive = "star"
+		"galaxy":
+			base = "meteor"
+			passive = "magnet"
+		"life":
+			base = "chain"
+			passive = "nano"
+		"dash":
+			base = "singularity"
+			passive = "boots"
+		"tempest":
+			base = "blades"
+			passive = "heart"
 	await get_tree().create_timer(0.6, true, false, true).timeout
 	player.invuln = 999.0
 	_setup_evolution(base, passive)
@@ -1461,6 +1605,7 @@ func _test_checkpoint_write() -> void:
 	player.weapon_levels["moon_shot"] = 6
 	player.evolve_weapon("moon_shot")
 	player.banned["boots"] = true
+	player.add_relic("moon_heart")
 	player.recalc_stats()
 	player.hp = player.max_hp * 0.62
 	player.global_position = Vector2(123, -77)
@@ -1503,6 +1648,7 @@ func _test_checkpoint_resume() -> void:
 		and player.hp > player.max_hp * 0.5 and player.invuln > 1.0 \
 		and absf(player.ultimate_charge - 63.0) < 0.5
 	var combo_ok: bool = hud != null and hud._combo == 0
+	var relics_ok: bool = "moon_heart" in player.relics and player.damage_mult > 1.0
 	var overlay_ok: bool = Game.pending_levelups == 0 \
 		or (get_tree().paused and overlay != null and overlay._levelup_visible)
 	var boss_ok := true
@@ -1514,12 +1660,12 @@ func _test_checkpoint_resume() -> void:
 		mini_ok = Game.miniboss != null and is_instance_valid(Game.miniboss) \
 			and bool(Game.miniboss.get("miniboss")) \
 			and absf(float(Game.miniboss.get("hp")) / maxf(1.0, float(Game.miniboss.get("max_hp"))) - 0.5) < 0.05
-	print("CHECKPOINT RESUME time=%.1f level=%d kills=%d hp=%.1f pos=%s weapons=%s evolutions=%s passives=%s combo=%s levelup=%s boss=%s mini=%s" % [
+	print("CHECKPOINT RESUME time=%.1f level=%d kills=%d hp=%.1f pos=%s weapons=%s evolutions=%s passives=%s relics=%s combo=%s levelup=%s boss=%s mini=%s" % [
 		Game.time, Game.level, Game.kills, player.hp, player.global_position,
-		player.weapon_levels, player.evolutions, player.passive_levels, combo_ok, overlay_ok, boss_ok, mini_ok,
+		player.weapon_levels, player.evolutions, player.passive_levels, player.relics, combo_ok, overlay_ok, boss_ok, mini_ok,
 	])
 	Game.clear_run_checkpoint()
-	if not weapons_ok or not passives_ok or not progress_ok or not player_ok or not combo_ok or not overlay_ok or not boss_ok or not mini_ok:
+	if not weapons_ok or not passives_ok or not progress_ok or not player_ok or not combo_ok or not relics_ok or not overlay_ok or not boss_ok or not mini_ok:
 		push_error("CHECKPOINT RESUME TEST FAILED")
 		get_tree().quit(1)
 		return
