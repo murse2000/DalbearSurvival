@@ -68,8 +68,10 @@ func _ready() -> void:
 		if a.begins_with("--stage="):
 			explicit_stage = true
 	if not explicit_stage:
-		if "--capture-boss" in _args or "--capture-final" in _args:
+		if "--capture-boss" in _args:
 			Game.stage_id = "ship"
+		elif "--capture-final" in _args:
+			Game.stage_id = "genesis"
 		elif "--capture-queen" in _args:
 			Game.stage_id = "hive"
 		elif "--capture-hive" in _args:
@@ -189,6 +191,8 @@ func _ready() -> void:
 		_test_weekly()
 	elif "--test-companions" in _args:
 		_test_companions()
+	elif "--test-final-fronts" in _args:
+		_test_final_fronts()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -938,11 +942,12 @@ func _test_progression() -> void:
 			if sheet_img.get_pixel(x, 3 * 36 + y) != sheet_img.get_pixel(x, 4 * 36 + y):
 				back_diag_differs = true
 	diagonal_ok = diagonal_ok and front_diag_differs and back_diag_differs
-	var content_ok := GameData.STAGE_ORDER.size() == 15 \
-		and GameData.STAGES.size() == 15 \
-		and GameData.NEW_STAGE_ENEMIES.size() == 10 \
-		and GameData.NEW_STAGE_OBSTACLES.size() == 10
-	for id in ["dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn"]:
+	var content_ok := GameData.STAGE_ORDER.size() == 20 \
+		and GameData.STAGES.size() == 20 \
+		and GameData.NEW_STAGE_ENEMIES.size() == 15 \
+		and GameData.NEW_STAGE_OBSTACLES.size() == 15
+	for id in ["dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit",
+			"dawn", "mirror", "chrono", "grave", "heart", "genesis"]:
 		var st: Dictionary = GameData.stage(id)
 		content_ok = content_ok and GameData.ENEMIES.has(String(st["boss"]))
 		content_ok = content_ok and st.has("ground") and st.has("thumb")
@@ -957,7 +962,8 @@ func _test_progression() -> void:
 			content_ok = content_ok and GameData.DESTRUCTIBLES.has(String(relic))
 	for id in ["dune_queen", "frost_colossus", "mire_mother", "iron_executor",
 			"citadel_guardian", "trench_devourer", "solar_tyrant", "maze_oracle",
-			"orbit_breaker", "dawn_seraph"]:
+			"orbit_breaker", "dawn_seraph", "mirror_warden", "chrono_devourer",
+			"grave_collector", "moon_captain", "genesis_mother"]:
 		content_ok = content_ok and GameData.ENEMIES.has(id)
 	print("PROGRESSION TEST stages=%d forest=%s hive_locked=%s hive=%s ship_locked=%s void=%s dunes_locked=%s dunes=%s chain=%s diagonal=%s content=%s" % [
 		GameData.STAGE_ORDER.size(), forest_open, hive_locked, hive_open, ship_locked,
@@ -1822,6 +1828,64 @@ func _test_upgrade() -> void:
 	get_tree().quit()
 
 
+func _test_final_fronts() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var old_stage := Game.stage_id
+	var old_time := Game.time
+	manager.spawn_timer = 9999.0
+	for id in ["mirror", "chrono", "grave", "heart", "genesis"]:
+		Game.stage_id = id
+		var st: Dictionary = GameData.stage(id)
+		if not GameData.ENEMIES.has(String(st["boss"])):
+			errors.append("%s boss data missing" % id)
+		if not GameData.ENEMIES.has(String(st["minibosses"][0][1])):
+			errors.append("%s miniboss data missing" % id)
+		if not ResourceLoader.exists(String(st["thumb"])):
+			errors.append("%s thumb missing" % id)
+		if not ResourceLoader.exists(String(st["ground"])):
+			errors.append("%s ground missing" % id)
+		for enemy_id in st["enemies"]:
+			if not GameData.ENEMIES.has(String(enemy_id)):
+				errors.append("%s enemy missing: %s" % [id, enemy_id])
+		for obstacle_id in GameData.NEW_STAGE_OBSTACLES.get(id, []):
+			if not GameData.DESTRUCTIBLES.has(String(obstacle_id)):
+				errors.append("%s relic missing: %s" % [id, obstacle_id])
+		for e in manager.enemies.duplicate():
+			if is_instance_valid(e):
+				e.queue_free()
+		manager.enemies.clear()
+		Game.boss = null
+		Game.miniboss = null
+		manager.spawn_enemy(String(st["boss"]), player.global_position + Vector2(180, 0), false)
+		var boss_node = manager.enemies.back() if not manager.enemies.is_empty() else null
+		if boss_node == null or not bool(boss_node.get("boss")):
+			errors.append("%s boss spawn failed" % id)
+		if boss_node != null and is_instance_valid(boss_node):
+			boss_node.queue_free()
+		manager.enemies.clear()
+		Game.boss = null
+		manager._spawn_miniboss(String(st["minibosses"][0][1]))
+		if Game.miniboss == null or String(Game.miniboss.get("kind")) != String(st["minibosses"][0][1]):
+			errors.append("%s miniboss spawn failed" % id)
+		if Game.miniboss != null and is_instance_valid(Game.miniboss):
+			Game.miniboss.queue_free()
+		manager.enemies.clear()
+		Game.miniboss = null
+	Game.stage_id = old_stage
+	Game.time = old_time
+	manager.spawn_timer = 1.0
+	if errors.is_empty():
+		print("FINAL FRONTS TEST PASS stages=5 bosses=5 minibosses=5 enemies=%d" % GameData.ENEMIES.size())
+		print("TEST PASS")
+	else:
+		print("FINAL FRONTS TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
 func _test_companions() -> void:
 	await get_tree().create_timer(0.4, true, false, true).timeout
 	var errors: Array = []
@@ -2144,9 +2208,9 @@ func _test_modes() -> void:
 	if float(erec.get("best_time", 0.0)) < 321.0 or int(erec.get("best_kills", 0)) < 120:
 		errors.append("endless record not written")
 
-	Game.stage_records["dawn:normal"] = {"clears": 1}
+	Game.stage_records["genesis:normal"] = {"clears": 1}
 	if not Game.is_endless_unlocked():
-		errors.append("endless not unlocked by dawn clear")
+		errors.append("endless not unlocked by genesis clear")
 
 	Game.mode = "endless"
 	Game.time = 540.0

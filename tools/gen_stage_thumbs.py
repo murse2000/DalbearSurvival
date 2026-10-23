@@ -48,12 +48,23 @@ STAGES = [
      ["orbit_drone", "void_cutter"]),
     ("dawn", (82, 54, 30), (255, 200, 104), "gate", "dawn", "dawn",
      ["dawn_herald", "light_eater"]),
+    ("mirror", (56, 96, 118), (170, 244, 255), "walls", "moon", "mirror",
+     ["mirror_wisp", "glass_hound"]),
+    ("chrono", (88, 72, 48), (238, 200, 122), "towers", "planet", "chrono",
+     ["chrono_moth", "time_warden"]),
+    ("grave", (48, 40, 78), (174, 140, 240), "stalactites", "none", "grave",
+     ["grave_larva", "star_corpse"]),
+    ("heart", (78, 48, 64), (255, 176, 190), "spires", "moon", "heart",
+     ["moon_priest", "heart_guard"]),
+    ("genesis", (116, 88, 48), (255, 250, 212), "gate", "dawn", "genesis",
+     ["genesis_seraph", "first_dawn"]),
 ]
 
 # front -> horizontal placement of the boss, kept clear of the celestial body
 BOSS_X = {"dunes": 550, "frost": 520, "mire": 600, "ruins": 610,
           "citadel": 520, "trench": 600, "sunspot": 540, "maze": 520,
-          "orbit": 500, "dawn": 716}
+          "orbit": 500, "dawn": 716, "mirror": 560, "chrono": 600,
+          "grave": 520, "heart": 600, "genesis": 690}
 
 
 def _open(path: str) -> Image.Image:

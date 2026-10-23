@@ -12,7 +12,7 @@ const LIST := [
 	},
 	{
 		"id": "final_clear", "name": "지구 방위", "stat": "final_clear", "target": 1,
-		"desc": "15전선을 모두 클리어했다",
+		"desc": "20전선을 모두 클리어했다",
 		"icon": "res://assets/art/ui/icon_trophy.png",
 	},
 	{

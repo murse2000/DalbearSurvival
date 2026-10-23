@@ -6,7 +6,8 @@ extends RefCounted
 const ARENA_HALF := 1700.0
 const DEFAULT_DURATION := 240.0
 const STAGE_ORDER := ["forest", "hive", "ship", "crater", "void",
-	"dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn"]
+	"dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn",
+	"mirror", "chrono", "grave", "heart", "genesis"]
 
 ## Each new front has its own enemy roster; no existing enemy is re-used.
 const NEW_STAGE_ENEMIES := {
@@ -20,6 +21,11 @@ const NEW_STAGE_ENEMIES := {
 	"maze": ["maze_weaver", "prism_eye"],
 	"orbit": ["orbit_drone", "void_cutter"],
 	"dawn": ["dawn_herald", "light_eater"],
+	"mirror": ["mirror_wisp", "glass_hound"],
+	"chrono": ["chrono_moth", "time_warden"],
+	"grave": ["grave_larva", "star_corpse"],
+	"heart": ["moon_priest", "heart_guard"],
+	"genesis": ["genesis_seraph", "first_dawn"],
 }
 
 ## Each new front also has its own destructible relics, so terrain never
@@ -35,6 +41,11 @@ const NEW_STAGE_OBSTACLES := {
 	"maze": ["relic_maze_a", "relic_maze_b"],
 	"orbit": ["relic_orbit_a", "relic_orbit_b"],
 	"dawn": ["relic_dawn_a", "relic_dawn_b"],
+	"mirror": ["relic_mirror_a", "relic_mirror_b"],
+	"chrono": ["relic_chrono_a", "relic_chrono_b"],
+	"grave": ["relic_grave_a", "relic_grave_b"],
+	"heart": ["relic_heart_a", "relic_heart_b"],
+	"genesis": ["relic_genesis_a", "relic_genesis_b"],
 }
 
 const WEAPONS := {
@@ -672,6 +683,56 @@ const ENEMIES := {
 		"radius": 16.0, "texture": "res://assets/art/char/new_enemy_light_eater.png",
 		"height": 42.0, "color": Color(0.74, 0.52, 0.26), "flying": true, "behavior": "sentinel",
 	},
+	"mirror_wisp": {
+		"name": "거울 도깨비불", "hp": 340.0, "speed": 92.0, "damage": 34.0, "xp": 34,
+		"radius": 14.0, "texture": "res://assets/art/char/new_enemy_mirror_wisp.png",
+		"height": 40.0, "color": Color(0.6, 0.92, 0.98), "flying": true, "behavior": "spitter",
+	},
+	"glass_hound": {
+		"name": "유리 사냥개", "hp": 620.0, "speed": 78.0, "damage": 38.0, "xp": 38,
+		"radius": 17.0, "texture": "res://assets/art/char/new_enemy_glass_hound.png",
+		"height": 48.0, "color": Color(0.66, 0.86, 0.94), "flying": false, "behavior": "brute",
+	},
+	"chrono_moth": {
+		"name": "시계 나방", "hp": 380.0, "speed": 100.0, "damage": 35.0, "xp": 36,
+		"radius": 14.0, "texture": "res://assets/art/char/new_enemy_chrono_moth.png",
+		"height": 40.0, "color": Color(0.86, 0.7, 0.4), "flying": true, "behavior": "phase",
+	},
+	"time_warden": {
+		"name": "시간 파수병", "hp": 820.0, "speed": 55.0, "damage": 42.0, "xp": 42,
+		"radius": 19.0, "texture": "res://assets/art/char/new_enemy_time_warden.png",
+		"height": 54.0, "color": Color(0.72, 0.58, 0.38), "flying": false, "behavior": "sentinel",
+	},
+	"grave_larva": {
+		"name": "성해 유충", "hp": 450.0, "speed": 70.0, "damage": 36.0, "xp": 38,
+		"radius": 15.0, "texture": "res://assets/art/char/new_enemy_grave_larva.png",
+		"height": 42.0, "color": Color(0.56, 0.42, 0.72), "flying": false, "behavior": "burrower",
+	},
+	"star_corpse": {
+		"name": "별의 잔해", "hp": 1050.0, "speed": 42.0, "damage": 46.0, "xp": 46,
+		"radius": 21.0, "texture": "res://assets/art/char/new_enemy_star_corpse.png",
+		"height": 60.0, "color": Color(0.52, 0.56, 0.82), "flying": false, "behavior": "brute",
+	},
+	"moon_priest": {
+		"name": "월광 사제", "hp": 560.0, "speed": 64.0, "damage": 39.0, "xp": 40,
+		"radius": 16.0, "texture": "res://assets/art/char/new_enemy_moon_priest.png",
+		"height": 46.0, "color": Color(0.86, 0.74, 0.5), "flying": false, "behavior": "spitter",
+	},
+	"heart_guard": {
+		"name": "심장 수호병", "hp": 1250.0, "speed": 48.0, "damage": 49.0, "xp": 50,
+		"radius": 22.0, "texture": "res://assets/art/char/new_enemy_heart_guard.png",
+		"height": 62.0, "color": Color(0.74, 0.46, 0.54), "flying": false, "behavior": "brute",
+	},
+	"genesis_seraph": {
+		"name": "태초 세라핌", "hp": 760.0, "speed": 105.0, "damage": 43.0, "xp": 46,
+		"radius": 17.0, "texture": "res://assets/art/char/new_enemy_genesis_seraph.png",
+		"height": 48.0, "color": Color(0.96, 0.88, 0.62), "flying": true, "behavior": "phase",
+	},
+	"first_dawn": {
+		"name": "첫 새벽의 그림자", "hp": 1600.0, "speed": 52.0, "damage": 54.0, "xp": 56,
+		"radius": 23.0, "texture": "res://assets/art/char/new_enemy_first_dawn.png",
+		"height": 66.0, "color": Color(0.86, 0.68, 0.4), "flying": false, "behavior": "brute",
+	},
 	"elder_treant": {
 		"name": "고목 수호자",
 		"hp": 520.0,
@@ -882,6 +943,36 @@ const ENEMIES := {
 		"height": 112.0, "color": Color(0.84, 0.66, 0.32), "flying": false,
 		"mini_boss": true, "mini_style": "summon", "scale": 1.6,
 	},
+	"mirror_warden": {
+		"name": "프리즘 파수꾼", "hp": 2800.0, "speed": 44.0, "damage": 86.0, "xp": 86,
+		"radius": 54.0, "texture": "res://assets/art/char/new_mini_mirror_warden.png",
+		"height": 114.0, "color": Color(0.58, 0.88, 0.96), "flying": false,
+		"mini_boss": true, "mini_style": "beam", "scale": 1.5,
+	},
+	"chrono_devourer": {
+		"name": "시간 포식자", "hp": 3100.0, "speed": 46.0, "damage": 92.0, "xp": 92,
+		"radius": 56.0, "texture": "res://assets/art/char/new_mini_chrono_devourer.png",
+		"height": 118.0, "color": Color(0.74, 0.58, 0.34), "flying": false,
+		"mini_boss": true, "mini_style": "charger", "scale": 1.55,
+	},
+	"grave_collector": {
+		"name": "성해 수집가", "hp": 3400.0, "speed": 44.0, "damage": 98.0, "xp": 98,
+		"radius": 58.0, "texture": "res://assets/art/char/new_mini_grave_collector.png",
+		"height": 120.0, "color": Color(0.54, 0.42, 0.74), "flying": false,
+		"mini_boss": true, "mini_style": "summon", "scale": 1.6,
+	},
+	"moon_captain": {
+		"name": "월광 기사단장", "hp": 3800.0, "speed": 48.0, "damage": 104.0, "xp": 104,
+		"radius": 58.0, "texture": "res://assets/art/char/new_mini_moon_captain.png",
+		"height": 122.0, "color": Color(0.86, 0.72, 0.44), "flying": false,
+		"mini_boss": true, "mini_style": "caster", "scale": 1.6,
+	},
+	"genesis_mother": {
+		"name": "새벽의 어머니", "hp": 4300.0, "speed": 50.0, "damage": 112.0, "xp": 112,
+		"radius": 60.0, "texture": "res://assets/art/char/new_mini_genesis_mother.png",
+		"height": 126.0, "color": Color(0.92, 0.8, 0.48), "flying": false,
+		"mini_boss": true, "mini_style": "slam", "scale": 1.65,
+	},
 	"boss_scout": {
 		"name": "정찰 모선",
 		"hp": 900.0,
@@ -1006,6 +1097,31 @@ const ENEMIES := {
 		"name": "새벽을 삼킨 자", "hp": 14500.0, "speed": 40.0, "damage": 52.0, "xp": 250,
 		"radius": 84.0, "texture": "res://assets/art/char/new_boss_dawn.png", "height": 150.0,
 		"color": Color(0.86, 0.66, 0.28), "flying": true, "boss": true, "style": "ship", "scale": 1.55,
+	},
+	"boss_mirror": {
+		"name": "거울의 거신", "hp": 16000.0, "speed": 42.0, "damage": 58.0, "xp": 270,
+		"radius": 86.0, "texture": "res://assets/art/char/new_boss_mirror.png", "height": 152.0,
+		"color": Color(0.58, 0.88, 0.96), "flying": true, "boss": true, "style": "queen", "scale": 1.60,
+	},
+	"boss_chrono": {
+		"name": "시계태엽 예언자", "hp": 17800.0, "speed": 44.0, "damage": 62.0, "xp": 290,
+		"radius": 88.0, "texture": "res://assets/art/char/new_boss_chrono.png", "height": 154.0,
+		"color": Color(0.8, 0.62, 0.36), "flying": true, "boss": true, "style": "ship", "scale": 1.65,
+	},
+	"boss_grave": {
+		"name": "별의 장례자", "hp": 19600.0, "speed": 46.0, "damage": 66.0, "xp": 310,
+		"radius": 90.0, "texture": "res://assets/art/char/new_boss_grave.png", "height": 156.0,
+		"color": Color(0.6, 0.48, 0.82), "flying": true, "boss": true, "style": "queen", "scale": 1.70,
+	},
+	"boss_heart": {
+		"name": "달의 심장", "hp": 21500.0, "speed": 48.0, "damage": 70.0, "xp": 330,
+		"radius": 92.0, "texture": "res://assets/art/char/new_boss_heart.png", "height": 158.0,
+		"color": Color(0.9, 0.56, 0.62), "flying": true, "boss": true, "style": "ship", "scale": 1.75,
+	},
+	"boss_genesis": {
+		"name": "태초의 달", "hp": 24000.0, "speed": 50.0, "damage": 75.0, "xp": 360,
+		"radius": 96.0, "texture": "res://assets/art/char/new_boss_genesis.png", "height": 162.0,
+		"color": Color(0.96, 0.86, 0.52), "flying": true, "boss": true, "style": "queen", "scale": 1.80,
 	},
 }
 
@@ -1139,6 +1255,46 @@ const DESTRUCTIBLES := {
 	"relic_dawn_b": {
 		"texture": "res://assets/art/world/relic_dawn_b.png", "radius": 30.0,
 		"hp": 430.0, "color": Color(1.0, 0.84, 0.48), "drop": 4, "burst": "shard",
+	},
+	"relic_mirror_a": {
+		"texture": "res://assets/art/world/relic_mirror_a.png", "radius": 32.0,
+		"hp": 580.0, "color": Color(0.62, 0.9, 0.98), "drop": 5, "burst": "shard",
+	},
+	"relic_mirror_b": {
+		"texture": "res://assets/art/world/relic_mirror_b.png", "radius": 28.0,
+		"hp": 470.0, "color": Color(0.76, 0.96, 1.0), "drop": 4, "burst": "shock",
+	},
+	"relic_chrono_a": {
+		"texture": "res://assets/art/world/relic_chrono_a.png", "radius": 30.0,
+		"hp": 620.0, "color": Color(0.86, 0.68, 0.38), "drop": 5, "burst": "shock",
+	},
+	"relic_chrono_b": {
+		"texture": "res://assets/art/world/relic_chrono_b.png", "radius": 32.0,
+		"hp": 560.0, "color": Color(0.98, 0.82, 0.48), "drop": 4, "burst": "shard",
+	},
+	"relic_grave_a": {
+		"texture": "res://assets/art/world/relic_grave_a.png", "radius": 34.0,
+		"hp": 680.0, "color": Color(0.58, 0.46, 0.78), "drop": 5, "burst": "acid",
+	},
+	"relic_grave_b": {
+		"texture": "res://assets/art/world/relic_grave_b.png", "radius": 30.0,
+		"hp": 610.0, "color": Color(0.72, 0.58, 0.9), "drop": 4, "burst": "acid",
+	},
+	"relic_heart_a": {
+		"texture": "res://assets/art/world/relic_heart_a.png", "radius": 32.0,
+		"hp": 740.0, "color": Color(0.88, 0.56, 0.64), "drop": 6, "burst": "shard",
+	},
+	"relic_heart_b": {
+		"texture": "res://assets/art/world/relic_heart_b.png", "radius": 28.0,
+		"hp": 650.0, "color": Color(1.0, 0.72, 0.78), "drop": 5, "burst": "shock",
+	},
+	"relic_genesis_a": {
+		"texture": "res://assets/art/world/relic_genesis_a.png", "radius": 36.0,
+		"hp": 820.0, "color": Color(0.94, 0.78, 0.42), "drop": 6, "burst": "shard",
+	},
+	"relic_genesis_b": {
+		"texture": "res://assets/art/world/relic_genesis_b.png", "radius": 32.0,
+		"hp": 720.0, "color": Color(1.0, 0.9, 0.6), "drop": 5, "burst": "shard",
 	},
 }
 
@@ -1488,6 +1644,76 @@ const STAGES := {
 		"ground": "res://assets/art/world/ground_dawn.png",
 		"goal": "새벽을 맞이하라",
 		"warnings": [[50.0, "새벽의 문이 열린다"], [118.0, "모든 밤이 한곳으로 모인다"]],
+	},
+	"mirror": {
+		"num": 16, "name": "제16전선", "short": "거울 성운", "theme": "maze",
+		"subtitle": "빛이 두 갈래로 갈라진다", "desc": "거울 성운. 거울의 거신을 깨워라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_mirror",
+		"enemies": ["mirror_wisp", "glass_hound"],
+		"enemy_icons": ["mirror_wisp", "glass_hound"],
+		"minibosses": [[105.0, "mirror_warden"]],
+		"hp_scale": 4.70, "damage_scale": 2.25, "spawn_scale": 0.63, "music_pitch": 1.34,
+		"tint": Color(0.74, 1.02, 1.16), "accent": Color(0.46, 0.88, 1.0),
+		"thumb": "res://assets/art/ui/stage_mirror.png",
+		"ground": "res://assets/art/world/ground_mirror.png",
+		"goal": "거울계 봉인까지",
+		"warnings": [[50.0, "거울이 갈라진다"], [118.0, "비친 존재가 걸어 나온다"]],
+	},
+	"chrono": {
+		"num": 17, "name": "제17전선", "short": "시간의 회랑", "theme": "ruins",
+		"subtitle": "멈춘 밤이 다시 반복된다", "desc": "시간의 회랑. 시계태엽 예언자를 멈춰라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_chrono",
+		"enemies": ["chrono_moth", "time_warden"],
+		"enemy_icons": ["chrono_moth", "time_warden"],
+		"minibosses": [[105.0, "chrono_devourer"]],
+		"hp_scale": 5.00, "damage_scale": 2.32, "spawn_scale": 0.62, "music_pitch": 1.03,
+		"tint": Color(1.10, 0.94, 0.62), "accent": Color(0.96, 0.72, 0.32),
+		"thumb": "res://assets/art/ui/stage_chrono.png",
+		"ground": "res://assets/art/world/ground_chrono.png",
+		"goal": "시간선 복원까지",
+		"warnings": [[50.0, "시간이 거꾸로 흐른다"], [118.0, "예언자가 종을 울린다"]],
+	},
+	"grave": {
+		"num": 18, "name": "제18전선", "short": "별의 무덤", "theme": "void",
+		"subtitle": "꺼진 별들이 잠든 곳", "desc": "별의 무덤. 별의 장례자를 배웅하라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_grave",
+		"enemies": ["grave_larva", "star_corpse"],
+		"enemy_icons": ["grave_larva", "star_corpse"],
+		"minibosses": [[105.0, "grave_collector"]],
+		"hp_scale": 5.30, "damage_scale": 2.40, "spawn_scale": 0.60, "music_pitch": 0.86,
+		"tint": Color(0.78, 0.72, 1.14), "accent": Color(0.66, 0.52, 0.92),
+		"thumb": "res://assets/art/ui/stage_grave.png",
+		"ground": "res://assets/art/world/ground_grave.png",
+		"goal": "별의 안식을까지",
+		"warnings": [[50.0, "별들이 하나씩 꺼진다"], [118.0, "장례 행렬이 시작된다"]],
+	},
+	"heart": {
+		"num": 19, "name": "제19전선", "short": "달빛 심장", "theme": "citadel",
+		"subtitle": "달의 심장이 마지막으로 뛴다", "desc": "달빛 심장. 달의 심장을 멈춰라.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_heart",
+		"enemies": ["moon_priest", "heart_guard"],
+		"enemy_icons": ["moon_priest", "heart_guard"],
+		"minibosses": [[105.0, "moon_captain"]],
+		"hp_scale": 5.60, "damage_scale": 2.48, "spawn_scale": 0.59, "music_pitch": 1.18,
+		"tint": Color(1.16, 0.82, 0.86), "accent": Color(0.94, 0.56, 0.64),
+		"thumb": "res://assets/art/ui/stage_heart.png",
+		"ground": "res://assets/art/world/ground_heart.png",
+		"goal": "심장 박동 정지까지",
+		"warnings": [[50.0, "달빛이 붉게 맥동한다"], [118.0, "심장이 주인을 부른다"]],
+	},
+	"genesis": {
+		"num": 20, "name": "제20전선", "short": "태초의 새벽", "theme": "dawn",
+		"subtitle": "모든 시작이 끝나는 새벽", "desc": "태초의 새벽. 태초의 달과 마지막 결전.",
+		"duration": 240.0, "boss_time": 170.0, "boss": "boss_genesis",
+		"enemies": ["genesis_seraph", "first_dawn"],
+		"enemy_icons": ["genesis_seraph", "first_dawn"],
+		"minibosses": [[105.0, "genesis_mother"]],
+		"hp_scale": 6.00, "damage_scale": 2.56, "spawn_scale": 0.58, "music_pitch": 1.40,
+		"tint": Color(1.16, 1.04, 0.72), "accent": Color(1.0, 0.9, 0.58),
+		"thumb": "res://assets/art/ui/stage_genesis.png",
+		"ground": "res://assets/art/world/ground_genesis.png",
+		"goal": "태초를 넘어서",
+		"warnings": [[50.0, "첫 새벽이 열린다"], [118.0, "태초의 달이 내려온다"]],
 	},
 }
 

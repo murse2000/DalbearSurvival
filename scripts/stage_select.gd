@@ -76,7 +76,7 @@ func _ready() -> void:
 					"best_time": 210.0,
 				}
 	if "--capture-select-late" in _args:
-		_selected_stage = "dawn"
+		_selected_stage = "genesis"
 	elif "--capture-select" in _args:
 		_selected_stage = "dunes"
 	elif "--test-swipe" in _args:
@@ -184,7 +184,7 @@ func _build_header_landscape() -> void:
 	var title := UIKit.label("전선 선택", 52, UIKit.GOLD, 7)
 	title.position = Vector2(52, 48)
 	add_child(title)
-	var sub := UIKit.label("열다섯 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
+	var sub := UIKit.label("스무 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
 	sub.position = Vector2(56, 112)
 	add_child(sub)
 	_page_label = UIKit.label("", 13, UIKit.MUTED)
@@ -231,7 +231,7 @@ func _build_header_portrait() -> void:
 	var title := UIKit.label("전선 선택", 42, UIKit.GOLD, 6)
 	title.position = Vector2(22, 38)
 	add_child(title)
-	var sub := UIKit.label("열다섯 개의 전선 · 이전 전선을 클리어하면 다음이 열립니다.", 12, UIKit.CREAM)
+	var sub := UIKit.label("스무 개의 전선 · 이전 전선을 클리어하면 다음이 열립니다.", 12, UIKit.CREAM)
 	sub.position = Vector2(24, 98)
 	sub.size = Vector2(530, 20)
 	add_child(sub)
@@ -906,7 +906,7 @@ func _refresh() -> void:
 			_endless_btn.text = "무한" if unlocked else "무한 잠금"
 		else:
 			_endless_btn.text = "무한 모드" if unlocked else "무한 잠금"
-		_endless_btn.tooltip_text = "끝없이 버티는 모드" if unlocked else "15전선을 완료하면 해금됩니다"
+		_endless_btn.tooltip_text = "끝없이 버티는 모드" if unlocked else "20전선을 완료하면 해금됩니다"
 		if unlocked:
 			var er: Dictionary = Game.endless_best(_selected_stage)
 			if float(er.get("best_time", 0.0)) > 0.0:
@@ -947,7 +947,7 @@ func _start_endless() -> void:
 	if not Game.is_endless_unlocked():
 		if _stage_hint != null:
 			_stage_hint.visible = true
-			_stage_hint.text = "15전선을 완료하면 무한 모드가 열립니다."
+			_stage_hint.text = "20전선을 완료하면 무한 모드가 열립니다."
 		return
 	_starting = true
 	Audio.play_click()

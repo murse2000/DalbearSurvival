@@ -193,7 +193,7 @@ func _test_achievements() -> void:
 	Game.stats["endless_best"] = 600.0
 	Game.stats["daily_clears"] = 1
 	Game.stage_records["forest:normal"] = {"clears": 1}
-	Game.stage_records["dawn:normal"] = {"clears": 1}
+	Game.stage_records["genesis:normal"] = {"clears": 1}
 	Game.achievements.clear()
 	Game._check_achievements(false)
 	for a in AchievementData.all():

@@ -2,9 +2,9 @@
 ### DALBEAR: Earth Defense · [dalbear.com](https://dalbear.com)
 
 > 달빛을 먹고 자란 곰, **달베어**.
-> 외계 함대가 지구를 덮친 밤, 열다섯 개의 전선을 지켜낸다.
+> 외계 함대가 지구를 덮친 밤, 스무 개의 전선을 지켜낸다.
 
-**15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
+**20개 스테이지 × 4분**, **4단계 난이도**, **53종 외계인 + 25종 중간 보스 + 20종 최종 보스**,
 **무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
 **속성 시너지 · 달빛 제단 · 달빛 동료 5종 · 장비 세트**,
 **장비 잠금 · 일괄 분해 · 로드아웃 3칸 · 주간 기록**,
@@ -136,7 +136,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 ---
 
-## 캠페인: 열다섯 개의 전선
+## 캠페인: 스무 개의 전선
 
 | | 전선 | 테마 | 보스 | 새로운 위협 |
 |---|---|---|---|---|
@@ -155,13 +155,18 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 13 | **성운 미궁** | 별빛이 길을 접는 미궁 | **미궁의 현자** | 미궁 직조자, 프리즘 눈, 미궁 예언자 |
 | 14 | **종말 궤도** | 마지막 궤도가 불타는 곳 | **종말의 궤도신** | 궤도 드론, 공허 절단자, 궤도 파괴자 |
 | 15 | **새벽의 문** | 모든 밤이 끝나는 문 | **새벽을 삼킨 자** | 새벽 전령, 빛 포식자, 새벽 세라핌 |
+| 16 | **거울 성운** | 빛이 두 갈래로 갈라지는 곳 | **거울의 거신** | 거울 도깨비불, 유리 사냥개, 프리즘 파수꾼 |
+| 17 | **시간의 회랑** | 멈춘 밤이 반복되는 회랑 | **시계태엽 예언자** | 시계 나방, 시간 파수병, 시간 포식자 |
+| 18 | **별의 무덤** | 꺼진 별들이 잠든 곳 | **별의 장례자** | 성해 유충, 별의 잔해, 성해 수집가 |
+| 19 | **달빛 심장** | 달의 심장이 마지막으로 뛰는 곳 | **달의 심장** | 월광 사제, 심장 수호병, 월광 기사단장 |
+| 20 | **태초의 새벽** | 모든 시작이 끝나는 새벽 | **태초의 달** | 태초 세라핌, 첫 새벽의 그림자, 새벽의 어머니 |
 
 - 각 전선은 **4분(240초)** 동안 이어집니다. **2분 50초**에 보스가 강림합니다.
 - 보스를 격추하면 **즉시 전선 확보**. 시간이 끝날 때까지 버텨도 전선을 지켜냅니다.
 - **다음 전선은 이전 전선을 클리어한 경우에만 개방**됩니다. 전선 선택 화면에 LOCK으로 표시됩니다.
-- 6~15전선은 HP·피해량·출현 밀도가 단계적으로 상승하고, 보스 체력도 4,800 → 14,500으로 올라갑니다.
-- 신규 10개 전선은 **새 몬스터 20종 · 새 중간 보스 10종 · 새 최종 보스 10종**과 전용 지형·파괴물·썸네일을 사용합니다.
-- 15번 전선의 새벽을 삼킨 자를 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
+- 6~20전선은 HP·피해량·출현 밀도가 단계적으로 상승하고, 보스 체력도 4,800 → 24,000으로 올라갑니다.
+- 신규 15개 전선은 **새 몬스터 30종 · 새 중간 보스 15종 · 새 최종 보스 15종**과 전용 지형·파괴물·썸네일을 사용합니다.
+- 20번 전선의 태초의 달을 격추하면 캠페인 최종 엔딩 **“지구를 지켜냈다!”**.
 
 ### 난이도
 
@@ -180,7 +185,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 ## 무한 모드 & 일일 챌린지
 
 ### 무한 모드
-- **15전선을 완료하면 해금**됩니다. 전선 선택 화면의 **무한 모드** 버튼으로 진입합니다.
+- **20전선을 완료하면 해금**됩니다. 기존 15전선을 완료한 세이브도 그대로 이용할 수 있습니다. 전선 선택 화면의 **무한 모드** 버튼으로 진입합니다.
 - 4분 제한 없이 계속 싸웁니다. **240초부터 적 체력·피해량·출현 밀도가 계속 상승**합니다.
 - 첫 보스는 170초, 이후 **약 90초마다 보스가 다시 강림**하며 웨이브마다 체력·피해량이 증가합니다.
 - 160초 이후에는 중간 보스도 **75초 주기**로 등장합니다.
@@ -201,7 +206,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | 업적 | 조건 |
 |---|---|
 | 첫 새벽 | 첫 전선 클리어 |
-| 지구 방위 | 15전선 완주 |
+| 지구 방위 | 20전선 완주 |
 | 사냥꾼 | 누적 1,000킬 |
 | 학살자 | 누적 10,000킬 |
 | 보스 헌터 | 보스 10회 격추 |
@@ -498,7 +503,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![친구 선택](screenshots/characters.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
 | ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
 | ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
-| ![15개 전선 선택](screenshots/stage_select_late.png) | ![붉은 사막](screenshots/stage_dunes.png) |
+| ![20개 전선 선택](screenshots/stage_select_late.png) | ![붉은 사막](screenshots/stage_dunes.png) |
 | ![얼어붙은 호수](screenshots/stage_frost.png) | ![독성 수렁](screenshots/stage_mire.png) |
 | ![강철 폐허](screenshots/stage_ruins.png) | ![달빛 성채](screenshots/stage_citadel.png) |
 | ![심연 해구](screenshots/stage_trench.png) | ![태양 흑점](screenshots/stage_sunspot.png) |
@@ -506,7 +511,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![새벽의 문](screenshots/stage_dawn.png) | ![사막의 스콜피온](screenshots/boss_dunes.png) |
 | ![세로 타이틀](screenshots/title_portrait.png) | ![세로 전선 선택](screenshots/stage_select_portrait.png) |
 | ![세로 전투](screenshots/stage_dunes_portrait.png) | ![세로 장비](screenshots/equipment_portrait.png) |
-| ![세로 친구 선택](screenshots/characters_portrait.png) | ![15개 전선 선택](screenshots/stage_select_late.png) |
+| ![세로 친구 선택](screenshots/characters_portrait.png) | ![20개 전선 선택](screenshots/stage_select_late.png) |
+| ![거울 성운](screenshots/stage_mirror.png) | ![태초의 달](screenshots/boss_genesis.png) |
 | ![업적](screenshots/achievements.png) | ![세로 업적](screenshots/achievements_portrait.png) |
 | ![달빛 제단](screenshots/altar.png) | ![세로 달빛 제단](screenshots/altar_portrait.png) |
 | ![달빛 동료 도감](screenshots/companions.png) | ![세로 동료 도감](screenshots/companions_portrait.png) |
@@ -537,6 +543,7 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/stage_mire.png`, `screenshots/stage_ruins.png`, `screenshots/stage_citadel.png`,
 `screenshots/stage_trench.png`, `screenshots/stage_sunspot.png`, `screenshots/stage_maze.png`,
 `screenshots/stage_orbit.png`, `screenshots/stage_dawn.png`, `screenshots/boss_dunes.png`,
+`screenshots/stage_mirror.png`, `screenshots/boss_genesis.png`,
 `screenshots/title.png`
 
 ---
@@ -548,7 +555,7 @@ DalbearSurvival/
 ├─ project.godot                 # Godot 4.7.1 프로젝트 설정
 ├─ scenes/
 │  ├─ title.tscn                 # 타이틀
-│  ├─ stage_select.tscn          # 15개 전선 + 4개 난이도 선택
+│  ├─ stage_select.tscn          # 20개 전선 + 4개 난이도 선택
 │  ├─ equipment.tscn             # 장비 & 인벤토리 화면
 │  ├─ characters.tscn            # 달베어 친구 선택
 │  ├─ achievements.tscn          # 업적 보드
@@ -556,7 +563,7 @@ DalbearSurvival/
 │  ├─ companions.tscn            # 동료 도감
 │  ├─ main.tscn / player.tscn / enemy.tscn
 ├─ scripts/
-│  ├─ game_data.gd               # 15개 전선/난이도/무기/적/보스/패시브/일일 변칙 데이터
+│  ├─ game_data.gd               # 20개 전선/난이도/무기/적/보스/패시브/일일 변칙 데이터
 │  ├─ achievement_data.gd        # 업적 12종 정의/진행도
 │  ├─ achievements_screen.gd     # 업적 보드 UI
 │  ├─ altar_data.gd              # 제단 영구 강화 7종
@@ -571,7 +578,7 @@ DalbearSurvival/
 │  ├─ player.gd                  # 이동, 체력, 강화, XP, 장비/친구 스탯
 │  ├─ enemy.gd                   # 외계인 AI, 중간 보스/최종 보스 패턴
 │  ├─ enemy_manager.gd           # 스테이지 스폰, 전용 파괴물, 공간 해시, 판정
-│  ├─ world.gd                   # 15개 전선 테마/지형/프롭
+│  ├─ world.gd                   # 20개 전선 테마/지형/프롭
 │  ├─ stage_select.gd            # 캠페인 허브 UI
 │  ├─ weapons/                   # 4개 무기 + 베이스
 │  └─ ui/                        # HUD, 레벨업/일시정지/결과, 설정 패널, 터치 조작, 화면비 대응
@@ -662,6 +669,9 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn --rendering-method gl_compatibility -- --stage=dawn --bench-enemies=340
   godot --path . res://scenes/main.tscn -- --test-world-expansion
   godot --path . res://scenes/main.tscn -- --test-progression
+  godot --path . res://scenes/main.tscn -- --test-final-fronts
+  godot --path . res://scenes/main.tscn -- --stage=mirror --capture-game
+  godot --path . res://scenes/main.tscn -- --stage=genesis --capture-boss
   godot --path . res://scenes/main.tscn -- --test-late-balance
   godot --path . res://scenes/main.tscn -- --test-evolutions
   godot --path . res://scenes/main.tscn -- --test-relics

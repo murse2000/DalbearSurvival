@@ -49,6 +49,16 @@ NEW = [
     ("void_cutter", (96, 68, 154), (188, 82, 255), 13),
     ("dawn_herald", (216, 176, 94), (255, 242, 166), 11),
     ("light_eater", (188, 132, 68), (255, 210, 96), 19),
+    ("mirror_wisp", (118, 202, 222), (176, 252, 255), 5),
+    ("glass_hound", (146, 190, 206), (220, 250, 255), 10),
+    ("chrono_moth", (192, 152, 86), (255, 224, 128), 4),
+    ("time_warden", (156, 126, 94), (238, 200, 122), 14),
+    ("grave_larva", (112, 86, 156), (198, 140, 236), 17),
+    ("star_corpse", (92, 96, 146), (160, 172, 255), 3),
+    ("moon_priest", (208, 176, 122), (255, 232, 168), 16),
+    ("heart_guard", (170, 102, 118), (255, 166, 184), 1),
+    ("genesis_seraph", (240, 218, 154), (255, 250, 220), 9),
+    ("first_dawn", (214, 158, 72), (255, 224, 132), 19),
 ]
 
 MINI = [
@@ -62,6 +72,11 @@ MINI = [
     ("maze_oracle", (112, 96, 178), (196, 142, 255), 7),
     ("orbit_breaker", (76, 142, 168), (110, 238, 240), 8),
     ("dawn_seraph", (214, 166, 82), (255, 238, 152), 9),
+    ("mirror_warden", (116, 196, 220), (180, 250, 255), 4),
+    ("chrono_devourer", (178, 136, 82), (252, 218, 128), 5),
+    ("grave_collector", (116, 88, 158), (200, 144, 240), 3),
+    ("moon_captain", (214, 172, 112), (255, 236, 170), 16),
+    ("genesis_mother", (226, 194, 128), (255, 246, 200), 9),
 ]
 
 BOSSES = [
@@ -75,6 +90,11 @@ BOSSES = [
     ("boss_maze", (94, 74, 166), (176, 120, 255), 7),
     ("boss_orbit", (58, 128, 154), (90, 232, 238), 8),
     ("boss_dawn", (204, 144, 58), (255, 226, 112), 9),
+    ("boss_mirror", (86, 178, 204), (170, 244, 255), 4),
+    ("boss_chrono", (176, 134, 72), (250, 216, 124), 6),
+    ("boss_grave", (92, 74, 138), (174, 140, 240), 5),
+    ("boss_heart", (194, 106, 120), (255, 176, 190), 0),
+    ("boss_genesis", (226, 194, 118), (255, 250, 212), 9),
 ]
 
 GROUND = [
@@ -88,6 +108,11 @@ GROUND = [
     ("ground_maze", (54, 46, 92), (126, 86, 190), "maze"),
     ("ground_orbit", (38, 66, 78), (80, 176, 184), "orbit"),
     ("ground_dawn", (102, 72, 42), (220, 158, 70), "rays"),
+    ("ground_mirror", (56, 96, 118), (128, 220, 238), "ice"),
+    ("ground_chrono", (88, 72, 48), (206, 168, 96), "circuit"),
+    ("ground_grave", (48, 40, 78), (112, 76, 164), "tendril"),
+    ("ground_heart", (78, 48, 64), (194, 104, 128), "rune"),
+    ("ground_genesis", (116, 88, 48), (244, 206, 120), "rays"),
 ]
 
 def _palette(base, accent):
@@ -380,7 +405,8 @@ def main():
     for name, base, accent, family in MINI:
         A.save(mini_art(family, _palette(base, accent)), os.path.join(CHAR, "new_mini_%s.png" % name))
     for name, base, accent, family in BOSSES:
-        A.save(boss_art(family, _palette(base, accent)), os.path.join(CHAR, "new_boss_%s.png" % name))
+        fname = name[5:] if name.startswith("boss_") else name
+        A.save(boss_art(family, _palette(base, accent)), os.path.join(CHAR, "new_boss_%s.png" % fname))
     for name, base, accent, motif in GROUND:
         A.save(ground_art(name, base, accent, motif), os.path.join(WORLD, name + ".png"))
     print("new content art done")

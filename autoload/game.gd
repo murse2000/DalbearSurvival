@@ -133,7 +133,7 @@ func is_daily() -> bool:
 
 
 func is_endless_unlocked() -> bool:
-	return has_cleared(GameData.STAGE_ORDER[GameData.STAGE_ORDER.size() - 1])
+	return has_cleared("dawn") or has_cleared(GameData.STAGE_ORDER[GameData.STAGE_ORDER.size() - 1])
 
 
 func daily_key() -> String:
