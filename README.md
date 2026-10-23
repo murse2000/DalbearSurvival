@@ -7,6 +7,7 @@
 **15개 스테이지 × 4분**, **4단계 난이도**, **43종 외계인 + 20종 중간 보스 + 15종 최종 보스**,
 **무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
 **속성 시너지 · 달빛 제단 · 달빛 동료 · 장비 세트**,
+**장비 잠금 · 일괄 분해 · 로드아웃 3칸 · 주간 기록**,
 **대시 & 궁극기**, **리롤·밴**, **그래픽 프리셋 · HUD 크기 · 조이스틱 배치**, **연출 설정**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
@@ -431,6 +432,16 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - **전설** 등급 아이템은 인벤토리·슬롯·상세에서 금색 글로우가 맥동합니다.
 - 상세 패널에서 현재 장착된 아이템과 비교해 능력치 증감을 **초록(+)/빨강(-)**으로, 전투력 변화까지 함께 보여줍니다.
 
+### 장비 QoL
+- **잠금**: 상세 패널의 잠금 버튼으로 아이템을 잠급니다. 잠근 아이템은 분해·일괄 분해에서 제외되며 인벤토리에 `잠` 표시가 붙습니다.
+- **일괄 분해**: 인벤토리의 일괄 분해 버튼으로 **일반·희귀** 등급을 한 번에 분해합니다. 장착 중·잠금·전용 장비·에픽 이상은 자동 제외되고, 실행 전 대상 수와 예상 달빛 조각을 보여줍니다.
+- **로드아웃 3칸**: 현재 장착 11슬롯을 저장하고 불러올 수 있습니다. 친구별 로드아웃이며, 없는 장비는 건너뜁니다.
+
+### 주간 기록
+- 전선 선택의 **주간 기록** 버튼에서 이번 주 최고 기록을 확인합니다.
+- 전선 최고 생존 시간·킬·클리어, 무한 최고 생존·킬, 일일 클리어·최고 시간, 주간 도전 횟수·누적 킬을 저장합니다.
+- 매주 월요일 초기화되며, 이전 주 기록은 새 주가 시작될 때 비워집니다.
+
 ### 등급과 레벨
 
 | 등급 | 색상 | 최대 레벨 | 기본 능력치 |
@@ -471,6 +482,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 | ![세로 설정](screenshots/settings_portrait.png) | ![일시정지 설정](screenshots/pause_settings.png) |
 | ![오른손·큰 조이스틱](screenshots/touch_gameplay.png) | ![세로 오른손 조작](screenshots/touch_gameplay_portrait.png) |
 | ![장비 & 인벤토리](screenshots/equipment.png) | ![장비 상세](screenshots/equipment_detail.png) |
+| ![일괄 분해](screenshots/gear_bulk.png) | ![로드아웃](screenshots/gear_loadout.png) |
+| ![주간 기록](screenshots/weekly.png) | ![세로 주간 기록](screenshots/weekly_portrait.png) |
 | ![친구 선택](screenshots/characters.png) | ![와이드 터치](screenshots/gameplay_wide.png) |
 | ![폴드 비율](screenshots/gameplay_fold.png) | ![타이틀 와이드](screenshots/title_wide.png) |
 | ![타이틀 폴드](screenshots/title_fold.png) | ![이어하기](screenshots/title_continue.png) |
@@ -501,6 +514,8 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 `screenshots/achievements.png`, `screenshots/achievements_portrait.png`,
 `screenshots/altar.png`, `screenshots/altar_portrait.png`,
 `screenshots/companion.png`,
+`screenshots/gear_bulk.png`, `screenshots/gear_loadout.png`,
+`screenshots/weekly.png`, `screenshots/weekly_portrait.png`,
 `screenshots/settings.png`, `screenshots/settings_portrait.png`,
 `screenshots/touch_gameplay.png`, `screenshots/touch_gameplay_portrait.png`,
 `screenshots/endless.png`, `screenshots/daily.png`, `screenshots/endless_end.png`,
@@ -668,6 +683,12 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --test-mobile-options
   godot --path . res://scenes/main.tscn -- --test-status
   godot --path . res://scenes/main.tscn -- --test-sets
+  godot --path . res://scenes/main.tscn -- --test-weekly
+  godot --path . res://scenes/equipment.tscn -- --test-gear-qol
+  godot --path . res://scenes/equipment.tscn -- --capture-bulk
+  godot --path . res://scenes/equipment.tscn -- --capture-loadout
+  godot --path . res://scenes/stage_select.tscn -- --capture-weekly
+  godot --path . --resolution 720x1280 res://scenes/stage_select.tscn -- --capture-weekly
   godot --path . res://scenes/altar.tscn -- --test-altar
   godot --path . res://scenes/altar.tscn -- --capture-altar
   godot --path . --resolution 720x1280 res://scenes/altar.tscn -- --capture-altar

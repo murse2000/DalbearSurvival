@@ -57,6 +57,15 @@ var _paper_pos := PAPER_PANEL_POS
 var _inv_pos := INV_PANEL_POS
 var _reloading := false
 var _best_btn: Button
+var _bulk_btn: Button
+var _loadout_btn: Button
+var _lock_btn: Button
+var _bulk_modal: Control
+var _loadout_modal: Control
+var _bulk_desc: Label
+var _loadout_labels: Array = []
+var _bulk_candidates := 0
+var _bulk_value := 0
 var _paper_frame: Panel
 var _drag_layer: CanvasLayer
 var _drag_ghost: TextureRect
@@ -103,6 +112,12 @@ func _ready() -> void:
 		_test_equipment.call_deferred()
 	if "--test-drag" in _args:
 		_test_drag.call_deferred()
+	if "--test-gear-qol" in _args:
+		_test_gear_qol.call_deferred()
+	if "--capture-bulk" in _args:
+		_capture_bulk.call_deferred()
+	if "--capture-loadout" in _args:
+		_capture_loadout.call_deferred()
 
 
 func _build_drag_layer() -> void:
@@ -197,6 +212,7 @@ func _build() -> void:
 	_message.size = Vector2(668, 18) if _portrait else Vector2(1208, 20)
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_message)
+	_build_utility_modals()
 
 
 func _build_equipment_panel() -> void:
@@ -395,6 +411,17 @@ func _build_inventory_panel() -> void:
 	_best_btn.pressed.connect(_on_best_pressed)
 	panel.add_child(_best_btn)
 
+	_bulk_btn = UIKit.button("일괄 분해", Vector2(98, 24))
+	_bulk_btn.position = Vector2(16, 66)
+	_bulk_btn.add_theme_font_size_override("font_size", 10)
+	_bulk_btn.pressed.connect(_open_bulk_modal)
+	panel.add_child(_bulk_btn)
+	_loadout_btn = UIKit.button("로드아웃", Vector2(98, 24))
+	_loadout_btn.position = Vector2(120, 66)
+	_loadout_btn.add_theme_font_size_override("font_size", 10)
+	_loadout_btn.pressed.connect(_open_loadout_modal)
+	panel.add_child(_loadout_btn)
+
 	var filters := HBoxContainer.new()
 	filters.position = Vector2(16, 38)
 	filters.size = Vector2(360, 24)
@@ -417,8 +444,8 @@ func _build_inventory_panel() -> void:
 	panel.add_child(legend)
 
 	_scroll = ScrollContainer.new()
-	_scroll.position = Vector2(20, 74)
-	_scroll.size = Vector2(448, 274)
+	_scroll.position = Vector2(20, 96)
+	_scroll.size = Vector2(448, 252)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	panel.add_child(_scroll)
@@ -457,8 +484,14 @@ func _build_inventory_panel() -> void:
 	_detail_panel.add_child(_detail_icon)
 
 	_detail_name = UIKit.label("", 17, UIKit.CREAM, 3)
-	UIKit.place(_detail_name, 56, 3, 420, 24)
+	UIKit.place(_detail_name, 56, 3, 320, 24)
 	_detail_panel.add_child(_detail_name)
+	_lock_btn = UIKit.button("잠금", Vector2(84, 22))
+	UIKit.place(_lock_btn, 386, 4, 84, 22)
+	_lock_btn.add_theme_font_size_override("font_size", 10)
+	_lock_btn.visible = false
+	_lock_btn.pressed.connect(_toggle_lock_selected)
+	_detail_panel.add_child(_lock_btn)
 	_detail_type = UIKit.label("", 10, UIKit.MUTED)
 	UIKit.place(_detail_type, 56, 26, 420, 16)
 	_detail_panel.add_child(_detail_type)
@@ -481,6 +514,167 @@ func _build_inventory_panel() -> void:
 	_action_row.size = Vector2(472, 32)
 	_action_row.add_theme_constant_override("separation", 6)
 	_detail_panel.add_child(_action_row)
+
+
+func _build_utility_modals() -> void:
+	_bulk_modal = Control.new()
+	_bulk_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bulk_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bulk_modal.visible = false
+	add_child(_bulk_modal)
+	var bulk_dim := UIKit.dimmer(0.76)
+	_bulk_modal.add_child(bulk_dim)
+	var bw := 660.0 if _portrait else 560.0
+	var bh := 300.0
+	var bp := UIKit.panel(Color(0.047, 0.075, 0.114, 0.99), UIKit.GOLD, 2)
+	bp.position = Vector2(30, 400) if _portrait else Vector2(360, 210)
+	bp.size = Vector2(bw, bh)
+	bp.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bulk_modal.add_child(bp)
+	var btitle := UIKit.label("일괄 분해", 28 if _portrait else 26, UIKit.GOLD, 5)
+	btitle.position = Vector2(24, 18)
+	bp.add_child(btitle)
+	_bulk_desc = UIKit.label("", 14, UIKit.CREAM)
+	_bulk_desc.position = Vector2(26, 64)
+	_bulk_desc.size = Vector2(bw - 52, 90 if _portrait else 70)
+	_bulk_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bp.add_child(_bulk_desc)
+	var confirm_y := 220.0 if _portrait else 210.0
+	var confirm := UIKit.button("분해 실행", Vector2(190, 50))
+	confirm.position = Vector2(26, confirm_y)
+	confirm.add_theme_font_size_override("font_size", 18)
+	confirm.pressed.connect(_confirm_bulk)
+	bp.add_child(confirm)
+	var cancel := UIKit.button("취소", Vector2(140, 50))
+	cancel.position = Vector2(230, confirm_y)
+	cancel.add_theme_font_size_override("font_size", 17)
+	cancel.pressed.connect(func(): _bulk_modal.visible = false)
+	bp.add_child(cancel)
+
+	_loadout_modal = Control.new()
+	_loadout_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_loadout_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_loadout_modal.visible = false
+	add_child(_loadout_modal)
+	var load_dim := UIKit.dimmer(0.76)
+	_loadout_modal.add_child(load_dim)
+	var lw := 660.0 if _portrait else 640.0
+	var lh := 520.0 if _portrait else 430.0
+	var lp := UIKit.panel(Color(0.047, 0.075, 0.114, 0.99), UIKit.GOLD, 2)
+	lp.position = Vector2(30, 380) if _portrait else Vector2(320, 145)
+	lp.size = Vector2(lw, lh)
+	lp.mouse_filter = Control.MOUSE_FILTER_STOP
+	_loadout_modal.add_child(lp)
+	var ltitle := UIKit.label("로드아웃", 28 if _portrait else 26, UIKit.GOLD, 5)
+	ltitle.position = Vector2(24, 18)
+	lp.add_child(ltitle)
+	var lsub := UIKit.label("현재 장착 상태를 저장하거나 불러옵니다.", 13, UIKit.MUTED)
+	lsub.position = Vector2(26, 58)
+	lp.add_child(lsub)
+	_loadout_labels.clear()
+	for i in 3:
+		var row_y := 100.0 + float(i) * (104.0 if _portrait else 84.0)
+		var name := UIKit.label("로드아웃 %d" % (i + 1), 18, UIKit.CREAM)
+		name.position = Vector2(26, row_y)
+		lp.add_child(name)
+		var info := UIKit.label("", 12, UIKit.MUTED)
+		info.position = Vector2(26, row_y + 26)
+		info.size = Vector2(lw - 300, 18)
+		lp.add_child(info)
+		_loadout_labels.append(info)
+		var save := UIKit.button("저장", Vector2(76, 34))
+		save.position = Vector2(lw - 274, row_y - 2)
+		save.add_theme_font_size_override("font_size", 13)
+		save.pressed.connect(_save_loadout.bind(i))
+		lp.add_child(save)
+		var load := UIKit.button("불러오기", Vector2(94, 34))
+		load.position = Vector2(lw - 190, row_y - 2)
+		load.add_theme_font_size_override("font_size", 13)
+		load.pressed.connect(_apply_loadout.bind(i))
+		lp.add_child(load)
+		var remove := UIKit.button("×", Vector2(36, 34))
+		remove.position = Vector2(lw - 88, row_y - 2)
+		remove.add_theme_font_size_override("font_size", 16)
+		remove.pressed.connect(_clear_loadout.bind(i))
+		lp.add_child(remove)
+	var close_y := (lh - 58.0)
+	var close := UIKit.button("닫기", Vector2(160, 44))
+	close.position = Vector2((lw - 160) * 0.5, close_y)
+	close.add_theme_font_size_override("font_size", 17)
+	close.pressed.connect(func(): _loadout_modal.visible = false)
+	lp.add_child(close)
+
+
+func _count_bulk_candidates() -> Dictionary:
+	var count := 0
+	var value := 0
+	for item in Game.inventory:
+		if item.is_empty():
+			continue
+		var uid := String(item.get("uid", ""))
+		if uid == "" or Game.is_item_equipped(uid):
+			continue
+		if bool(item.get("locked", false)) or EquipmentData.is_signature(item):
+			continue
+		if not String(item.get("rarity", "common")) in ["common", "rare"]:
+			continue
+		count += 1
+		value += EquipmentData.dismantle_value(item)
+	return {"count": count, "value": value}
+
+
+func _open_bulk_modal() -> void:
+	var info := _count_bulk_candidates()
+	_bulk_candidates = int(info["count"])
+	_bulk_value = int(info["value"])
+	_bulk_desc.text = "일반·희귀 등급만 분해합니다.\n장착 중·잠금·전용·에픽 이상은 제외됩니다.\n\n대상 %d개 · 예상 달빛 조각 +%d" % [_bulk_candidates, _bulk_value]
+	_bulk_modal.visible = true
+	Audio.play_click()
+
+
+func _confirm_bulk() -> void:
+	var result := Game.bulk_dismantle(["common", "rare"])
+	_bulk_modal.visible = false
+	Audio.play_click()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.MUTED)
+	_confirm_dismantle_uid = ""
+	_refresh_all()
+
+
+func _open_loadout_modal() -> void:
+	_refresh_loadouts()
+	_loadout_modal.visible = true
+	Audio.play_click()
+
+
+func _refresh_loadouts() -> void:
+	for i in _loadout_labels.size():
+		var label: Label = _loadout_labels[i]
+		var suffix := " · 현재 친구" if not Game.loadouts[i].is_empty() and String(Game.loadouts[i].get("character", "")) == Game.selected_character else ""
+		label.text = Game.loadout_summary(i) + suffix
+		label.add_theme_color_override("font_color", UIKit.MUTED if Game.loadouts[i].is_empty() else UIKit.MINT)
+
+
+func _save_loadout(index: int) -> void:
+	var result := Game.save_loadout(index)
+	Audio.play_click()
+	_refresh_loadouts()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.CORAL)
+
+
+func _apply_loadout(index: int) -> void:
+	var result := Game.apply_loadout(index)
+	Audio.play_click()
+	_refresh_loadouts()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.CORAL)
+	_refresh_all()
+
+
+func _clear_loadout(index: int) -> void:
+	var result := Game.clear_loadout(index)
+	Audio.play_click()
+	_refresh_loadouts()
+	_show_message(String(result.get("message", "")), UIKit.MUTED)
 
 
 func _refresh_all() -> void:
@@ -771,6 +965,12 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 		check.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		check.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(check)
+	if bool(item.get("locked", false)):
+		var lock_label := UIKit.label("잠", 9, UIKit.GOLD)
+		UIKit.place(lock_label, 44, 16, 18, 14)
+		lock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(lock_label)
 
 	var affinity := EquipmentData.affinity_label(item)
 	var tooltip := "%s\n%s · %s · Lv.%d\n%s" % [
@@ -782,6 +982,8 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 	]
 	if equipped:
 		tooltip = "[장착 중]\n" + tooltip
+	if bool(item.get("locked", false)):
+		tooltip = "[잠금]\n" + tooltip
 	if affinity != "":
 		tooltip += "\n" + affinity
 		if not can_use:
@@ -847,6 +1049,8 @@ func _refresh_detail() -> void:
 		_detail_type.text = "캐릭터 주변 슬롯이나 오른쪽 격자에서 장비를 선택하세요."
 		_detail_stats.text = ""
 		_detail_weapon.text = ""
+		if _lock_btn != null:
+			_lock_btn.visible = false
 		if _detail_glow != null:
 			_detail_glow.visible = false
 		_update_paper_profile()
@@ -880,6 +1084,12 @@ func _refresh_detail() -> void:
 		EquipmentData.type_label(item), EquipmentData.rarity_name(rarity_id), lv, cap,
 		equipped_text, affinity_text,
 	]
+	var item_locked := Game.item_locked(_selected_uid)
+	if item_locked:
+		_detail_type.text += "  ·  잠금"
+	if _lock_btn != null:
+		_lock_btn.visible = true
+		_lock_btn.text = "잠금 해제" if item_locked else "잠금"
 	if Game.is_item_equipped(_selected_uid):
 		_detail_stats.text = _plain_stats_bbcode(item)
 	else:
@@ -923,7 +1133,8 @@ func _refresh_detail() -> void:
 
 	var dismantle_text := "정말 분해" if _confirm_dismantle_uid == _selected_uid else "분해"
 	var dismantle := _action_button(dismantle_text, 86)
-	dismantle.disabled = equipped_slot != "" or EquipmentData.is_signature(item)
+	dismantle.disabled = equipped_slot != "" or EquipmentData.is_signature(item) \
+		or Game.item_locked(_selected_uid)
 	dismantle.pressed.connect(_request_dismantle)
 	_action_row.add_child(dismantle)
 	_update_paper_profile()
@@ -1033,6 +1244,16 @@ func _enhance_selected() -> void:
 	_refresh_all()
 
 
+func _toggle_lock_selected() -> void:
+	if _selected_uid == "":
+		return
+	var result := Game.toggle_item_lock(_selected_uid)
+	Audio.play_click()
+	_show_message(String(result.get("message", "")), UIKit.MINT if bool(result.get("ok", false)) else UIKit.CORAL)
+	_confirm_dismantle_uid = ""
+	_refresh_all()
+
+
 func _request_dismantle() -> void:
 	if _selected_uid == "":
 		return
@@ -1086,6 +1307,16 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _bulk_modal != null and _bulk_modal.visible:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			_bulk_modal.visible = false
+			get_viewport().set_input_as_handled()
+		return
+	if _loadout_modal != null and _loadout_modal.visible:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			_loadout_modal.visible = false
+			get_viewport().set_input_as_handled()
+		return
 	if _drag_uid != "":
 		if event is InputEventMouseMotion:
 			_drag_move(event.position)
@@ -1233,6 +1464,32 @@ func _go_back() -> void:
 	Game.close_equipment()
 
 
+func _capture_bulk() -> void:
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	_open_bulk_modal()
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	await _save_capture("gear_bulk")
+
+
+func _capture_loadout() -> void:
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	_open_loadout_modal()
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	await _save_capture("gear_loadout")
+
+
+func _save_capture(shot: String) -> void:
+	await get_tree().process_frame
+	var dir := ProjectSettings.globalize_path("res://screenshots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var img := get_viewport().get_texture().get_image()
+	if _portrait:
+		shot += "_portrait"
+	img.save_png(dir + "/" + shot + ".png")
+	print("CAPTURED: ", dir + "/" + shot + ".png")
+	get_tree().quit()
+
+
 func _capture() -> void:
 	await get_tree().create_timer(0.8, true, false, true).timeout
 	await get_tree().process_frame
@@ -1333,6 +1590,62 @@ func _test_drag() -> void:
 	else:
 		push_error("DRAG TEST FAILED: %s" % str(errors))
 		get_tree().quit(1)
+
+
+func _test_gear_qol() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var old_inv: Array = Game.inventory.duplicate(true)
+	var old_eq: Dictionary = Game.equipped.duplicate(true)
+	var old_loadouts: Array = Game.loadouts.duplicate(true)
+	var old_shards := Game.shards
+	var first := Game.add_item(EquipmentData.make_item("helmet", "common", 1), false)
+	var second := Game.add_item(EquipmentData.make_item("helmet", "common", 1), false)
+	var third := Game.add_item(EquipmentData.make_item("helmet", "common", 1), false)
+	var first_uid := String(first.get("uid", ""))
+	Game.toggle_item_lock(first_uid)
+	if not Game.item_locked(first_uid):
+		errors.append("lock did not stick")
+	var blocked := Game.dismantle_item(first_uid)
+	if blocked.get("ok", false):
+		errors.append("locked item was dismantled")
+	var bulk := Game.bulk_dismantle(["common", "rare"])
+	if int(bulk.get("count", 0)) < 1:
+		errors.append("bulk dismantle removed nothing")
+	if not Game.item_locked(first_uid):
+		errors.append("bulk dismantle removed a locked item")
+	if not Game.item_by_uid(String(second.get("uid", ""))).is_empty():
+		errors.append("bulk dismantle kept an unlocked item")
+	Game.toggle_item_lock(first_uid)
+	var removed := Game.dismantle_item(first_uid)
+	if not removed.get("ok", false):
+		errors.append("unlocked item could not be dismantled")
+	var saved := Game.save_loadout(2)
+	if not saved.get("ok", false):
+		errors.append("loadout save failed")
+	var saved_slots: Dictionary = Game.loadouts[2].get("slots", {})
+	Game.equipped = {}
+	var applied := Game.apply_loadout(2)
+	if not applied.get("ok", false) or int(applied.get("count", 0)) < 1:
+		errors.append("loadout apply failed")
+	if Game.equipped.size() < saved_slots.size():
+		errors.append("loadout slots incomplete")
+	Game.inventory = old_inv
+	Game.equipped = old_eq
+	Game.loadouts = old_loadouts
+	Game.shards = old_shards
+	Game.save_settings()
+	if errors.is_empty():
+		print("GEAR QOL TEST PASS bulk=%d loadout=%d" % [
+			int(bulk.get("count", 0)), int(applied.get("count", 0)),
+		])
+		print("TEST PASS")
+	else:
+		print("GEAR QOL TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
+	get_tree().quit()
 
 
 func _test_equipment() -> void:

@@ -25,6 +25,8 @@ var _daily_btn: Button
 var _daily_modal: Control
 var _daily_modal_desc: Label
 var _daily_modal_best: Label
+var _weekly_modal: Control
+var _weekly_desc: Label
 var _page_label: Label
 var _page := 0
 var _page_count := 1
@@ -98,6 +100,8 @@ func _ready() -> void:
 		_test_swipe.call_deferred()
 	elif "--capture-daily-modal" in _args:
 		_capture_daily_modal.call_deferred()
+	elif "--capture-weekly" in _args:
+		_capture_weekly.call_deferred()
 	if "--smoke-start" in _args:
 		_start.call_deferred()
 
@@ -169,6 +173,7 @@ func _build() -> void:
 		_build_footer_landscape()
 
 	_build_daily_modal()
+	_build_weekly_modal()
 	_refresh()
 
 
@@ -212,6 +217,11 @@ func _build_header_landscape() -> void:
 	altar_btn.add_theme_font_size_override("font_size", 13)
 	altar_btn.pressed.connect(_open_altar)
 	add_child(altar_btn)
+	var weekly_btn := UIKit.button("주간 기록", Vector2(120, 30))
+	weekly_btn.position = Vector2(962, 78)
+	weekly_btn.add_theme_font_size_override("font_size", 13)
+	weekly_btn.pressed.connect(_open_weekly)
+	add_child(weekly_btn)
 
 
 func _build_header_portrait() -> void:
@@ -254,6 +264,11 @@ func _build_header_portrait() -> void:
 	altar_btn.add_theme_font_size_override("font_size", 12)
 	altar_btn.pressed.connect(_open_altar)
 	add_child(altar_btn)
+	var weekly_btn := UIKit.button("주간 기록", Vector2(120, 28))
+	weekly_btn.position = Vector2(580, 128)
+	weekly_btn.add_theme_font_size_override("font_size", 12)
+	weekly_btn.pressed.connect(_open_weekly)
+	add_child(weekly_btn)
 
 
 func _build_chips_landscape() -> void:
@@ -416,6 +431,59 @@ func _build_daily_modal() -> void:
 	cancel.add_theme_font_size_override("font_size", 18)
 	cancel.pressed.connect(_close_daily_modal)
 	panel.add_child(cancel)
+
+
+func _build_weekly_modal() -> void:
+	_weekly_modal = Control.new()
+	_weekly_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_weekly_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_weekly_modal.visible = false
+	add_child(_weekly_modal)
+	var dim := UIKit.dimmer(0.72)
+	_weekly_modal.add_child(dim)
+	var pw := 660.0 if _portrait else 620.0
+	var ph := 360.0 if _portrait else 380.0
+	var panel := UIKit.panel(Color(0.047, 0.075, 0.114, 0.99), UIKit.GOLD, 2)
+	panel.position = Vector2(30, 470) if _portrait else Vector2(330, 170)
+	panel.size = Vector2(pw, ph)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_weekly_modal.add_child(panel)
+	var over := UIKit.label("WEEKLY RECORDS", 12, UIKit.MINT)
+	over.position = Vector2(28, 22)
+	panel.add_child(over)
+	var title := UIKit.label("이번 주 기록", 30, UIKit.GOLD, 6)
+	title.position = Vector2(26, 42)
+	panel.add_child(title)
+	var sub := UIKit.label("매주 월요일 초기화 · 이번 주", 12, UIKit.MUTED)
+	sub.position = Vector2(28, 84)
+	panel.add_child(sub)
+	var line := ColorRect.new()
+	line.color = Color(0.85, 0.68, 0.35, 0.28)
+	line.position = Vector2(28, 108)
+	line.size = Vector2(pw - 56, 1)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(line)
+	_weekly_desc = UIKit.label("", 16, UIKit.CREAM)
+	_weekly_desc.position = Vector2(30, 128)
+	_weekly_desc.size = Vector2(pw - 60, 170 if not _portrait else 140)
+	_weekly_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(_weekly_desc)
+	var close := UIKit.button("닫기", Vector2(180, 48))
+	close.position = Vector2((pw - 180) * 0.5, ph - 72)
+	close.add_theme_font_size_override("font_size", 18)
+	close.pressed.connect(func(): _weekly_modal.visible = false)
+	panel.add_child(close)
+
+
+func _open_weekly() -> void:
+	Game.ensure_week()
+	var lines: Array = Game.weekly_lines()
+	var text := "\n".join(lines)
+	if int(Game.weekly_records.get("runs", 0)) <= 0:
+		text = "아직 이번 주 기록이 없습니다.\n전선·무한·일일 도전을 시작해 보세요."
+	_weekly_desc.text = text
+	_weekly_modal.visible = true
+	Audio.play_click()
 
 
 func _build_carousel() -> void:
@@ -972,6 +1040,11 @@ func _input(event: InputEvent) -> void:
 				_confirm_daily()
 			get_viewport().set_input_as_handled()
 			return
+		if _weekly_modal != null and _weekly_modal.visible:
+			if event.keycode == KEY_ESCAPE:
+				_weekly_modal.visible = false
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
 			_start()
 			get_viewport().set_input_as_handled()
@@ -1111,6 +1184,13 @@ func _capture_daily_modal() -> void:
 	_start_daily()
 	await get_tree().create_timer(0.3, true, false, true).timeout
 	await _capture("daily_modal")
+
+
+func _capture_weekly() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	_open_weekly()
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	await _capture("weekly")
 
 
 func _capture(shot: String = "stage_select") -> void:

@@ -185,6 +185,8 @@ func _ready() -> void:
 		_test_status()
 	elif "--test-sets" in _args:
 		_test_sets()
+	elif "--test-weekly" in _args:
+		_test_weekly()
 	elif "--test-upgrade" in _args:
 		_test_upgrade()
 	elif "--capture-evolution" in _args:
@@ -1815,6 +1817,46 @@ func _test_upgrade() -> void:
 	await get_tree().create_timer(0.5, true, false, true).timeout
 	print("UPGRADE TEST: weapons=", player.weapon_levels, " passives=", player.passive_levels,
 		" paused=", get_tree().paused, " running=", Game.running)
+	get_tree().quit()
+
+
+func _test_weekly() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var old_key := Game.weekly_key
+	var old_records: Dictionary = Game.weekly_records.duplicate(true)
+	Game.weekly_key = Game.current_week_key()
+	Game.weekly_records = {}
+	Game.record_weekly_campaign("forest", "normal", 100.0, 5, 40, false)
+	Game.record_weekly_campaign("hive", "dark", 130.0, 9, 60, true)
+	Game.record_weekly_endless("forest", 420.0, 18, 300)
+	Game.record_weekly_daily(120.0, 70, true)
+	var camp: Dictionary = Game.weekly_records.get("campaign", {})
+	if float(camp.get("best_time", 0.0)) < 130.0:
+		errors.append("weekly campaign best not updated")
+	if String(camp.get("stage", "")) != "hive":
+		errors.append("weekly campaign stage not stored")
+	var endless: Dictionary = Game.weekly_records.get("endless", {})
+	if float(endless.get("best_time", 0.0)) < 420.0:
+		errors.append("weekly endless best missing")
+	var daily: Dictionary = Game.weekly_records.get("daily", {})
+	if int(daily.get("clears", 0)) < 1:
+		errors.append("weekly daily clear missing")
+	if Game.weekly_lines().is_empty():
+		errors.append("weekly lines empty")
+	if Game.current_week_key() == "":
+		errors.append("week key empty")
+	Game.weekly_key = old_key
+	Game.weekly_records = old_records
+	Game.save_settings()
+	if errors.is_empty():
+		print("WEEKLY TEST PASS key=%s runs=%d" % [Game.current_week_key(), int(old_records.get("runs", 0))])
+		print("TEST PASS")
+	else:
+		print("WEEKLY TEST FAIL")
+		for e in errors:
+			print("  ", e)
+		print("TEST FAIL")
 	get_tree().quit()
 
 

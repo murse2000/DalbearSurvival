@@ -65,6 +65,8 @@ var achievement_return := "stage_select"
 var achievements := {}
 var altar_levels := {}
 var altar_return := "stage_select"
+var weekly_key := ""
+var weekly_records := {}
 var stats := {
 	"total_kills": 0, "boss_kills": 0, "runs": 0, "wins": 0,
 	"daily_clears": 0, "max_level": 1, "max_evolutions": 0,
@@ -75,6 +77,7 @@ var stats := {
 # ---------------------------------------------------------------- equipment
 var inventory: Array = []
 var equipped := {}
+var loadouts: Array = [{}, {}, {}]
 var shards := 0
 var next_item_uid := 1
 var equipment_initialized := false
@@ -757,7 +760,11 @@ func dismantle_item(uid: String) -> Dictionary:
 	if is_item_equipped(uid):
 		return {"ok": false, "message": "장착 중인 장비는 분해할 수 없습니다."}
 	var found: Dictionary = item_by_uid(uid)
-	if not found.is_empty() and EquipmentData.is_signature(found):
+	if found.is_empty():
+		return {"ok": false, "message": "장비를 찾을 수 없습니다."}
+	if bool(found.get("locked", false)):
+		return {"ok": false, "message": "잠근 장비는 분해할 수 없습니다."}
+	if EquipmentData.is_signature(found):
 		return {"ok": false, "message": "전용 장비는 분해할 수 없습니다."}
 	for i in inventory.size():
 		var item: Dictionary = inventory[i]
@@ -771,6 +778,110 @@ func dismantle_item(uid: String) -> Dictionary:
 		equipment_changed.emit()
 		return {"ok": true, "message": "%s 분해 · 달빛 조각 +%d" % [name, value], "value": value}
 	return {"ok": false, "message": "장비를 찾을 수 없습니다."}
+
+
+func item_locked(uid: String) -> bool:
+	var item := item_by_uid(uid)
+	return bool(item.get("locked", false)) if not item.is_empty() else false
+
+
+func toggle_item_lock(uid: String) -> Dictionary:
+	var item := item_by_uid(uid)
+	if item.is_empty():
+		return {"ok": false, "message": "장비를 찾을 수 없습니다."}
+	var locked := not bool(item.get("locked", false))
+	item["locked"] = locked
+	save_settings()
+	equipment_changed.emit()
+	return {
+		"ok": true, "locked": locked,
+		"message": "잠금 설정" if locked else "잠금 해제",
+	}
+
+
+func bulk_dismantle(rarities: Array = ["common", "rare"]) -> Dictionary:
+	var count := 0
+	var value_total := 0
+	for i in range(inventory.size() - 1, -1, -1):
+		var item: Dictionary = inventory[i]
+		if item.is_empty():
+			continue
+		if String(item.get("uid", "")) == "":
+			continue
+		if is_item_equipped(String(item["uid"])):
+			continue
+		if bool(item.get("locked", false)) or EquipmentData.is_signature(item):
+			continue
+		if not String(item.get("rarity", "common")) in rarities:
+			continue
+		value_total += EquipmentData.dismantle_value(item)
+		inventory.remove_at(i)
+		count += 1
+	if count > 0:
+		shards += value_total
+		save_settings()
+		equipment_changed.emit()
+	return {
+		"ok": count > 0, "count": count, "value": value_total,
+		"message": ("%d개 분해 · 달빛 조각 +%d" % [count, value_total]) if count > 0 else "분해할 일반·희귀 장비가 없습니다.",
+	}
+
+
+func save_loadout(index: int) -> Dictionary:
+	if index < 0 or index >= loadouts.size():
+		return {"ok": false, "message": "로드아웃 번호가 잘못되었습니다."}
+	var slots := {}
+	for slot in EquipmentData.SLOT_ORDER:
+		var item := equipped_item(slot)
+		if not item.is_empty():
+			slots[slot] = String(item.get("uid", ""))
+	if slots.is_empty():
+		return {"ok": false, "message": "장착한 장비가 없습니다."}
+	loadouts[index] = {"character": selected_character, "slots": slots}
+	save_settings()
+	return {"ok": true, "message": "로드아웃 %d 저장" % (index + 1), "count": slots.size()}
+
+
+func apply_loadout(index: int) -> Dictionary:
+	if index < 0 or index >= loadouts.size():
+		return {"ok": false, "message": "로드아웃 번호가 잘못되었습니다."}
+	var data: Dictionary = loadouts[index]
+	if data.is_empty():
+		return {"ok": false, "message": "빈 로드아웃입니다."}
+	if String(data.get("character", "")) != selected_character:
+		return {"ok": false, "message": "다른 친구의 로드아웃입니다."}
+	var slots: Dictionary = data.get("slots", {})
+	equipped = {}
+	var applied := 0
+	for slot in slots.keys():
+		var uid := String(slots[slot])
+		if item_by_uid(uid).is_empty():
+			continue
+		var result := equip_item(uid, String(slot))
+		if result.get("ok", false):
+			applied += 1
+	return {
+		"ok": applied > 0, "count": applied,
+		"message": ("로드아웃 %d 적용 · %d개" % [index + 1, applied]) if applied > 0 else "적용할 장비가 없습니다.",
+	}
+
+
+func clear_loadout(index: int) -> Dictionary:
+	if index < 0 or index >= loadouts.size():
+		return {"ok": false, "message": "로드아웃 번호가 잘못되었습니다."}
+	loadouts[index] = {}
+	save_settings()
+	return {"ok": true, "message": "로드아웃 %d 삭제" % (index + 1)}
+
+
+func loadout_summary(index: int) -> String:
+	if index < 0 or index >= loadouts.size():
+		return "비어 있음"
+	var data: Dictionary = loadouts[index]
+	if data.is_empty():
+		return "비어 있음"
+	var slots: Dictionary = data.get("slots", {})
+	return "%d개 · %s" % [slots.size(), CharacterData.display_name(String(data.get("character", "dal")))]
 
 
 func _note_legendary_gear() -> void:
@@ -1337,15 +1448,19 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 	boss = null
 	miniboss = null
 	var survived := time
+	ensure_week()
 	if mode == "endless":
 		record_endless_result(survived, level, kills)
+		record_weekly_endless(stage_id, survived, level, kills)
 	elif mode == "daily":
 		record_daily_result(survived, level, kills, victory)
+		record_weekly_daily(survived, kills, victory)
 		record["best_time"] = maxf(float(record["best_time"]), survived)
 		record["best_level"] = maxi(int(record["best_level"]), level)
 		record["best_kills"] = maxi(int(record["best_kills"]), kills)
 	else:
 		record_stage_result(stage_id, difficulty_id, victory, boss_killed, survived, level, kills)
+		record_weekly_campaign(stage_id, difficulty_id, survived, level, kills, victory)
 		if victory:
 			record["victory"] = true
 		record["best_time"] = maxf(float(record["best_time"]), survived)
@@ -1388,6 +1503,104 @@ func record_daily_result(survived: float, lv: int, kill_count: int, victory: boo
 	rec["stage"] = stage_id
 	rec["diff"] = difficulty_id
 	daily_records[key] = rec
+
+
+func current_week_key() -> String:
+	var days := int(floor(Time.get_unix_time_from_system() / 86400.0))
+	var week := int(floor((float(days) + 3.0) / 7.0))
+	return "W%05d" % week
+
+
+func ensure_week() -> void:
+	var key := current_week_key()
+	if weekly_key == key and not weekly_records.is_empty():
+		return
+	weekly_key = key
+	weekly_records = {
+		"campaign": {
+			"best_time": 0.0, "best_kills": 0, "best_level": 0,
+			"stage": "", "diff": "", "victories": 0,
+		},
+		"endless": {"best_time": 0.0, "best_kills": 0, "best_level": 0, "stage": ""},
+		"daily": {"best_time": 0.0, "best_kills": 0, "clears": 0},
+		"runs": 0, "kills": 0,
+	}
+
+
+func record_weekly_campaign(stage: String, diff: String, survived: float,
+		lv: int, kill_count: int, victory: bool) -> void:
+	ensure_week()
+	var rec: Dictionary = weekly_records["campaign"]
+	if survived > float(rec.get("best_time", 0.0)) \
+			or (is_equal_approx(survived, float(rec.get("best_time", 0.0))) \
+			and kill_count > int(rec.get("best_kills", 0))):
+		rec["best_time"] = survived
+		rec["best_kills"] = kill_count
+		rec["best_level"] = lv
+		rec["stage"] = stage
+		rec["diff"] = diff
+	if victory:
+		rec["victories"] = int(rec.get("victories", 0)) + 1
+	weekly_records["campaign"] = rec
+	weekly_records["runs"] = int(weekly_records.get("runs", 0)) + 1
+	weekly_records["kills"] = int(weekly_records.get("kills", 0)) + kill_count
+
+
+func record_weekly_endless(stage: String, survived: float, lv: int, kill_count: int) -> void:
+	ensure_week()
+	var rec: Dictionary = weekly_records["endless"]
+	if survived > float(rec.get("best_time", 0.0)) \
+			or (is_equal_approx(survived, float(rec.get("best_time", 0.0))) \
+			and kill_count > int(rec.get("best_kills", 0))):
+		rec["best_time"] = survived
+		rec["best_kills"] = kill_count
+		rec["best_level"] = lv
+		rec["stage"] = stage
+	weekly_records["endless"] = rec
+	weekly_records["runs"] = int(weekly_records.get("runs", 0)) + 1
+	weekly_records["kills"] = int(weekly_records.get("kills", 0)) + kill_count
+
+
+func record_weekly_daily(survived: float, kill_count: int, victory: bool) -> void:
+	ensure_week()
+	var rec: Dictionary = weekly_records["daily"]
+	rec["best_time"] = maxf(float(rec.get("best_time", 0.0)), survived)
+	rec["best_kills"] = maxi(int(rec.get("best_kills", 0)), kill_count)
+	if victory:
+		rec["clears"] = int(rec.get("clears", 0)) + 1
+	weekly_records["daily"] = rec
+	weekly_records["runs"] = int(weekly_records.get("runs", 0)) + 1
+	weekly_records["kills"] = int(weekly_records.get("kills", 0)) + kill_count
+
+
+func weekly_lines() -> Array:
+	ensure_week()
+	var lines: Array = []
+	var campaign: Dictionary = weekly_records.get("campaign", {})
+	if float(campaign.get("best_time", 0.0)) > 0.0:
+		var stage := GameData.stage(String(campaign.get("stage", "forest")))
+		var diff := GameData.difficulty(String(campaign.get("diff", "normal")))
+		lines.append("전선  %s · %s · %s · %d킬 · 클리어 %d" % [
+			String(stage["short"]), String(diff["name"]),
+			GameData.format_time(float(campaign["best_time"])),
+			int(campaign.get("best_kills", 0)), int(campaign.get("victories", 0)),
+		])
+	var endless: Dictionary = weekly_records.get("endless", {})
+	if float(endless.get("best_time", 0.0)) > 0.0:
+		lines.append("무한  %s · %d킬" % [
+			GameData.format_time(float(endless["best_time"])),
+			int(endless.get("best_kills", 0)),
+		])
+	var daily: Dictionary = weekly_records.get("daily", {})
+	if int(daily.get("clears", 0)) > 0 or float(daily.get("best_time", 0.0)) > 0.0:
+		lines.append("일일  %d회 클리어 · 최고 %s" % [
+			int(daily.get("clears", 0)),
+			GameData.format_time(float(daily.get("best_time", 0.0))),
+		])
+	lines.append("주간  %d회 도전 · %d킬" % [
+		int(weekly_records.get("runs", 0)), int(weekly_records.get("kills", 0)),
+	])
+	return lines
 
 
 func record_stage_result(stage: String, diff: String, victory: bool,
@@ -1492,8 +1705,11 @@ func save_settings() -> void:
 	cfg.set_value("progress", "stats", stats)
 	cfg.set_value("progress", "achievements", achievements)
 	cfg.set_value("altar", "levels", altar_levels)
+	cfg.set_value("weekly", "key", weekly_key)
+	cfg.set_value("weekly", "records", weekly_records)
 	cfg.set_value("equipment", "inventory", inventory)
 	cfg.set_value("equipment", "equipped", equipped)
+	cfg.set_value("equipment", "loadouts", loadouts)
 	cfg.set_value("equipment", "shards", shards)
 	cfg.set_value("equipment", "next_uid", next_item_uid)
 	cfg.set_value("equipment", "initialized", equipment_initialized)
@@ -1541,12 +1757,23 @@ func load_record() -> void:
 	var loaded_altar = cfg.get_value("altar", "levels", {})
 	if loaded_altar is Dictionary:
 		altar_levels = loaded_altar
+	var loaded_weekly_key := String(cfg.get_value("weekly", "key", ""))
+	var loaded_weekly = cfg.get_value("weekly", "records", {})
+	if loaded_weekly is Dictionary:
+		weekly_key = loaded_weekly_key
+		weekly_records = loaded_weekly
+	ensure_week()
 	var inv = cfg.get_value("equipment", "inventory", [])
 	if inv is Array:
 		inventory = inv
 	var eq = cfg.get_value("equipment", "equipped", {})
 	if eq is Dictionary:
 		equipped = eq
+	var loaded_loadouts = cfg.get_value("equipment", "loadouts", [])
+	if loaded_loadouts is Array:
+		loadouts = loaded_loadouts
+	while loadouts.size() < 3:
+		loadouts.append({})
 	shards = int(cfg.get_value("equipment", "shards", 0))
 	next_item_uid = int(cfg.get_value("equipment", "next_uid", 1))
 	equipment_initialized = bool(cfg.get_value("equipment", "initialized", false))
