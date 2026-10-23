@@ -534,6 +534,61 @@ func _miniboss_behavior(delta: float, dir: Vector2, dist: float) -> void:
 			if mini_teleport_cd <= 0.0 and dist < 520.0:
 				mini_teleport_cd = 4.8
 				_miniboss_blink()
+		"mirror":
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0 and dist < 560.0:
+				_mirror_fan()
+				mini_attack_cd = 3.2
+			mini_teleport_cd -= delta
+			if mini_teleport_cd <= 0.0 and dist < 500.0:
+				mini_teleport_cd = 4.2
+				_miniboss_blink()
+		"chrono":
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0 and dist < 520.0:
+				_chrono_wave()
+				mini_attack_cd = 3.4
+			mini_teleport_cd -= delta
+			if mini_teleport_cd <= 0.0 and dist < 520.0:
+				mini_teleport_cd = 3.8
+				_miniboss_blink()
+		"grave":
+			mini_attack_cd -= delta
+			if mini_attack_cd <= 0.0 and dist < 620.0:
+				_grave_rain()
+				mini_attack_cd = 3.0
+			mini_summon_cd -= delta
+			if mini_summon_cd <= 0.0:
+				_miniboss_summon()
+				mini_summon_cd = 6.5
+		"captain":
+			if slam_charge >= 0.0:
+				slam_charge -= delta
+				if slam_charge <= 0.0:
+					_fire_heart_pulse()
+			else:
+				mini_attack_cd -= delta
+				if mini_attack_cd <= 0.0 and dist < 380.0:
+					_heart_pulse()
+					mini_attack_cd = 4.0
+			mini_teleport_cd -= delta
+			if mini_teleport_cd <= 0.0 and dist < 520.0:
+				mini_teleport_cd = 4.6
+				_miniboss_blink()
+		"genesis":
+			if slam_charge >= 0.0:
+				slam_charge -= delta
+				if slam_charge <= 0.0:
+					_fire_slam()
+			else:
+				mini_attack_cd -= delta
+				if mini_attack_cd <= 0.0 and dist < 380.0:
+					_start_slam()
+					mini_attack_cd = 4.2
+			mini_summon_cd -= delta
+			if mini_summon_cd <= 0.0:
+				_miniboss_summon()
+				mini_summon_cd = 7.0
 		_:
 			mini_attack_cd -= delta
 			if mini_attack_cd <= 0.0:
@@ -614,7 +669,18 @@ func _miniboss_blink() -> void:
 
 # ---------------------------------------------------------------- boss
 func _boss_move(delta: float, dir: Vector2, dist: float) -> void:
-	var keep := 160.0 if boss_style == "queen" else 190.0
+	var keep := 190.0
+	match boss_style:
+		"queen":
+			keep = 160.0
+		"heart":
+			keep = 170.0
+		"grave":
+			keep = 210.0
+		"mirror", "chrono":
+			keep = 230.0
+		"genesis":
+			keep = 245.0
 	if dist > keep:
 		global_position += dir * speed * delta
 	else:
@@ -677,6 +743,83 @@ func _boss_attacks(delta: float) -> void:
 					manager.spawn_enemy_orb(start, Vector2.from_angle(spiral_angle) * 165.0, damage * 0.45)
 					spiral_angle += 0.43
 					spiral_left -= 1
+		"mirror":
+			boss_orb_cd -= delta
+			if boss_orb_cd <= 0.0:
+				_mirror_fan()
+				boss_orb_cd = 2.4 if enraged else 3.2
+			boss_beam_cd -= delta
+			if beam_charge >= 0.0:
+				beam_charge -= delta
+				_update_beam()
+				if beam_charge <= 0.0:
+					_fire_beam()
+			elif boss_beam_cd <= 0.0:
+				_start_beam("mirror")
+			boss_summon_cd -= delta
+			if boss_summon_cd <= 0.0:
+				_boss_summon()
+				boss_summon_cd = 8.5
+		"chrono":
+			boss_orb_cd -= delta
+			if boss_orb_cd <= 0.0:
+				_chrono_wave()
+				boss_orb_cd = 2.8 if enraged else 3.6
+			boss_beam_cd -= delta
+			if beam_charge >= 0.0:
+				beam_charge -= delta
+				_update_beam()
+				if beam_charge <= 0.0:
+					_fire_beam()
+			elif boss_beam_cd <= 0.0:
+				_start_beam("chrono")
+			boss_summon_cd -= delta
+			if boss_summon_cd <= 0.0:
+				_boss_summon()
+				boss_summon_cd = 9.0
+		"grave":
+			boss_orb_cd -= delta
+			if boss_orb_cd <= 0.0:
+				_grave_rain()
+				boss_orb_cd = 2.4 if enraged else 3.0
+			boss_summon_cd -= delta
+			if boss_summon_cd <= 0.0:
+				_boss_summon()
+				boss_summon_cd = 6.5 if enraged else 8.0
+		"heart":
+			if slam_charge >= 0.0:
+				slam_charge -= delta
+				if slam_charge <= 0.0:
+					_fire_heart_pulse()
+			boss_orb_cd -= delta
+			if boss_orb_cd <= 0.0:
+				_heart_pulse()
+				boss_orb_cd = 2.6 if enraged else 3.4
+			boss_beam_cd -= delta
+			if beam_charge >= 0.0:
+				beam_charge -= delta
+				_update_beam()
+				if beam_charge <= 0.0:
+					_fire_beam()
+			elif boss_beam_cd <= 0.0:
+				_start_beam("heart")
+		"genesis":
+			boss_orb_cd -= delta
+			if boss_orb_cd <= 0.0:
+				_genesis_halo()
+				boss_orb_cd = 2.5 if enraged else 3.4
+			boss_beam_cd -= delta
+			if beam_charge >= 0.0:
+				beam_charge -= delta
+				_update_beam()
+				if beam_charge <= 0.0:
+					_fire_beam()
+			elif boss_beam_cd <= 0.0:
+				_start_beam("genesis")
+			boss_summon_cd -= delta
+			if boss_summon_cd <= 0.0:
+				_boss_summon()
+				boss_summon_cd = 7.0 if enraged else 9.0
 		_:
 			boss_orb_cd -= delta
 			if boss_orb_cd <= 0.0:
@@ -686,6 +829,76 @@ func _boss_attacks(delta: float) -> void:
 			if boss_summon_cd <= 0.0:
 				_boss_summon()
 				boss_summon_cd = 8.5
+
+
+func _mirror_fan() -> void:
+	var aim: Vector2 = (player.global_position + Vector2(0, -10) - global_position).normalized()
+	var offsets := [Vector2(-54, -12), Vector2(54, -12)]
+	for offset in offsets:
+		var start: Vector2 = global_position + offset
+		for i in 6:
+			var a := deg_to_rad(10.0) * (float(i) - 2.5)
+			manager.spawn_enemy_orb(start, aim.rotated(a) * 205.0, damage * 0.45)
+		FX.rune(start, Color(0.7, 0.96, 1.0), 54.0, 0.45)
+	FX.float_text(global_position + Vector2(0, -40), "거울 분열", Color(0.8, 0.98, 1.0), 20)
+	FX.ring(global_position, Color(0.62, 0.92, 1.0), 110.0, 0.35)
+	Audio.play("pulse", 1.25, -7.0)
+	FX.shake(2.0, 0.18)
+
+
+func _chrono_wave() -> void:
+	var start := global_position + Vector2(0, -10)
+	var count := 18
+	for i in count:
+		var a := TAU * float(i) / float(count) + age * 0.45
+		var speed := 220.0 if i % 2 == 0 else 125.0
+		manager.spawn_enemy_orb(start, Vector2.from_angle(a) * speed, damage * 0.42)
+	FX.ring(start, Color(1.0, 0.86, 0.42), 130.0, 0.45)
+	FX.speed_lines(0.42, Color(1.0, 0.88, 0.46))
+	FX.float_text(global_position + Vector2(0, -42), "시간 왜곡", Color(1.0, 0.92, 0.6), 20)
+	Audio.play("pulse", 0.72, -7.0)
+	FX.shake(2.4, 0.22)
+
+
+func _grave_rain() -> void:
+	var center: Vector2 = player.global_position
+	for i in 8:
+		var pos := center + Vector2(randf_range(-180.0, 180.0), randf_range(-300.0, -210.0))
+		manager.spawn_enemy_orb(pos, Vector2(randf_range(-18.0, 18.0), 235.0), damage * 0.5)
+		FX.rune(pos, Color(0.66, 0.5, 1.0), 42.0, 0.35)
+	FX.float_text(center + Vector2(0, -190), "별의 비", Color(0.78, 0.64, 1.0), 20)
+	Audio.play("pulse", 0.85, -8.0)
+
+
+func _heart_pulse() -> void:
+	slam_pos = global_position
+	slam_charge = 0.72
+	FX.rune(slam_pos, Color(1.0, 0.55, 0.64), 230.0, 0.72)
+	FX.ring(slam_pos, Color(1.0, 0.42, 0.56), 240.0, 0.7, "halo")
+	FX.float_text(global_position + Vector2(0, -42), "심장 박동!", Color(1.0, 0.62, 0.7), 22)
+	Audio.play("boss", 1.35, -9.0)
+
+
+func _fire_heart_pulse() -> void:
+	slam_charge = -1.0
+	manager.player_damage_area(slam_pos, 215.0, damage * 0.85)
+	FX.explosion(slam_pos, Color(1.0, 0.4, 0.52), 1.2)
+	FX.ring(slam_pos, Color(1.0, 0.72, 0.78), 250.0, 0.5)
+	FX.shake(8.0, 0.4)
+
+
+func _genesis_halo() -> void:
+	var start := global_position + Vector2(0, -12)
+	var count := 22
+	for i in count:
+		var a := TAU * float(i) / float(count) + age * 0.2
+		manager.spawn_enemy_orb(start, Vector2.from_angle(a) * 175.0, damage * 0.48)
+	FX.ring(start, Color(1.0, 0.94, 0.62), 160.0, 0.5)
+	FX.ring(start, Color(1.0, 0.86, 0.4), 210.0, 0.4, "halo")
+	FX.float_text(global_position + Vector2(0, -46), "태초의 심판", Color(1.0, 0.97, 0.8), 22)
+	Audio.play("pulse", 0.58, -5.0)
+	FX.flash(Color(1.0, 0.9, 0.55), 0.2, 0.4)
+	FX.shake(3.0, 0.25)
 
 
 func _boss_orbs() -> void:
@@ -746,20 +959,43 @@ func _boss_summon() -> void:
 		FX.particles(pos, "star", color, 8, 0.5, 30, 110, 0.28, 180, Vector2.ZERO, true)
 
 
+func _beam_visual(style: String) -> Dictionary:
+	match style:
+		"sentinel":
+			return {"glow": Color(1.0, 0.35, 0.2, 0.14), "core": Color(1.0, 0.75, 0.5, 0.85),
+				"width": 16.0, "core_width": 3.0}
+		"mirror":
+			return {"glow": Color(0.55, 0.9, 1.0, 0.14), "core": Color(0.85, 0.98, 1.0, 0.9),
+				"width": 24.0, "core_width": 4.0}
+		"chrono":
+			return {"glow": Color(1.0, 0.78, 0.35, 0.15), "core": Color(1.0, 0.94, 0.68, 0.9),
+				"width": 22.0, "core_width": 4.0}
+		"grave":
+			return {"glow": Color(0.65, 0.45, 1.0, 0.16), "core": Color(0.86, 0.72, 1.0, 0.9),
+				"width": 28.0, "core_width": 5.0}
+		"heart":
+			return {"glow": Color(1.0, 0.35, 0.5, 0.16), "core": Color(1.0, 0.7, 0.78, 0.9),
+				"width": 26.0, "core_width": 5.0}
+		"genesis":
+			return {"glow": Color(1.0, 0.9, 0.55, 0.18), "core": Color(1.0, 0.99, 0.88, 0.95),
+				"width": 32.0, "core_width": 6.0}
+	return {"glow": Color(1.0, 0.15, 0.35, 0.16), "core": Color(1.0, 0.55, 0.65, 0.85),
+		"width": 22.0, "core_width": 4.0}
+
+
 func _start_beam(style: String = "ship") -> void:
 	beam_style = style
 	beam_charge = 0.95
 	beam_end = player.global_position + Vector2(0, -10)
-	var col := Color(1.0, 0.15, 0.35, 0.16)
-	var col2 := Color(1.0, 0.55, 0.65, 0.85)
-	var w1 := 22.0
-	var w2 := 4.0
+	var vis := _beam_visual(style)
+	var col: Color = vis["glow"]
+	var col2: Color = vis["core"]
+	var w1 := float(vis["width"])
+	var w2 := float(vis["core_width"])
 	if style == "sentinel":
-		col = Color(1.0, 0.35, 0.2, 0.14)
-		col2 = Color(1.0, 0.75, 0.5, 0.85)
-		w1 = 16.0
-		w2 = 3.0
 		Audio.play("laser", 0.55, -10.0)
+	elif style in ["mirror", "chrono", "grave", "heart", "genesis"]:
+		Audio.play("boss", 1.08, -8.0)
 	else:
 		Audio.play("boss", 1.15, -8.0)
 	beam_line = Line2D.new()
@@ -793,12 +1029,11 @@ func _update_beam() -> void:
 	beam_line2.add_point(start)
 	beam_line2.add_point(beam_end)
 	var pulse := 0.5 + 0.5 * absf(sin(age * 22.0))
-	if beam_style == "sentinel":
-		beam_line.default_color = Color(1.0, 0.35, 0.2, 0.10 + 0.16 * pulse)
-		beam_line2.default_color = Color(1.0, 0.75, 0.5, 0.55 + 0.4 * pulse)
-	else:
-		beam_line.default_color = Color(1.0, 0.15, 0.35, 0.10 + 0.16 * pulse)
-		beam_line2.default_color = Color(1.0, 0.55, 0.65, 0.55 + 0.4 * pulse)
+	var vis := _beam_visual(beam_style)
+	var glow: Color = vis["glow"]
+	var core: Color = vis["core"]
+	beam_line.default_color = Color(glow.r, glow.g, glow.b, 0.10 + 0.16 * pulse)
+	beam_line2.default_color = Color(core.r, core.g, core.b, 0.55 + 0.4 * pulse)
 
 
 func _fire_beam() -> void:
@@ -815,8 +1050,9 @@ func _fire_beam() -> void:
 		boss_beam_cd = 8.0 if not enraged else 5.5
 	else:
 		beam_cd = 3.4
-	var width := 46.0 if beam_style == "ship" else 30.0
-	var col := Color(1.0, 0.42, 0.55) if beam_style == "ship" else Color(1.0, 0.65, 0.35)
+	var vis := _beam_visual(beam_style)
+	var width := float(vis["width"]) * (2.1 if boss else 1.9)
+	var col: Color = vis["core"]
 	if player != null and is_instance_valid(player):
 		var closest := Geometry2D.get_closest_point_to_segment(player.global_position, start, end)
 		var hit_radius := width * 0.5

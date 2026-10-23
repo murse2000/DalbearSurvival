@@ -1833,6 +1833,8 @@ func _test_final_fronts() -> void:
 	var errors: Array = []
 	var old_stage := Game.stage_id
 	var old_time := Game.time
+	var old_invuln: float = float(player.invuln)
+	player.invuln = 999.0
 	manager.spawn_timer = 9999.0
 	for id in ["mirror", "chrono", "grave", "heart", "genesis"]:
 		Game.stage_id = id
@@ -1862,18 +1864,37 @@ func _test_final_fronts() -> void:
 		if boss_node == null or not bool(boss_node.get("boss")):
 			errors.append("%s boss spawn failed" % id)
 		if boss_node != null and is_instance_valid(boss_node):
+			var boss_before: int = int(manager.projectiles.get_child_count())
+			boss_node.set("boss_orb_cd", 0.0)
+			boss_node.set("boss_beam_cd", 999.0)
+			boss_node.set("boss_summon_cd", 999.0)
+			boss_node._boss_attacks(0.02)
+			if manager.projectiles.get_child_count() <= boss_before \
+					and float(boss_node.get("slam_charge")) < 0.0:
+				errors.append("%s boss pattern did not fire" % id)
 			boss_node.queue_free()
+		manager.clear_enemy_projectiles()
 		manager.enemies.clear()
 		Game.boss = null
 		manager._spawn_miniboss(String(st["minibosses"][0][1]))
 		if Game.miniboss == null or String(Game.miniboss.get("kind")) != String(st["minibosses"][0][1]):
 			errors.append("%s miniboss spawn failed" % id)
 		if Game.miniboss != null and is_instance_valid(Game.miniboss):
-			Game.miniboss.queue_free()
+			var mini_node = Game.miniboss
+			var mini_before: int = int(manager.projectiles.get_child_count())
+			mini_node.set("mini_attack_cd", 0.0)
+			mini_node.set("mini_teleport_cd", 999.0)
+			mini_node.set("mini_summon_cd", 999.0)
+			mini_node._miniboss_behavior(0.02, Vector2.RIGHT, 220.0)
+			if manager.projectiles.get_child_count() <= mini_before \
+					and float(mini_node.get("slam_charge")) < 0.0:
+				errors.append("%s miniboss pattern did not fire" % id)
+			mini_node.queue_free()
 		manager.enemies.clear()
 		Game.miniboss = null
 	Game.stage_id = old_stage
 	Game.time = old_time
+	player.invuln = old_invuln
 	manager.spawn_timer = 1.0
 	if errors.is_empty():
 		print("FINAL FRONTS TEST PASS stages=5 bosses=5 minibosses=5 enemies=%d" % GameData.ENEMIES.size())
