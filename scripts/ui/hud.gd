@@ -347,8 +347,10 @@ func _fit_ui() -> void:
 	if _stage_chip != null:
 		_stage_chip.visible = not portrait
 	if _xp_bg != null:
+		_xp_bg.position = Vector2(0, 0 if portrait else vp.y - 96.0)
 		_xp_bg.size = Vector2(vp.x, 18)
 	if xp_bar != null:
+		xp_bar.position = Vector2(0, 0 if portrait else vp.y - 96.0)
 		xp_bar.size = Vector2(vp.x, 14)
 	if _timer_panel != null:
 		_timer_panel.position = Vector2(vp.x * 0.5 - 120.0, 20)
@@ -361,9 +363,9 @@ func _fit_ui() -> void:
 		boss_panel.position = Vector2(vp.x * 0.5 - 250.0, boss_y)
 	var bottom_y := (vp.y - 96.0) if portrait else (vp.y - 74.0)
 	if hp_panel != null:
-		# Portrait puts HP under the level/stage chips; the bottom row is kept
-		# for weapons and passives so the two do not overlap.
-		hp_panel.position = Vector2(24, 110) if portrait else Vector2(24, bottom_y)
+		# Keep HP away from the hands in both orientations. In landscape it
+		# sits under the level/stage chips, clear of the joystick.
+		hp_panel.position = Vector2(24, 110)
 	if _weapon_panel != null:
 		_weapon_panel.position = Vector2(24.0, vp.y - 390.0) if portrait \
 			else Vector2(vp.x * 0.5 - 258.0, bottom_y)
