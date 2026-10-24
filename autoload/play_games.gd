@@ -100,7 +100,7 @@ func _check_startup_auth() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_RESUMED and _returned_from_play_games:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
 		_returned_from_play_games = false
 		refresh_account()
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -125,7 +125,7 @@ func status_text() -> String:
 	if not available:
 		return "Google Play Games · Android에서만 사용 가능"
 	if not signed_in:
-		return "Google Play Games · 로그인 필요"
+		return "Google Play Games · 로그인 실패" if not last_error.is_empty() else "Google Play Games · 로그인 필요"
 	if player_name.is_empty():
 		return "Google Play Games · 로그인됨"
 	return "Google Play Games · %s" % player_name
@@ -295,9 +295,11 @@ func load_cloud() -> void:
 
 
 func _on_authenticated(is_authenticated: bool) -> void:
+	print("PLAY GAMES AUTH RESULT: ", is_authenticated)
 	signed_in = is_authenticated
 	if signed_in:
 		player_name = ""
+		last_error = ""
 		_cloud_dirty = false
 		_last_cloud_save_msec = 0
 		_players.load_current_player(true)
@@ -308,7 +310,7 @@ func _on_authenticated(is_authenticated: bool) -> void:
 		if _startup_auth_check:
 			last_error = ""
 		else:
-			last_error = "Google Play Games 로그인이 취소되었거나 실패했습니다."
+			last_error = "로그인에 실패했습니다. Play Console의 OAuth 자격 증명·앱 서명 SHA-1·테스터 등록을 확인하세요."
 		_startup_auth_check = false
 		if _cloud_autosave_timer != null:
 			_cloud_autosave_timer.stop()
@@ -322,6 +324,7 @@ func _on_current_player_loaded(current: PlayGamesPlayer) -> void:
 		return
 	player_name = current.display_name
 	player_id = current.player_id
+	last_error = ""
 	status_changed.emit()
 	sign_in_changed.emit(true, player_name)
 

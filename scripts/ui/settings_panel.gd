@@ -263,67 +263,67 @@ func _build_account_page() -> void:
 	_account_status = status
 
 	var intro := UIKit.label(
-		"Google Play Games는 Android에서만 사용할 수 있습니다. 로그인하면 진행 상황과 진행 중인 런이 자동으로 클라우드에 저장됩니다.",
+		"Android 전용입니다. 로그인하면 진행과 런이 자동 저장됩니다.",
 		12, UIKit.MUTED)
 	intro.position = Vector2(30, 42)
-	intro.size = Vector2(_panel_w - 60, 40)
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	intro.size = Vector2(_panel_w - 60, 24)
 	_page_root.add_child(intro)
 
 	var sign_in := UIKit.button("Google Play Games 로그인", Vector2(300, 46))
-	sign_in.position = Vector2(30, 96)
+	sign_in.position = Vector2(30, 88)
 	sign_in.add_theme_font_size_override("font_size", 16)
 	sign_in.pressed.connect(_on_play_games_sign_in_pressed)
 	_page_root.add_child(sign_in)
 	_account_buttons["sign_in"] = sign_in
 
 	var sync := UIKit.button("로컬 기록 동기화", Vector2(220, 46))
-	sync.position = Vector2(342, 96)
+	sync.position = Vector2(342, 88)
 	sync.add_theme_font_size_override("font_size", 15)
 	sync.pressed.connect(_on_play_games_sync_pressed)
 	_page_root.add_child(sync)
 	_account_buttons["sync"] = sync
 
 	var save := UIKit.button("클라우드 저장", Vector2(220, 46))
-	save.position = Vector2(30, 154)
+	save.position = Vector2(30, 146)
 	save.add_theme_font_size_override("font_size", 15)
 	save.pressed.connect(_on_play_games_save_pressed)
 	_page_root.add_child(save)
 	_account_buttons["save"] = save
 
 	var load := UIKit.button("클라우드 불러오기", Vector2(220, 46))
-	load.position = Vector2(262, 154)
+	load.position = Vector2(262, 146)
 	load.add_theme_font_size_override("font_size", 15)
 	load.pressed.connect(_on_play_games_load_pressed)
 	_page_root.add_child(load)
 	_account_buttons["load"] = load
 
-	var note := UIKit.label(
-		"런 종료·앱 전환·변경 후 주기적으로 자동 저장됩니다. 불러오기는 로컬 세이브를 백업한 뒤 적용되며, 실행 중에는 불러올 수 없습니다.",
-		12, UIKit.MUTED)
-	note.position = Vector2(30, 214)
-	note.size = Vector2(_panel_w - 60, 54)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var note := UIKit.label("자동 저장: 런 종료 · 앱 전환 · 변경 후", 12, UIKit.MUTED)
+	note.position = Vector2(30, 204)
+	note.size = Vector2(_panel_w - 60, 24)
 	_page_root.add_child(note)
 
-	var switch_note := UIKit.label(
-		"Play Games는 Play Games 앱에서 선택한 Google 계정으로 로그인합니다. 다른 계정을 쓰려면 Play Games 앱에서 프로필을 바꾼 뒤 DALBEAR를 다시 실행하세요.",
-		12, UIKit.MUTED)
-	switch_note.position = Vector2(30, 274)
-	switch_note.size = Vector2(_panel_w - 60, 52)
-	switch_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var switch_note := UIKit.label("계정 전환: Play Games 앱 → 프로필 → 계정 선택", 12, UIKit.MUTED)
+	switch_note.position = Vector2(30, 234)
+	switch_note.size = Vector2(_panel_w - 60, 24)
 	_page_root.add_child(switch_note)
 
 	var switch_app := UIKit.button("Play Games 앱 열기", Vector2(220, 40))
-	switch_app.position = Vector2(30, 336)
+	switch_app.position = Vector2(30, 280)
 	switch_app.add_theme_font_size_override("font_size", 15)
 	switch_app.pressed.connect(_on_play_games_open_app_pressed)
 	_page_root.add_child(switch_app)
 	_account_buttons["open_app"] = switch_app
 
+	var refresh := UIKit.button("로그인 상태 확인", Vector2(200, 40))
+	refresh.position = Vector2(262, 280)
+	refresh.add_theme_font_size_override("font_size", 15)
+	refresh.pressed.connect(_on_play_games_refresh_pressed)
+	_page_root.add_child(refresh)
+	_account_buttons["refresh"] = refresh
+
 	_account_message = UIKit.label("", 13, UIKit.MINT)
-	_account_message.position = Vector2(30, 388)
-	_account_message.size = Vector2(_panel_w - 60, 48)
+	_account_message.position = Vector2(30, 332)
+	_account_message.size = Vector2(_panel_w - 60, 72)
 	_account_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_page_root.add_child(_account_message)
 	_sync_account()
@@ -348,6 +348,15 @@ func _sync_account() -> void:
 	var open_app: Button = _account_buttons.get("open_app")
 	if open_app != null:
 		open_app.disabled = not PlayGames.is_available()
+	var refresh: Button = _account_buttons.get("refresh")
+	if refresh != null:
+		refresh.disabled = not PlayGames.is_available()
+	if not signed and not PlayGames.last_error.is_empty() and _account_message != null:
+		_account_message.text = PlayGames.last_error
+		_account_message.add_theme_color_override("font_color", UIKit.CORAL)
+	elif signed and _account_message != null and _account_message.text.begins_with("로그인에 실패"):
+		_account_message.text = ""
+		_account_message.add_theme_color_override("font_color", UIKit.MINT)
 
 
 func _on_play_games_status() -> void:
@@ -355,9 +364,15 @@ func _on_play_games_status() -> void:
 		_sync_account()
 
 
-func _on_play_games_sign_in(_signed: bool, _name: String) -> void:
+func _on_play_games_sign_in(signed: bool, _name: String) -> void:
 	if _tab == "account":
 		_sync_account()
+		if not signed and not PlayGames.last_error.is_empty() and _account_message != null:
+			_account_message.text = PlayGames.last_error
+			_account_message.add_theme_color_override("font_color", UIKit.CORAL)
+		elif signed and _account_message != null:
+			_account_message.text = "로그인되었습니다. 클라우드 저장을 사용할 수 있습니다."
+			_account_message.add_theme_color_override("font_color", UIKit.MINT)
 
 
 func _on_play_games_cloud_saved(ok: bool, message: String) -> void:
@@ -383,6 +398,14 @@ func _on_play_games_open_app_pressed() -> void:
 		_account_message.text = "Play Games 앱에서 프로필을 바꾼 뒤 DALBEAR를 다시 실행하세요." if opened \
 			else "Play Games 앱을 열지 못했습니다. 기기의 Play Games 앱에서 계정을 전환해 주세요."
 		_account_message.add_theme_color_override("font_color", UIKit.MINT if opened else UIKit.CORAL)
+	Audio.play_click()
+
+
+func _on_play_games_refresh_pressed() -> void:
+	PlayGames.refresh_account()
+	if _account_message != null:
+		_account_message.text = "로그인 상태를 다시 확인하는 중입니다."
+		_account_message.add_theme_color_override("font_color", UIKit.MUTED)
 	Audio.play_click()
 
 
