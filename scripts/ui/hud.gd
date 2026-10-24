@@ -66,8 +66,11 @@ func _hud_scale_for(vp: Vector2) -> float:
 	if vp.y <= vp.x:
 		return user_scale
 	# Taller screens get a bigger HUD, capped so near-square folds stay sane.
-	var base := 1.0 + (vp.y / maxf(1.0, vp.x) - 1.0) * 0.75
-	return clampf(base * user_scale, 1.0, 2.0)
+	var base := 1.08 + (vp.y / maxf(1.0, vp.x) - 1.0) * 0.84
+	var scaled := clampf(base * user_scale, 1.0, 2.1)
+	# Keep at least 480 design pixels of width so the weapon panel never
+	# spills off a narrow portrait screen.
+	return minf(scaled, maxf(1.0, vp.x / 480.0))
 
 
 func _ready() -> void:
@@ -362,9 +365,11 @@ func _fit_ui() -> void:
 		# for weapons and passives so the two do not overlap.
 		hp_panel.position = Vector2(24, 110) if portrait else Vector2(24, bottom_y)
 	if _weapon_panel != null:
-		_weapon_panel.position = Vector2(vp.x * 0.5 - 258.0, bottom_y)
+		_weapon_panel.position = Vector2(24.0, vp.y - 390.0) if portrait \
+			else Vector2(vp.x * 0.5 - 258.0, bottom_y)
 	if _passive_panel != null:
-		_passive_panel.position = Vector2(vp.x - 364.0, bottom_y)
+		_passive_panel.position = Vector2(24.0, vp.y - 330.0) if portrait \
+			else Vector2(vp.x - 364.0, bottom_y)
 	if _dash_root != null:
 		_dash_root.position = Vector2(vp.x * 0.5 + 168.0, bottom_y + 4.0)
 	if _ult_root != null:
@@ -413,6 +418,12 @@ func set_touch_mode(enabled: bool) -> void:
 		_dash_key.visible = not enabled
 	if _ult_key != null:
 		_ult_key.visible = not enabled
+	# Touch has its own dash/ultimate rings; hide the keyboard-only HUD slots
+	# so they cannot overlap the bottom panel.
+	if _dash_root != null:
+		_dash_root.visible = not enabled
+	if _ult_root != null:
+		_ult_root.visible = not enabled
 
 
 func _on_hp(current: float, maximum: float) -> void:

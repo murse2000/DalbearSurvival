@@ -5,6 +5,12 @@ extends Control
 var _args: PackedStringArray
 var _portrait := false
 var _reloading := false
+var _page := 0
+var _per_page := 8
+var _page_label: Label
+var _prev_btn: Button
+var _next_btn: Button
+var _card_nodes: Array[Node] = []
 
 
 func _is_portrait() -> bool:
@@ -96,13 +102,22 @@ func _build() -> void:
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(line)
 
-	var list := AchievementData.all()
-	for i in list.size():
-		var column := 0 if _portrait else i % 2
-		var row := i if _portrait else i / 2
-		var x := 24.0 if _portrait else 56.0 + float(column) * 584.0
-		var y := 166.0 + float(row) * 82.0 if _portrait else 158.0 + float(row) * 88.0
-		_make_card(list[i], Vector2(x, y), 672.0 if _portrait else 580.0, 78.0 if _portrait else 82.0)
+	_page_label = UIKit.label("", 14, UIKit.GOLD)
+	_page_label.position = Vector2(280, 870) if _portrait else Vector2(540, 558)
+	_page_label.size = Vector2(160, 28) if _portrait else Vector2(200, 28)
+	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_page_label)
+	_prev_btn = UIKit.button("←", Vector2(72, 40))
+	_prev_btn.position = Vector2(200, 862) if _portrait else Vector2(452, 550)
+	_prev_btn.add_theme_font_size_override("font_size", 20)
+	_prev_btn.pressed.connect(func() -> void: _go_page(-1))
+	add_child(_prev_btn)
+	_next_btn = UIKit.button("→", Vector2(72, 40))
+	_next_btn.position = Vector2(448, 862) if _portrait else Vector2(756, 550)
+	_next_btn.add_theme_font_size_override("font_size", 20)
+	_next_btn.pressed.connect(func() -> void: _go_page(1))
+	add_child(_next_btn)
+	_build_page()
 
 	var hint := UIKit.label("달성한 업적은 자동으로 저장됩니다 · 새 업적은 전선에서 갱신됩니다", 11, UIKit.MUTED)
 	hint.position = Vector2(0, 1190) if _portrait else Vector2(0, 698)
@@ -111,7 +126,38 @@ func _build() -> void:
 	add_child(hint)
 
 
-func _make_card(a: Dictionary, pos: Vector2, w: float, h: float) -> void:
+func _build_page() -> void:
+	for node in _card_nodes:
+		node.queue_free()
+	_card_nodes.clear()
+	var list := AchievementData.all()
+	var start := _page * _per_page
+	var stop := mini(list.size(), start + _per_page)
+	for local_i in range(start, stop):
+		var column := 0 if _portrait else (local_i - start) % 2
+		var row := (local_i - start) if _portrait else (local_i - start) / 2
+		var x := 24.0 if _portrait else 56.0 + float(column) * 584.0
+		var y := 166.0 + float(row) * 82.0 if _portrait else 158.0 + float(row) * 88.0
+		var card := _make_card(list[local_i], Vector2(x, y),
+			672.0 if _portrait else 580.0, 78.0 if _portrait else 82.0)
+		_card_nodes.append(card)
+	var pages := maxi(1, int(ceil(float(list.size()) / float(_per_page))))
+	_page_label.text = "페이지  %d / %d" % [_page + 1, pages]
+	_prev_btn.disabled = _page <= 0
+	_next_btn.disabled = _page >= pages - 1
+
+
+func _go_page(delta: int) -> void:
+	var pages := maxi(1, int(ceil(float(AchievementData.all().size()) / float(_per_page))))
+	var next := clampi(_page + delta, 0, pages - 1)
+	if next == _page:
+		return
+	_page = next
+	Audio.play_click()
+	_build_page()
+
+
+func _make_card(a: Dictionary, pos: Vector2, w: float, h: float) -> Panel:
 	var done := AchievementData.is_complete(a)
 	var accent := UIKit.GOLD if done else UIKit.BORDER
 	var card := Panel.new()
@@ -151,6 +197,7 @@ func _make_card(a: Dictionary, pos: Vector2, w: float, h: float) -> void:
 		var check := UIKit.label("✓", 18, UIKit.MINT)
 		check.position = Vector2(w - 32.0, 7)
 		card.add_child(check)
+	return card
 
 
 func _go_back() -> void:
@@ -160,7 +207,13 @@ func _go_back() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
+		if event.keycode == KEY_LEFT or event.keycode == KEY_PAGEUP or event.keycode == KEY_Q:
+			_go_page(-1)
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_RIGHT or event.keycode == KEY_PAGEDOWN or event.keycode == KEY_E:
+			_go_page(1)
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
 			_go_back()
 			get_viewport().set_input_as_handled()
 
@@ -183,15 +236,20 @@ func _test_achievements() -> void:
 	var old_stats: Dictionary = Game.stats.duplicate(true)
 	var old_ach: Dictionary = Game.achievements.duplicate(true)
 	var old_stages: Dictionary = Game.stage_records.duplicate(true)
-	Game.stats["total_kills"] = 10000
-	Game.stats["boss_kills"] = 10
-	Game.stats["max_level"] = 30
+	Game.stats["total_kills"] = 100000
+	Game.stats["boss_kills"] = 500
+	Game.stats["max_level"] = 80
 	Game.stats["max_evolutions"] = 8
-	Game.stats["max_relics"] = 3
-	Game.stats["max_enhance"] = 5
+	Game.stats["max_relics"] = 10
+	Game.stats["max_enhance"] = 15
 	Game.stats["legendary_equipped"] = true
-	Game.stats["endless_best"] = 600.0
-	Game.stats["daily_clears"] = 1
+	Game.stats["endless_best"] = 3600.0
+	Game.stats["daily_clears"] = 30
+	Game.stats["runs"] = 200
+	Game.stats["wins"] = 100
+	Game.stats["hard_wins"] = 50
+	Game.stats["nightmare_wins"] = 10
+	Game.stats["flawless_wins"] = 10
 	Game.stage_records["forest:normal"] = {"clears": 1}
 	Game.stage_records["genesis:normal"] = {"clears": 1}
 	Game.achievements.clear()
@@ -208,7 +266,7 @@ func _test_achievements() -> void:
 	Game.stage_records = old_stages
 	Game.save_settings()
 	if errors.is_empty():
-		print("ACHIEVEMENTS TEST PASS: 12/12")
+		print("ACHIEVEMENTS TEST PASS: %d/%d" % [AchievementData.all().size(), AchievementData.all().size()])
 		print("TEST PASS")
 	else:
 		print("ACHIEVEMENTS TEST FAIL")

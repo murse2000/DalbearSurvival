@@ -804,6 +804,7 @@ func take_damage(amount: float) -> bool:
 		return false
 	var dmg := maxf(1.0, amount - armor)
 	hp = maxf(0.0, hp - dmg)
+	Game.note_damage_taken(dmg)
 	invuln = 0.75
 	_flash = 0.12
 	hp_changed.emit(hp, max_hp)

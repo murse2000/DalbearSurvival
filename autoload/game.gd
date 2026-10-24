@@ -51,6 +51,7 @@ var run_speed_mult := 1.0
 var run_spawn_mult := 1.0
 var run_pickup_bonus := 0.0
 var run_elite_bonus := 0.0
+var run_damage_taken := 0.0
 var endless_boss_wave := 0
 
 var stage_id := "forest"
@@ -255,6 +256,7 @@ func _reset() -> void:
 	levelup_open = false
 	rerolls = REROLL_MAX
 	banishes = BANISH_MAX
+	run_damage_taken = 0.0
 	boss = null
 	miniboss = null
 	last_boss_killed = false
@@ -289,6 +291,7 @@ func save_run_checkpoint(p) -> bool:
 	cfg.set_value("meta", "levelup_open", levelup_open)
 	cfg.set_value("meta", "rerolls", rerolls)
 	cfg.set_value("meta", "banishes", banishes)
+	cfg.set_value("meta", "run_damage_taken", run_damage_taken)
 	cfg.set_value("meta", "warned", _warned.duplicate(true))
 	cfg.set_value("player", "hp", float(p.hp))
 	cfg.set_value("player", "position", p.global_position)
@@ -486,6 +489,7 @@ func _apply_run_meta(meta: Dictionary) -> void:
 	levelup_open = pending_levelups > 0
 	rerolls = clampi(int(meta.get("rerolls", REROLL_MAX)), 0, REROLL_MAX)
 	banishes = clampi(int(meta.get("banishes", BANISH_MAX)), 0, BANISH_MAX)
+	run_damage_taken = maxf(0.0, float(meta.get("run_damage_taken", 0.0)))
 	last_boss_killed = false
 	boss = null
 	miniboss = null
@@ -1480,6 +1484,11 @@ func note_boss_kill() -> void:
 	_check_achievements()
 
 
+func note_damage_taken(amount: float) -> void:
+	if running and amount > 0.0:
+		run_damage_taken += amount
+
+
 func stage_clear(boss_killed: bool = false) -> void:
 	end_run(true, boss_killed)
 
@@ -1518,6 +1527,12 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 	stats["runs"] = int(stats.get("runs", 0)) + 1
 	if victory:
 		stats["wins"] = int(stats.get("wins", 0)) + 1
+		if difficulty_id == "dark":
+			stats["hard_wins"] = int(stats.get("hard_wins", 0)) + 1
+		elif difficulty_id == "abyss":
+			stats["nightmare_wins"] = int(stats.get("nightmare_wins", 0)) + 1
+		if not is_endless() and run_damage_taken <= 0.0:
+			stats["flawless_wins"] = int(stats.get("flawless_wins", 0)) + 1
 	stats["max_level"] = maxi(int(stats.get("max_level", 1)), level)
 	grant_run_rewards(victory and not is_endless(), boss_killed)
 	_check_achievements()

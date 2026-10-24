@@ -4,7 +4,7 @@ extends Camera2D
 ## Portrait screens get a closer zoom so characters stay readable.
 
 @export var base_zoom := 2.0
-@export var portrait_zoom := 3.1
+@export var portrait_zoom := 2.35
 @export var follow_speed := 7.0
 
 var target: Node2D

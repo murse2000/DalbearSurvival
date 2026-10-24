@@ -107,27 +107,28 @@ func _apply_layout(vp: Vector2) -> void:
 		# aspect so nothing floats in a letterboxed middle band.
 		_design = Vector2(720.0, 720.0 * vp.y / maxf(1.0, vp.x))
 		_joy_c = Vector2(112, _design.y - 160)
-		_joy_r = 96.0
-		_joy_k = 40.0
+		_joy_r = 104.0
+		_joy_k = 43.0
 		_dash_c = Vector2(_design.x - 154, _design.y - 222)
-		_dash_r = 62.0
+		_dash_r = 67.0
 		_ult_c = Vector2(_design.x - 292, _design.y - 230)
-		_ult_r = 54.0
+		_ult_r = 59.0
 		_pause_c = Vector2(_design.x - 62, 122)
-		_pause_r = 26.0
+		_pause_r = 28.0
 	else:
 		_design = Vector2(1280, 720)
-		_joy_c = Vector2(150, 548)
+		# Keep the touch buttons above the bottom HUD row.
+		_joy_c = Vector2(150, 520)
 		_joy_r = 78.0
 		_joy_k = 32.0
-		_dash_c = Vector2(1138, 520)
+		_dash_c = Vector2(1120, 492)
 		_dash_r = 52.0
-		_ult_c = Vector2(1000, 594)
+		_ult_c = Vector2(982, 520)
 		_ult_r = 46.0
 		_pause_c = Vector2(1218, 146)
 		_pause_r = 22.0
 	_touch_scale = Settings.joystick_scale_value()
-	_text_scale = _touch_scale * Settings.hud_scale_value()
+	_text_scale = _touch_scale * Settings.hud_scale_value() * (1.12 if portrait else 1.0)
 	_joy_r *= _touch_scale
 	_joy_k *= _touch_scale
 	_dash_r *= _touch_scale
