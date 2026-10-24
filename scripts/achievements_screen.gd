@@ -11,6 +11,7 @@ var _page_label: Label
 var _prev_btn: Button
 var _next_btn: Button
 var _card_nodes: Array[Node] = []
+var _card_parent: Node
 
 
 func _is_portrait() -> bool:
@@ -130,6 +131,12 @@ func _build_page() -> void:
 	for node in _card_nodes:
 		node.queue_free()
 	_card_nodes.clear()
+	# UIFit moves the initial UI into ResponsiveContent. Cards created after a
+	# page change must join that same container or they render outside the
+	# scaled menu area.
+	_card_parent = get_node_or_null("ResponsiveContent")
+	if _card_parent == null:
+		_card_parent = self
 	var list := AchievementData.all()
 	var start := _page * _per_page
 	var stop := mini(list.size(), start + _per_page)
@@ -166,7 +173,7 @@ func _make_card(a: Dictionary, pos: Vector2, w: float, h: float) -> Panel:
 	card.add_theme_stylebox_override("panel", UIKit.style(
 		Color(0.075, 0.11, 0.155, 0.96) if done else Color(0.045, 0.07, 0.105, 0.94),
 		accent, 2 if done else 1, 10))
-	add_child(card)
+	_card_parent.add_child(card)
 
 	var icon := TextureRect.new()
 	icon.texture = load(String(a["icon"]))
@@ -261,6 +268,16 @@ func _test_achievements() -> void:
 			errors.append("not unlocked: %s" % a["id"])
 	if AchievementData.progress_text(AchievementData.get_achievement("kills_1000")) != "달성":
 		errors.append("progress text wrong")
+	_go_page(1)
+	await get_tree().process_frame
+	var content := get_node_or_null("ResponsiveContent")
+	if content == null:
+		errors.append("responsive content missing")
+	else:
+		for node in _card_nodes:
+			if node.get_parent() != content:
+				errors.append("page card escaped responsive content")
+				break
 	Game.stats = old_stats
 	Game.achievements = old_ach
 	Game.stage_records = old_stages
