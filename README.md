@@ -8,7 +8,7 @@
 **무기 8종 + 진화 무기 8종**, **인런 유물**, **무한 모드 · 일일 챌린지 · 업적 12종**,
 **속성 시너지 · 달빛 제단 · 달빛 동료 5종 · 장비 세트**,
 **장비 잠금 · 일괄 분해 · 로드아웃 3칸 · 주간 기록**,
-**대시 & 궁극기**, **리롤·밴**, **그래픽 프리셋 · HUD 크기 · 조이스틱 배치**, **연출 설정 · 플랫폼 · 접근성 · 진동**,
+**대시 & 궁극기**, **리롤·밴**, **그래픽 프리셋 · HUD 크기 · 조이스틱 배치**, **연출 설정 · 플랫폼 · 접근성 · 진동**, **Android Google Play Games 연동**,
 **장비 11슬롯 · 인벤토리 · 등급 · 강화**, **5명의 달베어 친구**,
 **8방향 모션**, **자동 저장 & 이어하기**로 구성한 2D 로그라이트 서바이벌입니다.
 Godot 4.7.1로 제작했고, 모든 그래픽·사운드는 무료 에셋과 직접 생성한 원화/효과음으로 만들었습니다.
@@ -402,13 +402,25 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 - Kenney CC0 파티클 텍스처 + 직접 만든 픽셀아트/글로우
 
 ### 플랫폼 & 접근성
-- 타이틀 화면의 **설정** 버튼 또는 일시정지 메뉴의 **설정**에서 **화면 / 조작 / 접근성** 탭을 이용할 수 있습니다.
+- 타이틀 화면의 **설정** 버튼 또는 일시정지 메뉴의 **설정**에서 **화면 / 조작 / 접근성 / 계정** 탭을 이용할 수 있습니다.
 - **화면**: 창 모드(창 · 테두리 없음 · 전체 화면), VSync, FPS 제한(60 · 120 · 144 · 무제한), 그래픽 품질, HUD 크기. `F11`로 전체 화면을 즉시 전환합니다.
 - **조작**: 키보드·마우스와 게임패드(스틱/D-PAD · A · B · START)를 함께 지원합니다. 전선 선택에서 D-PAD로 전선과 난이도를 바꿀 수 있고, Android 뒤로가기는 설정 닫기 → 일시정지 → 전선 선택 순으로 동작합니다.
 - **접근성**: 화면 플래시(끔 · 약하게 · 보통), 모션 강도(끔 · 약하게 · 보통), 색약 팔레트(녹색약 · 적색약 · 청색약), 고대비 적 탄막 외곽선을 제공합니다.
 - **진동**: 스마트폰 햅틱과 연결된 게임패드에 피격·대시·궁극기·레벨업·유물·보스·저체력 심박·업적·승패 상황별 진동을 전달합니다. **진동 피드백** 켜기/끄기와 **진동 세기**(약하게 · 보통 · 강하게)를 조절할 수 있습니다.
 - **포커스 상실 시 자동 일시정지**를 켜거나 끌 수 있습니다.
 - 변경 사항은 즉시 적용되고 자동 저장되어 다음 실행에도 유지됩니다. 밝은 화면이 부담스럽거나 피격 연출을 줄이고 싶을 때 사용하세요.
+
+### Google Play Games (Android)
+
+- **Android 전용** Google Play Games 로그인, 로컬 업적 동기화, 리더보드 제출, Play Games Saved Games 클라우드 세이브를 지원합니다.
+- 설정의 **계정** 탭에서 로그인·동기화·클라우드 저장/불러오기를 실행합니다. 로그인하지 않아도 게스트로 플레이할 수 있습니다.
+- Game ID: `583342371197`
+- OAuth Android 클라이언트 ID: `583342371197-6nfgel33vm8arksim93p29bak52sr8cc.apps.googleusercontent.com`
+- Play Games 업적·리더보드 ID는 `scripts/play_games_config.gd`에 추가합니다. ID가 비어 있으면 로컬 큐에 보관됩니다.
+- 클라우드 세이브는 기존 로컬 세이브를 먼저 백업한 뒤 적용합니다. 실행 중에는 불러올 수 없습니다.
+- Android Gradle 빌드가 필요합니다. 빌드 템플릿이 없으면 Godot에서 `Project > Install Android Build Template`을 실행하세요.
+- Play Console에서 **Play Games Services → Configuration → Credentials**에 Android OAuth 클라이언트를 연결해야 로그인이 동작합니다. OAuth 동의 화면에는 `games`, `games_lite`, `drive.appdata` 범위가 필요합니다.
+- Play Games 프로젝트가 아직 비공개라면 **Testers**에 테스트 Google 계정을 추가하세요.
 
 ---
 
@@ -597,10 +609,13 @@ DalbearSurvival/
 ├─ autoload/
 │  ├─ game.gd                    # 전선/난이도, XP/레벨, 장비/인벤토리, 친구 선택, 기록 저장
 │  ├─ settings.gd                # 화면/조작/접근성 설정 저장 및 즉시 적용
+│  ├─ play_games_config.gd       # Play Games Game/업적/리더보드 ID 설정
 │  ├─ haptics.gd                 # 스마트폰·게임패드 상황별 진동 허브
+│  ├─ play_games.gd              # Android Play Games 로그인·업적·리더보드·클라우드
 │  ├─ audio.gd                   # SFX 풀, BGM 루프/덕킹/피치
 │  └─ fx.gd                      # 파티클, 충격파, 빔, 화면 효과
 ├─ addons/lit/                   # Lit - 2D Lighting Engine (MIT)
+├─ addons/GodotPlayGameServices/ # Google Play Games Android plugin (MIT)
 ├─ assets/
 │  ├─ art/                       # 캐릭터/친구 5종, 외계인, 환경, UI, 타이틀 원화
 │  ├─ particles/                 # Kenney CC0 파티클 (라이선스 포함)
@@ -717,6 +732,7 @@ DalbearSurvival/
   godot --path . res://scenes/main.tscn -- --test-settings-effects
   godot --path . res://scenes/main.tscn -- --test-platform-accessibility
   godot --path . res://scenes/main.tscn -- --test-haptics
+  godot --path . res://scenes/main.tscn -- --test-play-games
   godot --path . res://scenes/stage_select.tscn -- --test-platform-input
   godot --path . res://scenes/main.tscn -- --test-equipment-run
   godot --path . res://scenes/equipment.tscn -- --test-equipment

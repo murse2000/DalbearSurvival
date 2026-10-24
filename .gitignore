@@ -20,3 +20,6 @@ Thumbs.db
 # Python tooling caches/previews
 __pycache__/
 tools/preview/
+
+# Godot Android Gradle build template (generated locally)
+android/

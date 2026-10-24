@@ -11,6 +11,7 @@ const TABS := [
 	{"id": "display", "label": "화면"},
 	{"id": "controls", "label": "조작"},
 	{"id": "access", "label": "접근성"},
+	{"id": "account", "label": "계정"},
 ]
 
 const PAGES := {
@@ -112,6 +113,9 @@ var _choice_buttons := {}
 var _tab_buttons := {}
 var _close_button: Button
 var _page_root: Control
+var _account_status: Label
+var _account_message: Label
+var _account_buttons := {}
 var _portrait := false
 var _panel_w := 700.0
 var _panel_h := 720.0
@@ -131,6 +135,10 @@ func _ready() -> void:
 	visible = false
 	_portrait = _is_portrait()
 	_build()
+	PlayGames.status_changed.connect(_on_play_games_status)
+	PlayGames.sign_in_changed.connect(_on_play_games_sign_in)
+	PlayGames.cloud_saved.connect(_on_play_games_cloud_saved)
+	PlayGames.cloud_loaded.connect(_on_play_games_cloud_loaded)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 
 
@@ -229,6 +237,11 @@ func _build_page() -> void:
 		child.queue_free()
 	_buttons.clear()
 	_choice_buttons.clear()
+	_account_buttons.clear()
+	if _tab == "account":
+		_build_account_page()
+		_update_tab_styles()
+		return
 	var rows: Array = PAGES.get(_tab, [])
 	var row_h := 78.0 if _portrait else 72.0
 	for i in rows.size():
@@ -240,6 +253,125 @@ func _build_page() -> void:
 	_add_input_hint(_page_root, float(rows.size()) * row_h + 8.0)
 	_update_tab_styles()
 	_sync()
+
+
+func _build_account_page() -> void:
+	var status := UIKit.label(PlayGames.status_text(), 18, UIKit.CREAM)
+	status.position = Vector2(30, 6)
+	status.size = Vector2(_panel_w - 60, 34)
+	_page_root.add_child(status)
+	_account_status = status
+
+	var intro := UIKit.label(
+		"Google Play Games는 Android에서만 사용할 수 있습니다. 게스트 플레이는 계속 이용할 수 있습니다.",
+		12, UIKit.MUTED)
+	intro.position = Vector2(30, 42)
+	intro.size = Vector2(_panel_w - 60, 40)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_page_root.add_child(intro)
+
+	var sign_in := UIKit.button("Google Play Games 로그인", Vector2(300, 46))
+	sign_in.position = Vector2(30, 96)
+	sign_in.add_theme_font_size_override("font_size", 16)
+	sign_in.pressed.connect(_on_play_games_sign_in_pressed)
+	_page_root.add_child(sign_in)
+	_account_buttons["sign_in"] = sign_in
+
+	var sync := UIKit.button("로컬 기록 동기화", Vector2(220, 46))
+	sync.position = Vector2(342, 96)
+	sync.add_theme_font_size_override("font_size", 15)
+	sync.pressed.connect(_on_play_games_sync_pressed)
+	_page_root.add_child(sync)
+	_account_buttons["sync"] = sync
+
+	var save := UIKit.button("클라우드 저장", Vector2(220, 46))
+	save.position = Vector2(30, 154)
+	save.add_theme_font_size_override("font_size", 15)
+	save.pressed.connect(_on_play_games_save_pressed)
+	_page_root.add_child(save)
+	_account_buttons["save"] = save
+
+	var load := UIKit.button("클라우드 불러오기", Vector2(220, 46))
+	load.position = Vector2(262, 154)
+	load.add_theme_font_size_override("font_size", 15)
+	load.pressed.connect(_on_play_games_load_pressed)
+	_page_root.add_child(load)
+	_account_buttons["load"] = load
+
+	var note := UIKit.label(
+		"클라우드 불러오기는 로컬 세이브를 백업한 뒤 적용됩니다. 실행 중에는 불러올 수 없습니다.",
+		12, UIKit.MUTED)
+	note.position = Vector2(30, 220)
+	note.size = Vector2(_panel_w - 60, 40)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_page_root.add_child(note)
+
+	_account_message = UIKit.label("", 13, UIKit.MINT)
+	_account_message.position = Vector2(30, 276)
+	_account_message.size = Vector2(_panel_w - 60, 32)
+	_account_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_page_root.add_child(_account_message)
+	_sync_account()
+
+
+func _sync_account() -> void:
+	if _account_status == null:
+		return
+	_account_status.text = PlayGames.status_text()
+	var signed := PlayGames.is_signed_in()
+	var sign_in: Button = _account_buttons.get("sign_in")
+	if sign_in != null:
+		sign_in.disabled = not PlayGames.is_available() or signed
+		sign_in.text = "로그인됨" if signed else "Google Play Games 로그인"
+	for key in ["sync", "save"]:
+		var button: Button = _account_buttons.get(key)
+		if button != null:
+			button.disabled = not signed
+	var load: Button = _account_buttons.get("load")
+	if load != null:
+		load.disabled = not signed or Game.running
+
+
+func _on_play_games_status() -> void:
+	if _tab == "account":
+		_sync_account()
+
+
+func _on_play_games_sign_in(_signed: bool, _name: String) -> void:
+	if _tab == "account":
+		_sync_account()
+
+
+func _on_play_games_cloud_saved(ok: bool, message: String) -> void:
+	if _account_message != null:
+		_account_message.text = message
+		_account_message.add_theme_color_override("font_color", UIKit.MINT if ok else UIKit.CORAL)
+
+
+func _on_play_games_cloud_loaded(ok: bool, message: String) -> void:
+	if _account_message != null:
+		_account_message.text = message
+		_account_message.add_theme_color_override("font_color", UIKit.MINT if ok else UIKit.CORAL)
+
+
+func _on_play_games_sign_in_pressed() -> void:
+	PlayGames.sign_in()
+	Audio.play_click()
+
+
+func _on_play_games_sync_pressed() -> void:
+	PlayGames.sync_pending()
+	Audio.play_click()
+
+
+func _on_play_games_save_pressed() -> void:
+	PlayGames.save_cloud()
+	Audio.play_click()
+
+
+func _on_play_games_load_pressed() -> void:
+	PlayGames.load_cloud()
+	Audio.play_click()
 
 
 func _add_input_hint(parent: Control, y: float) -> void:
@@ -347,6 +479,9 @@ func close() -> void:
 
 
 func _sync() -> void:
+	if _tab == "account":
+		_sync_account()
+		return
 	for key in _buttons.keys():
 		var b: Button = _buttons[key]
 		var on := Settings.get_option(String(key))

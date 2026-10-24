@@ -444,6 +444,12 @@ func _test_settings() -> void:
 		push_error("SETTINGS TEST: accessibility tab did not build")
 		get_tree().quit()
 		return
+	_settings_panel._switch_tab("account")
+	if _settings_panel._tab != "account" or _settings_panel._account_status == null \
+			or not _settings_panel._account_buttons.has("sign_in"):
+		push_error("SETTINGS TEST: account tab did not build")
+		get_tree().quit()
+		return
 	_settings_panel._switch_tab("display")
 	if _settings_panel._tab != "display" or not _settings_panel._buttons.has("bloom"):
 		push_error("SETTINGS TEST: display tab did not restore")

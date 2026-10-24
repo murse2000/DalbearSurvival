@@ -161,6 +161,8 @@ func _ready() -> void:
 		_test_platform_accessibility()
 	elif "--test-haptics" in _args:
 		_test_haptics()
+	elif "--test-play-games" in _args:
+		_test_play_games()
 	elif "--test-settings-close" in _args:
 		_test_settings_close()
 	elif "--test-equipment-run" in _args:
@@ -1617,6 +1619,32 @@ func _test_haptics() -> void:
 		print("TEST PASS")
 	else:
 		print("HAPTICS TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
+func _test_play_games() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	var errors: Array = []
+	if PlayGamesConfig.GAME_ID != "583342371197":
+		errors.append("Play Games game id mismatch")
+	if PlayGamesConfig.OAUTH_CLIENT_ID.is_empty():
+		errors.append("OAuth client id missing")
+	if PlayGames.status_text().is_empty():
+		errors.append("Play Games status text missing")
+	if PlayGames.available:
+		errors.append("Play Games should be unavailable in this headless test")
+	if not PlayGames.PENDING_PATH.ends_with("dalbear_play_games_pending.cfg"):
+		errors.append("pending queue path missing")
+	if errors.is_empty():
+		print("PLAY GAMES TEST PASS available=%s signed_in=%s game_id=%s" % [
+			PlayGames.available, PlayGames.signed_in, PlayGamesConfig.GAME_ID,
+		])
+		print("TEST PASS")
+	else:
+		print("PLAY GAMES TEST FAIL")
 		for error in errors:
 			print("  ", error)
 		print("TEST FAIL")
