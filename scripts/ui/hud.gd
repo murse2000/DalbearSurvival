@@ -347,10 +347,10 @@ func _fit_ui() -> void:
 	if _stage_chip != null:
 		_stage_chip.visible = not portrait
 	if _xp_bg != null:
-		_xp_bg.position = Vector2(0, 0 if portrait else vp.y - 96.0)
+		_xp_bg.position = Vector2(0, 0 if portrait else vp.y - 22.0)
 		_xp_bg.size = Vector2(vp.x, 18)
 	if xp_bar != null:
-		xp_bar.position = Vector2(0, 0 if portrait else vp.y - 96.0)
+		xp_bar.position = Vector2(0, 0 if portrait else vp.y - 22.0)
 		xp_bar.size = Vector2(vp.x, 14)
 	if _timer_panel != null:
 		_timer_panel.position = Vector2(vp.x * 0.5 - 120.0, 20)
