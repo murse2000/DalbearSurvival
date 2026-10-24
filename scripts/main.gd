@@ -1638,8 +1638,17 @@ func _test_play_games() -> void:
 		errors.append("Play Games should be unavailable in this headless test")
 	if not PlayGames.PENDING_PATH.ends_with("dalbear_play_games_pending.cfg"):
 		errors.append("pending queue path missing")
+	if PlayGames.open_play_games_app():
+		errors.append("Play Games app launch should be unavailable in this headless test")
+	if FileAccess.file_exists(PlayGames.LOCAL_SAVE_PATH):
+		var payload := PlayGames._make_cloud_payload()
+		var parsed = JSON.parse_string(payload.get_string_from_utf8())
+		if not parsed is Dictionary or String(parsed.get("format", "")) != "dalbear-cloud":
+			errors.append("cloud save payload is not a DALBEAR bundle")
+		elif FileAccess.file_exists(PlayGames.RUN_SAVE_PATH) and not parsed.has("run"):
+			errors.append("cloud save payload is missing the run checkpoint")
 	if errors.is_empty():
-		print("PLAY GAMES TEST PASS available=%s signed_in=%s game_id=%s" % [
+		print("PLAY GAMES TEST PASS available=%s signed_in=%s game_id=%s auto_save=on" % [
 			PlayGames.available, PlayGames.signed_in, PlayGamesConfig.GAME_ID,
 		])
 		print("TEST PASS")

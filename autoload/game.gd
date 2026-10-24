@@ -12,6 +12,8 @@ signal character_changed
 signal achievement_unlocked(id: String)
 signal altar_changed
 signal companion_changed(id: String)
+signal settings_saved
+signal run_checkpoint_saved
 
 const SAVE_PATH := "user://dalbear_save.cfg"
 const RUN_SAVE_PATH := "user://dalbear_run.cfg"
@@ -325,9 +327,13 @@ func save_run_checkpoint(p) -> bool:
 	if dir.file_exists("dalbear_run.cfg"):
 		dir.remove("dalbear_run.cfg")
 	if dir.rename("dalbear_run.tmp", "dalbear_run.cfg") == OK:
+		run_checkpoint_saved.emit()
 		return true
 	# Fallback for platforms that cannot atomically replace the checkpoint.
-	return cfg.save(RUN_SAVE_PATH) == OK
+	var saved := cfg.save(RUN_SAVE_PATH) == OK
+	if saved:
+		run_checkpoint_saved.emit()
+	return saved
 
 
 func load_run_checkpoint() -> Dictionary:
@@ -1759,7 +1765,8 @@ func save_settings() -> void:
 	cfg.set_value("equipment", "initialized", equipment_initialized)
 	cfg.set_value("equipment", "last_rewards", last_rewards)
 	cfg.set_value("character", "selected", selected_character)
-	cfg.save(SAVE_PATH)
+	if cfg.save(SAVE_PATH) == OK:
+		settings_saved.emit()
 
 
 func save_record() -> void:

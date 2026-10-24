@@ -414,10 +414,12 @@ godot --headless --path . --export-debug "Android" build/DALBEAR.apk
 
 - **Android 전용** Google Play Games 로그인, 로컬 업적 동기화, 리더보드 제출, Play Games Saved Games 클라우드 세이브를 지원합니다.
 - 설정의 **계정** 탭에서 로그인·동기화·클라우드 저장/불러오기를 실행합니다. 로그인하지 않아도 게스트로 플레이할 수 있습니다.
+- Play Games는 **Play Games 앱에서 선택한 Google 계정**으로 로그인합니다. 계정이 여러 개라면 계정 탭의 **Play Games 앱 열기**로 프로필을 바꾼 뒤 DALBEAR를 다시 실행하세요. Play Games SDK v2에는 앱 안에서 계정을 고르는 API가 없습니다.
 - Game ID: `583342371197`
 - OAuth Android 클라이언트 ID: `583342371197-6nfgel33vm8arksim93p29bak52sr8cc.apps.googleusercontent.com`
 - Play Games 업적·리더보드 ID는 `scripts/play_games_config.gd`에 추가합니다. ID가 비어 있으면 로컬 큐에 보관됩니다.
-- 클라우드 세이브는 기존 로컬 세이브를 먼저 백업한 뒤 적용합니다. 실행 중에는 불러올 수 없습니다.
+- 로그인하면 메타 진행과 진행 중인 런 체크포인트가 **자동으로 클라우드 저장**됩니다. 런 종료·앱 전환·저장 변경 후 주기적으로(최소 3분 간격) 업로드합니다.
+- 클라우드 세이브는 기존 로컬 세이브와 런 체크포인트를 먼저 백업한 뒤 적용합니다. 실행 중에는 불러올 수 없습니다.
 - Android Gradle 빌드가 필요합니다. 빌드 템플릿이 없으면 Godot에서 `Project > Install Android Build Template`을 실행하세요.
 - Play Console에서 **Play Games Services → Configuration → Credentials**에 Android OAuth 클라이언트를 연결해야 로그인이 동작합니다. OAuth 동의 화면에는 `games`, `games_lite`, `drive.appdata` 범위가 필요합니다.
 - Play Games 프로젝트가 아직 비공개라면 **Testers**에 테스트 Google 계정을 추가하세요.
