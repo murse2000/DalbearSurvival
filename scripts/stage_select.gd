@@ -514,11 +514,11 @@ func _build_stage_modal() -> void:
 	_stage_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	_stage_modal.visible = false
 	add_child(_stage_modal)
-	_stage_modal.add_child(UIKit.dimmer(0.78))
+	_stage_modal.add_child(UIKit.dimmer(0.92))
 	var pw := 660.0 if _portrait else 760.0
-	var ph := 650.0 if _portrait else 470.0
-	var panel := UIKit.panel(Color(0.045, 0.072, 0.11, 0.99), UIKit.GOLD, 3)
-	panel.position = Vector2(30, 315) if _portrait else Vector2(260, 120)
+	var ph := 600.0 if _portrait else 370.0
+	var panel := UIKit.panel(Color(0.035, 0.058, 0.09, 0.995), UIKit.GOLD, 3)
+	panel.position = Vector2(30, 340) if _portrait else Vector2(260, 175)
 	panel.size = Vector2(pw, ph)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_stage_modal.add_child(panel)
@@ -531,19 +531,22 @@ func _build_stage_modal() -> void:
 	panel.add_child(_stage_modal_title)
 	_stage_modal_info = UIKit.label("", 12, UIKit.CREAM)
 	_stage_modal_info.position = Vector2(28, 88)
-	_stage_modal_info.size = Vector2(pw - 56, 52)
+	_stage_modal_info.size = Vector2(pw - 56, 38)
 	_stage_modal_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(_stage_modal_info)
+	var choose_hint := UIKit.label("전장을 선택하세요", 12, UIKit.MUTED)
+	choose_hint.position = Vector2(28, 132)
+	panel.add_child(choose_hint)
 	for i in range(10):
 		var button := UIKit.button("", Vector2(140, 58) if not _portrait else Vector2(296, 58))
 		button.add_theme_font_size_override("font_size", 14 if not _portrait else 16)
-		button.position = (Vector2(28 + (i % 5) * 148, 160 + floori(float(i) / 5.0) * 70) if not _portrait
-			else Vector2(28 + (i % 2) * 306, 160 + floori(float(i) / 2.0) * 70))
+		button.position = (Vector2(28 + (i % 5) * 148, 155 + floori(float(i) / 5.0) * 70) if not _portrait
+			else Vector2(28 + (i % 2) * 306, 155 + floori(float(i) / 2.0) * 70))
 		button.pressed.connect(_choose_stage.bind(i + 1))
 		panel.add_child(button)
 		_stage_modal_buttons.append(button)
 	var close := UIKit.button("닫기", Vector2(180, 48))
-	close.position = Vector2((pw - 180) * 0.5, ph - 64)
+	close.position = Vector2((pw - 180) * 0.5, ph - 62)
 	close.add_theme_font_size_override("font_size", 18)
 	close.pressed.connect(func() -> void: _stage_modal.visible = false)
 	panel.add_child(close)
@@ -572,7 +575,10 @@ func _open_stage_picker(chapter: String) -> void:
 		var unlocked := Game.is_stage_unlocked(id)
 		var cleared := Game.has_cleared(id)
 		button.disabled = not unlocked
-		button.text = "%d-%d%s" % [int(info.get("num", 1)), number, "  BOSS" if number == 10 else ("  ✓" if cleared else "")]
+		var status := "  BOSS" if number == 10 else ("  ✓" if cleared else "")
+		if not unlocked:
+			status = "  잠금"
+		button.text = "%d-%d%s" % [int(info.get("num", 1)), number, status]
 		var unique_enemy := GameData.chapter_enemy(id)
 		button.tooltip_text = "전장 변이 적 · %s" % String(unique_enemy.get("name", ""))
 		button.add_theme_color_override("font_color",
