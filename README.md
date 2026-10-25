@@ -621,6 +621,7 @@ DalbearSurvival/
 ├─ assets/
 │  ├─ art/                       # 캐릭터/친구 5종, 외계인, 환경, UI, 타이틀 원화
 │  ├─ particles/                 # Kenney CC0 파티클 (라이선스 포함)
+│  ├─ ui/fantasy/                # Kenney Fantasy UI Borders CC0 금장 프레임
 │  ├─ audio/                     # 직접 생성한 SFX + 64초 루프 BGM
 │  └─ fonts/                     # Galmuri11 (OFL)
 ├─ screenshots/
@@ -636,6 +637,7 @@ DalbearSurvival/
 | 사용처 | 에셋 | 라이선스 |
 |---|---|---|
 | VFX 파티클 | [Kenney Particle Pack](https://kenney.nl/assets/particle-pack) | **CC0 1.0** |
+| UI 금장 프레임 | [Kenney Fantasy UI Borders](https://kenney.nl/assets/fantasy-ui-borders) | **CC0 1.0** |
 | 한국어 픽셀 폰트 | [Galmuri11](https://github.com/quiple/galmuri) by Lee Minseo | **SIL OFL 1.1** |
 | 2D 조명 | [Lit - 2D Lighting Engine](https://github.com/shawndeprey/lit) by Fading Lantern Games | **MIT** |
 | 캐릭터/외계인/군체/모선/UI/타이틀 아트 | 이 프로젝트를 위해 직접 생성 | 원작 |

@@ -58,3 +58,16 @@ third-party game or franchise.
 - Character/enemy/world/UI/title art: `assets/art/`
 - Generated music and SFX: `assets/audio/`
 - Generation tools: `tools/` (Python/Pillow/NumPy)
+
+## 6. Kenney Fantasy UI Borders
+
+- Author: Kenney (Kenney.nl)
+- Source: https://kenney.nl/assets/fantasy-ui-borders
+- License: Creative Commons CC0 1.0 Universal
+- Local license: `assets/ui/fantasy/LICENSE.txt`
+- Use: selected button and panel frame textures in `assets/ui/fantasy/`
+- Modifications: frames tinted, composited with the game's dark palette, and
+  converted to 9-slice UI styles.
+
+CC0 1.0 waives copyright and related rights. Attribution is not required and is
+included here as a courtesy.

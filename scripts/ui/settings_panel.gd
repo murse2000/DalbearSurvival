@@ -493,14 +493,7 @@ func _update_tab_styles() -> void:
 		var button: Button = _tab_buttons[tid]
 		var selected: bool = String(tid) == _tab
 		button.set_pressed_no_signal(selected)
-		button.add_theme_stylebox_override("normal", UIKit.style(
-			Color(0.11, 0.15, 0.20, 0.98) if selected else Color(0.055, 0.08, 0.12, 0.98),
-			UIKit.GOLD if selected else UIKit.BORDER, 2, 0, 0))
-		button.add_theme_stylebox_override("hover", UIKit.style(
-			Color(0.13, 0.18, 0.24, 0.98),
-			UIKit.GOLD if selected else UIKit.BORDER, 2, 0, 0))
-		button.add_theme_stylebox_override("pressed", UIKit.style(
-			Color(0.16, 0.20, 0.26, 0.98), UIKit.GOLD, 2, 0, 0))
+		UIKit.apply_tab_style(button, selected)
 
 
 func _switch_tab(tid: String) -> void:

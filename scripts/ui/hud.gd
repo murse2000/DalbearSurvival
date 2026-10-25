@@ -191,6 +191,13 @@ func _build() -> void:
 	# warning banner
 	warning_panel = UIKit.panel(Color(0.10, 0.045, 0.055, 0.96), Color(0.95, 0.45, 0.4, 0.95), 2)
 	UIKit.place(warning_panel, 280, 196, 720, 58)
+	var warning_accent := ColorRect.new()
+	warning_accent.name = "Accent"
+	warning_accent.color = UIKit.CORAL
+	warning_accent.position = Vector2(0, 0)
+	warning_accent.size = Vector2(5, 58)
+	warning_accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	warning_panel.add_child(warning_accent)
 	warning_panel.visible = false
 	root.add_child(warning_panel)
 	warning_label = UIKit.label("외계 함대 접근", 26, Color(1.0, 0.82, 0.7), 4)
@@ -641,6 +648,11 @@ func show_warning(text: String, duration: float = 3.0) -> void:
 	warning_panel.add_theme_stylebox_override("panel", UIKit.style(
 		Color(0.09, 0.08, 0.045, 0.96) if achievement else Color(0.10, 0.045, 0.055, 0.96),
 		UIKit.GOLD if achievement else Color(0.95, 0.45, 0.4, 0.95), 2))
+	var warning_accent := warning_panel.get_node_or_null("Accent") as ColorRect
+	if warning_accent != null:
+		warning_accent.color = UIKit.GOLD if achievement else UIKit.CORAL
+	UIKit.set_panel_ornament(warning_panel,
+		Color(1.0, 0.88, 0.55, 0.86) if achievement else Color(1.0, 0.45, 0.38, 0.78))
 	warning_label.add_theme_color_override("font_color", UIKit.GOLD_L if achievement else Color(1.0, 0.82, 0.7))
 	warning_panel.visible = true
 	warning_panel.modulate.a = 0.0
