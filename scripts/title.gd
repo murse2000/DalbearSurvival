@@ -6,6 +6,7 @@ const SettingsPanel := preload("res://scripts/ui/settings_panel.gd")
 
 var _args: PackedStringArray
 var _bg: TextureRect
+var _fireflies: CPUParticles2D
 var _content: Control
 var _warning: Label
 var _ticker: Panel
@@ -17,6 +18,7 @@ var _new_run_btn: Button
 var _continue_info: Label
 var _record_label: Label
 var _hint_label: Label
+var _button_row: HBoxContainer
 var _time := 0.0
 var _starting := false
 var _settings_panel: Control
@@ -133,6 +135,7 @@ func _build() -> void:
 	buttons.position = Vector2(0, 380)
 	buttons.add_theme_constant_override("separation", 10)
 	_content.add_child(buttons)
+	_button_row = buttons
 	var start := UIKit.button("모험 시작", Vector2(200, 60))
 	start.add_theme_font_size_override("font_size", 24)
 	start.pressed.connect(_start)
@@ -166,8 +169,8 @@ func _build() -> void:
 	buttons.add_child(quit)
 	start.grab_focus()
 
-	_new_run_btn = UIKit.button("새 모험", Vector2(140, 36))
-	_new_run_btn.add_theme_font_size_override("font_size", 15)
+	_new_run_btn = UIKit.button("새 모험", Vector2(140, 30))
+	_new_run_btn.add_theme_font_size_override("font_size", 13)
 	_new_run_btn.position = Vector2(4, 446)
 	_new_run_btn.pressed.connect(_new_adventure)
 	_new_run_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
@@ -233,19 +236,68 @@ func _build() -> void:
 
 func _fit_title() -> void:
 	var vp := get_viewport_rect().size
-	var s := maxf(1.0, minf(vp.y / 720.0, vp.x / 820.0))
-	_content.scale = Vector2(s, s)
-	_content.position = Vector2(96.0 * s, maxf(24.0, (vp.y - 560.0 * s) * 0.5))
-	_bg.position = Vector2.ZERO
-	_bg.size = vp
-	_bg.scale = Vector2.ONE
-	_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	var portrait := vp.y > vp.x
+	if portrait:
+		# The key art is wide: keep the bear and moon visible by showing the
+		# right side of the illustration, and fit all six menu buttons inside
+		# the narrow screen instead of letting the row run off the edge.
+		var s := minf((vp.x - 48.0) / 780.0, 1.25)
+		_content.scale = Vector2(s, s)
+		var cover := vp.y / 720.0
+		var bear_top := 390.0 * cover
+		var max_y := bear_top - 560.0 * s - 20.0
+		var content_y := maxf(48.0, max_y)
+		_content.position = Vector2(maxf(16.0, (vp.x - 780.0 * s) * 0.5), content_y)
+		var art_w := 1280.0 * cover
+		_bg.size = Vector2(art_w, vp.y)
+		_bg.position = Vector2(vp.x * 0.70 - 1010.0 * cover, 0.0)
+		_bg.scale = Vector2.ONE
+		_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		if _fireflies != null:
+			_fireflies.position = Vector2(vp.x * 0.62, vp.y * 0.60)
+		if _hint_label != null:
+			_hint_label.visible = false
+			_hint_label.position.y = 552.0
+		if _continue_info != null:
+			_continue_info.position.y = 500.0
+		if _record_label != null:
+			_record_label.position.y = 530.0
+		var has_run := _new_run_btn != null and _new_run_btn.visible
+		if _button_row != null:
+			_button_row.position.y = 360.0 if has_run else 380.0
+		if _new_run_btn != null:
+			if has_run:
+				_new_run_btn.custom_minimum_size = Vector2(170, 50)
+				_new_run_btn.position = Vector2(4, 430)
+				_new_run_btn.add_theme_font_size_override("font_size", 14)
+			else:
+				_new_run_btn.custom_minimum_size = Vector2(140, 36)
+				_new_run_btn.position = Vector2(4, 446)
+				_new_run_btn.add_theme_font_size_override("font_size", 15)
+	else:
+		var s := maxf(1.0, minf(vp.y / 720.0, vp.x / 820.0))
+		_content.scale = Vector2(s, s)
+		_content.position = Vector2(96.0 * s, maxf(24.0, (vp.y - 560.0 * s) * 0.5))
+		_bg.position = Vector2.ZERO
+		_bg.size = vp
+		_bg.scale = Vector2.ONE
+		_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		if _fireflies != null:
+			_fireflies.position = Vector2(640, 380)
+		if _hint_label != null:
+			_hint_label.visible = true
+		if _button_row != null:
+			_button_row.position.y = 380.0
+		if _new_run_btn != null:
+			_new_run_btn.custom_minimum_size = Vector2(140, 36)
+			_new_run_btn.position = Vector2(4, 446)
+			_new_run_btn.add_theme_font_size_override("font_size", 15)
 	if _ticker != null:
 		_ticker.position = Vector2(vp.x - 256.0, 26)
 	if _domain != null:
-		_domain.position = Vector2(96.0 * s, vp.y - 56.0)
+		_domain.position = Vector2(maxf(24.0, _content.position.x), vp.y - 56.0)
 	if _credits != null:
-		_credits.position = Vector2(96.0 * s, vp.y - 30.0)
+		_credits.position = Vector2(maxf(24.0, _content.position.x), vp.y - 30.0)
 	if _version != null:
 		_version.position = Vector2(vp.x - 260.0, vp.y - 30.0)
 		_version.size = Vector2(240, 20)
@@ -253,6 +305,7 @@ func _fit_title() -> void:
 
 func _build_fireflies() -> void:
 	var p := CPUParticles2D.new()
+	_fireflies = p
 	p.texture = load("res://assets/art/fx/firefly.png")
 	p.position = Vector2(640, 380)
 	p.amount = 55
@@ -319,9 +372,15 @@ func _refresh_continue() -> void:
 		_continue_info.visible = has_run
 		_continue_info.text = "이어서  %s" % Game.run_checkpoint_summary() if has_run else ""
 	if _record_label != null:
-		_record_label.position.y = 506.0 if has_run else 462.0
+		if get_viewport_rect().size.y > get_viewport_rect().size.x:
+			_record_label.position.y = 530.0
+		else:
+			_record_label.position.y = 506.0 if has_run else 462.0
 	if _hint_label != null:
-		_hint_label.position.y = 536.0 if has_run else 496.0
+		if get_viewport_rect().size.y > get_viewport_rect().size.x:
+			_hint_label.position.y = 552.0
+		else:
+			_hint_label.position.y = 536.0 if has_run else 496.0
 
 
 func _quit() -> void:
