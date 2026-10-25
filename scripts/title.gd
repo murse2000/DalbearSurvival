@@ -149,6 +149,11 @@ func _build() -> void:
 	equipment_btn.pressed.connect(_open_equipment)
 	equipment_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
 	buttons.add_child(equipment_btn)
+	var gacha_btn := UIKit.button("소환", Vector2(90, 60))
+	gacha_btn.add_theme_font_size_override("font_size", 18)
+	gacha_btn.pressed.connect(_open_gacha)
+	gacha_btn.mouse_entered.connect(func(): Audio.play("click", 1.3, -14.0))
+	buttons.add_child(gacha_btn)
 	var settings_btn := UIKit.button("설정", Vector2(100, 60))
 	settings_btn.add_theme_font_size_override("font_size", 18)
 	settings_btn.pressed.connect(_open_settings)
@@ -355,6 +360,13 @@ func _open_equipment() -> void:
 		return
 	Audio.play_click()
 	Game.go_equipment("title")
+
+
+func _open_gacha() -> void:
+	if _starting:
+		return
+	Audio.play_click()
+	Game.go_gacha("title")
 
 
 func _open_characters() -> void:

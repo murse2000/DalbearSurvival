@@ -589,13 +589,24 @@ func _make_stage_card(id: String, _index: int) -> Dictionary:
 	img.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	root.add_child(img)
 
-	var num := UIKit.label("%02d" % int(info["num"]), 11, UIKit.INK)
-	num.position = Vector2(0, 1)
-	num.size = Vector2(38, 20)
+	# Front-number plate: dark metal inset, accent jewel and gold pixel border.
+	var num_bg := UIKit.panel(Color(0.035, 0.055, 0.08, 0.96), accent, 2)
+	UIKit.place(num_bg, 22, 22, 52, 26)
+	var gem := UIKit.label("◆", 8, accent)
+	gem.position = Vector2(5, 7)
+	gem.size = Vector2(10, 12)
+	num_bg.add_child(gem)
+	var num := UIKit.label("%02d" % int(info["num"]), 12, UIKit.CREAM, 2)
+	num.position = Vector2(15, 2)
+	num.size = Vector2(31, 22)
 	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var num_bg := UIKit.panel(accent, accent, 1)
-	UIKit.place(num_bg, 24, 24, 38, 22)
 	num_bg.add_child(num)
+	var underline := ColorRect.new()
+	underline.color = Color(accent.r, accent.g, accent.b, 0.75)
+	underline.position = Vector2(5, 21)
+	underline.size = Vector2(42, 2)
+	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	num_bg.add_child(underline)
 	root.add_child(num_bg)
 
 	var name_label := UIKit.label(String(info["short"]), 18, UIKit.CREAM, 3)

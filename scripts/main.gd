@@ -163,6 +163,8 @@ func _ready() -> void:
 		_test_haptics()
 	elif "--test-play-games" in _args:
 		_test_play_games()
+	elif "--test-gacha" in _args:
+		_test_gacha()
 	elif "--test-settings-close" in _args:
 		_test_settings_close()
 	elif "--test-equipment-run" in _args:
@@ -1654,6 +1656,56 @@ func _test_play_games() -> void:
 		print("TEST PASS")
 	else:
 		print("PLAY GAMES TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
+	get_tree().quit()
+
+
+func _test_gacha() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var errors: Array = []
+	var old_diamonds := Game.diamonds
+	var old_pity := Game.gacha_pity
+	var old_count := Game.gacha_count
+	var old_inventory: Array = Game.inventory.duplicate(true)
+	var old_uid := Game.next_item_uid
+	Game.diamonds = 2000
+	Game.gacha_pity = EquipmentData.GACHA_PITY_LIMIT - 1
+	var result := Game.gacha_pull(10)
+	if not result.get("ok", false):
+		errors.append("10-pull failed")
+	if (result.get("items", []) as Array).size() != 10:
+		errors.append("10-pull item count")
+	if Game.diamonds != 1100:
+		errors.append("diamond cost mismatch: %d" % Game.diamonds)
+	var any_legendary := false
+	var any_high := false
+	for item in result.get("items", []):
+		if String(item.get("rarity", "")) == "legendary":
+			any_legendary = true
+		if String(item.get("rarity", "")) in ["epic", "legendary"]:
+			any_high = true
+	if not any_legendary:
+		errors.append("pity did not force legendary")
+	if not any_high:
+		errors.append("10-pull did not include epic+")
+	var gacha_legendary := EquipmentData.make_gacha_legendary()
+	if String(gacha_legendary.get("rarity", "")) != "legendary" or not bool(gacha_legendary.get("gacha_only", false)):
+		errors.append("gacha legendary template invalid")
+	Game.diamonds = old_diamonds
+	Game.gacha_pity = old_pity
+	Game.gacha_count = old_count
+	Game.inventory = old_inventory
+	Game.next_item_uid = old_uid
+	Game.save_settings()
+	if errors.is_empty():
+		print("GACHA TEST PASS legendary_pool=%d pity=%d" % [
+			EquipmentData.GACHA_LEGENDARIES.size(), EquipmentData.GACHA_PITY_LIMIT,
+		])
+		print("TEST PASS")
+	else:
+		print("GACHA TEST FAIL")
 		for error in errors:
 			print("  ", error)
 		print("TEST FAIL")

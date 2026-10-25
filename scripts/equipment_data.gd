@@ -38,6 +38,33 @@ const ITEM_SLOT_LABELS := {
 	"necklace": "목걸이",
 }
 
+## Gacha-only legendaries. They never enter the normal stage drop pool.
+const GACHA_LEGENDARIES := [
+	{"slot": "helmet", "name": "황혼의 왕관", "icon_override": "res://assets/art/ui/icon_equip_helmet.png",
+		"bonus": {"max_hp": 70.0, "armor": 4.0, "crit": 0.04}},
+	{"slot": "gloves", "name": "월식을 삼킨 장갑", "icon_override": "res://assets/art/ui/icon_equip_gloves.png",
+		"bonus": {"damage_pct": 0.18, "cooldown_pct": 0.10, "crit": 0.05}},
+	{"slot": "chest", "name": "성운의 흉갑", "icon_override": "res://assets/art/ui/icon_equip_chest.png",
+		"bonus": {"max_hp": 130.0, "armor": 9.0, "regen": 1.0}},
+	{"slot": "pants", "name": "유성의 각반", "icon_override": "res://assets/art/ui/icon_equip_pants.png",
+		"bonus": {"max_hp": 80.0, "speed_pct": 0.08, "pickup": 30.0}},
+	{"slot": "boots", "name": "혜성의 발걸음", "icon_override": "res://assets/art/ui/icon_equip_boots.png",
+		"bonus": {"speed_pct": 0.13, "pickup": 45.0, "cooldown_pct": 0.05}},
+	{"slot": "cape", "name": "심연의 망토", "icon_override": "res://assets/art/ui/icon_equip_cape.png",
+		"bonus": {"armor": 8.0, "regen": 2.0, "max_hp": 60.0}},
+	{"slot": "weapon", "weapon_id": "moon_shot", "name": "월광의 종말", "icon_override": "res://assets/art/ui/icon_moon_shot.png",
+		"bonus": {"damage_pct": 0.26, "crit": 0.08, "cooldown_pct": 0.06}},
+	{"slot": "weapon", "weapon_id": "satellite", "name": "궤도를 벗어난 송곳니", "icon_override": "res://assets/art/ui/icon_satellite.png",
+		"bonus": {"damage_pct": 0.20, "cooldown_pct": 0.12, "crit": 0.06}},
+	{"slot": "ring", "name": "별의 마지막 반지", "icon_override": "res://assets/art/ui/icon_equip_ring.png",
+		"bonus": {"crit": 0.10, "damage_pct": 0.14, "pickup": 20.0}},
+	{"slot": "necklace", "name": "일식의 목걸이", "icon_override": "res://assets/art/ui/icon_equip_necklace.png",
+		"bonus": {"max_hp": 80.0, "regen": 2.0, "crit": 0.08}},
+]
+
+const GACHA_LEGENDARY_RATE := 0.0025
+const GACHA_PITY_LIMIT := 120
+
 const RARITY_ORDER := ["common", "rare", "epic", "legendary"]
 const RARITIES := {
 	"common": {
@@ -578,3 +605,23 @@ static func roll_drop_slot() -> String:
 
 static func random_item(rarity_id: String, level: int = 1) -> Dictionary:
 	return make_item(roll_drop_slot(), rarity_id, level)
+
+
+static func make_gacha_legendary() -> Dictionary:
+	var template: Dictionary = GACHA_LEGENDARIES[randi() % GACHA_LEGENDARIES.size()]
+	var item := make_item(
+		String(template.get("slot", "helmet")), "legendary", 1,
+		String(template.get("weapon_id", "")),
+	)
+	item["name"] = String(template.get("name", item_name(item)))
+	item["bonus"] = (template.get("bonus", {}) as Dictionary).duplicate(true)
+	item["icon_override"] = String(template.get("icon_override", ""))
+	item["gacha_only"] = true
+	item["gacha_legendary"] = true
+	return item
+
+
+static func make_gacha_item(rarity_id: String) -> Dictionary:
+	if rarity_id == "legendary":
+		return make_gacha_legendary()
+	return make_item(roll_drop_slot(), rarity_id, 1)

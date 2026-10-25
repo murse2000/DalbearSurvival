@@ -14,6 +14,7 @@ signal altar_changed
 signal companion_changed(id: String)
 signal settings_saved
 signal run_checkpoint_saved
+signal diamonds_changed(diamonds: int)
 
 const SAVE_PATH := "user://dalbear_save.cfg"
 const RUN_SAVE_PATH := "user://dalbear_run.cfg"
@@ -25,6 +26,9 @@ const STAGE_SELECT_SCENE := "res://scenes/stage_select.tscn"
 const EQUIPMENT_SCENE := "res://scenes/equipment.tscn"
 const CHARACTER_SCENE := "res://scenes/characters.tscn"
 const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
+const GACHA_SCENE := "res://scenes/gacha.tscn"
+const GACHA_1_COST := 100
+const GACHA_10_COST := 900
 const ALTAR_SCENE := "res://scenes/altar.tscn"
 const COMPANIONS_SCENE := "res://scenes/companions.tscn"
 const REROLL_MAX := 2
@@ -86,6 +90,10 @@ var inventory: Array = []
 var equipped := {}
 var loadouts: Array = [{}, {}, {}]
 var shards := 0
+var diamonds := 1000
+var gacha_pity := 0
+var gacha_count := 0
+var gacha_return := "title"
 var next_item_uid := 1
 var equipment_initialized := false
 var last_rewards := {}
@@ -1306,6 +1314,73 @@ func close_achievements() -> void:
 		go_stage_select()
 
 
+func go_gacha(return_to: String = "title") -> void:
+	gacha_return = return_to
+	save_settings()
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	Audio.duck_music(false)
+	get_tree().change_scene_to_file(GACHA_SCENE)
+
+
+func close_gacha() -> void:
+	if gacha_return == "equipment":
+		go_equipment("title")
+	else:
+		go_title()
+
+
+func add_diamonds(amount: int, save_now: bool = false) -> void:
+	diamonds = maxi(0, diamonds + amount)
+	diamonds_changed.emit(diamonds)
+	if save_now:
+		save_settings()
+
+
+func gacha_pull(count: int) -> Dictionary:
+	if count != 1 and count != 10:
+		return {"ok": false, "message": "1회 또는 10회만 소환할 수 있습니다."}
+	var cost := GACHA_1_COST if count == 1 else GACHA_10_COST
+	if diamonds < cost:
+		return {"ok": false, "message": "다이아가 부족합니다."}
+	diamonds -= cost
+	var results: Array = []
+	var high_rank := false
+	for i in count:
+		gacha_pity += 1
+		var rarity := "common"
+		if gacha_pity >= EquipmentData.GACHA_PITY_LIMIT:
+			rarity = "legendary"
+		else:
+			var roll := randf()
+			if roll < EquipmentData.GACHA_LEGENDARY_RATE:
+				rarity = "legendary"
+			elif roll < 0.05:
+				rarity = "epic"
+			elif roll < 0.30:
+				rarity = "rare"
+		if count == 10 and i == 9 and not high_rank and rarity != "legendary":
+			rarity = "epic"
+		if rarity == "legendary" or rarity == "epic":
+			high_rank = true
+		if rarity == "legendary":
+			gacha_pity = 0
+		var item := EquipmentData.make_gacha_item(rarity)
+		var added := add_item(item, false)
+		results.append(added)
+	gacha_count += count
+	save_settings()
+	diamonds_changed.emit(diamonds)
+	return {
+		"ok": true,
+		"items": results,
+		"diamonds": diamonds,
+		"pity": gacha_pity,
+		"count": gacha_count,
+		"cost": cost,
+	}
+
+
 func altar_level(id: String) -> int:
 	return maxi(0, int(altar_levels.get(id, 0)))
 
@@ -1776,6 +1851,9 @@ func save_settings() -> void:
 	cfg.set_value("equipment", "equipped", equipped)
 	cfg.set_value("equipment", "loadouts", loadouts)
 	cfg.set_value("equipment", "shards", shards)
+	cfg.set_value("gacha", "diamonds", diamonds)
+	cfg.set_value("gacha", "pity", gacha_pity)
+	cfg.set_value("gacha", "count", gacha_count)
 	cfg.set_value("equipment", "next_uid", next_item_uid)
 	cfg.set_value("equipment", "initialized", equipment_initialized)
 	cfg.set_value("equipment", "last_rewards", last_rewards)
@@ -1846,6 +1924,9 @@ func load_record() -> void:
 	while loadouts.size() < 3:
 		loadouts.append({})
 	shards = int(cfg.get_value("equipment", "shards", 0))
+	diamonds = maxi(0, int(cfg.get_value("gacha", "diamonds", 1000)))
+	gacha_pity = maxi(0, int(cfg.get_value("gacha", "pity", 0)))
+	gacha_count = maxi(0, int(cfg.get_value("gacha", "count", 0)))
 	next_item_uid = int(cfg.get_value("equipment", "next_uid", 1))
 	equipment_initialized = bool(cfg.get_value("equipment", "initialized", false))
 	var rewards = cfg.get_value("equipment", "last_rewards", {})
