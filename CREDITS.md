@@ -71,8 +71,9 @@
 
 - **BGM**: 90 BPM, A minor, 64초 seamless loop. Python/NumPy로 합성, ffmpeg로 OGG 인코딩.
 - **효과음**: 발사, 타격, 처치, 픽업, 회복, 피격, 레벨 업, 클릭, 레이저, 펄스, 보스, 승리, 패배, 대시, 궁극기.
+- **가챠 연출음**: 차지 상승음, 임팩트, 전설 전용 임팩트. `tools/make_gacha_fx_assets.py`로 생성.
 - 모두 이 프로젝트를 위해 절차적으로 생성한 원본 사운드입니다.
-- 생성 스크립트: `tools/gen_audio.py`
+- 생성 스크립트: `tools/gen_audio.py`, `tools/make_gacha_fx_assets.py`
 
 ---
 

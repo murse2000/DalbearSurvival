@@ -57,6 +57,9 @@ third-party game or franchise.
 
 - Character/enemy/world/UI/title art: `assets/art/`
 - Generated music and SFX: `assets/audio/`
+- Gacha summon rays, vignette and cues: `assets/art/fx/gacha_rays.png`,
+  `assets/art/fx/gacha_vignette.png`, `assets/audio/gacha_charge.wav`,
+  `assets/audio/gacha_impact.wav`, `assets/audio/gacha_legendary.wav`
 - Generation tools: `tools/` (Python/Pillow/NumPy)
 
 ## 6. Kenney UI Pack - Pixel Adventure

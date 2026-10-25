@@ -3,8 +3,11 @@ extends Control
 ## Moonlit equipment summon screen. Test-currency build: real Play Billing will
 ## be connected after the store product IDs are ready.
 
+const GachaFxScript := preload("res://scripts/ui/gacha_fx.gd")
+
 var _portrait := false
 var _reloading := false
+var _busy := false
 var _diamonds_label: Label
 var _pity_label: Label
 var _history_label: Label
@@ -14,11 +17,14 @@ var _one_btn: Button
 var _ten_btn: Button
 var _test_btn: Button
 var _skip_btn: Button
+var _back_btn: Button
+var _rates_btn: Button
 var _rates_modal: Control
 var _result_nodes: Array[Node] = []
 var _reveal_token := 0
-var _flash: ColorRect
-var _banner: Label
+var _last_items: Array = []
+var _last_free := false
+var _fx
 
 
 func _ready() -> void:
@@ -42,6 +48,10 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if "--capture-gacha" in args:
 		_capture()
+	elif "--capture-gacha-fx" in args:
+		_capture_fx()
+	elif "--test-gacha-fx" in args:
+		_test_gacha_fx()
 
 
 func _is_portrait() -> bool:
@@ -97,6 +107,7 @@ func _build() -> void:
 	back.add_theme_font_size_override("font_size", 18)
 	back.pressed.connect(_go_back)
 	add_child(back)
+	_back_btn = back
 
 	var wallet := UIKit.panel(Color(0.05, 0.08, 0.12, 0.96), UIKit.GOLD.darkened(0.35), 2)
 	if _portrait:
@@ -178,6 +189,7 @@ func _build() -> void:
 	rates.add_theme_font_size_override("font_size", 15)
 	rates.pressed.connect(_open_rates)
 	add_child(rates)
+	_rates_btn = rates
 
 	_test_btn = UIKit.button("테스트 다이아 +1,000", Vector2(230, 30))
 	_test_btn.position = Vector2(812, 84) if not _portrait else Vector2(340, 126)
@@ -185,25 +197,15 @@ func _build() -> void:
 	_test_btn.pressed.connect(_test_charge)
 	add_child(_test_btn)
 
-	_skip_btn = UIKit.button("결과 전체 공개", Vector2(220, 34))
+	_fx = GachaFxScript.new()
+	add_child(_fx)
+
+	_skip_btn = UIKit.button("연출 스킵", Vector2(220, 34))
 	_skip_btn.position = Vector2(530, 680) if not _portrait else Vector2(240, 1120)
 	_skip_btn.add_theme_font_size_override("font_size", 14)
 	_skip_btn.visible = false
 	_skip_btn.pressed.connect(_skip_reveal)
 	add_child(_skip_btn)
-
-	_flash = ColorRect.new()
-	_flash.color = Color(1.0, 0.82, 0.35, 0.0)
-	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_flash.visible = false
-	add_child(_flash)
-	_banner = UIKit.label("", 34 if _portrait else 42, UIKit.GOLD_L, 8)
-	_banner.position = Vector2(0, 300) if _portrait else Vector2(0, 300)
-	_banner.size = Vector2(720 if _portrait else 1280, 60)
-	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.visible = false
-	add_child(_banner)
 
 	_build_rates_modal()
 
@@ -249,14 +251,16 @@ func _refresh() -> void:
 			maxi(0, EquipmentData.GACHA_PITY_LIMIT - Game.gacha_pity), Game.gacha_count,
 		]
 	if _one_btn != null:
-		if Game.daily_free_gacha_available():
+		if _busy:
+			_one_btn.disabled = true
+		elif Game.daily_free_gacha_available():
 			_one_btn.text = "오늘의 무료 소환"
 			_one_btn.disabled = false
 		else:
 			_one_btn.text = "1회 소환  ◆ %d" % Game.GACHA_1_COST
 			_one_btn.disabled = Game.diamonds < Game.GACHA_1_COST
 	if _ten_btn != null:
-		_ten_btn.disabled = Game.diamonds < Game.GACHA_10_COST
+		_ten_btn.disabled = _busy or Game.diamonds < Game.GACHA_10_COST
 	if _history_label != null:
 		var recent: Array = []
 		for i in range(maxi(0, Game.gacha_history.size() - 3), Game.gacha_history.size()):
@@ -269,6 +273,8 @@ func _refresh() -> void:
 
 
 func _pull(count: int) -> void:
+	if _busy:
+		return
 	var free := count == 1 and Game.daily_free_gacha_available()
 	var result := Game.gacha_pull(count, free)
 	if not result.get("ok", false):
@@ -278,64 +284,194 @@ func _pull(count: int) -> void:
 		return
 	Audio.play_click()
 	var items: Array = result.get("items", [])
+	_last_items = items.duplicate()
+	_last_free = free
 	_clear_results()
 	_reveal_token += 1
-	var high := false
-	for index in items.size():
-		var item: Dictionary = items[index]
+	_set_busy(true)
+	var ordered := items.duplicate()
+	if ordered.size() > 1:
+		ordered.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return _rarity_level(String(a.get("rarity", "common"))) < _rarity_level(String(b.get("rarity", "common")))
+		)
+	for item in ordered:
 		var card := _make_result_card(item)
 		_results.add_child(card)
 		_result_nodes.append(card)
-		card.visible = false
-		card.scale = Vector2(0.82, 0.82)
+		card.visible = true
+		card.modulate.a = 0.0
+		card.scale = Vector2(0.62, 0.62)
 		card.pivot_offset = card.size * 0.5
-		if String(item.get("rarity", "")) == "legendary":
-			high = true
+	_message.text = "달빛이 모여듭니다..."
+	_message.add_theme_color_override("font_color", UIKit.GOLD_L)
+	var highest := _highest_rarity(ordered)
+	var level := _rarity_level(highest)
+	_skip_btn.text = "연출 스킵"
 	_skip_btn.visible = true
-	if high:
-		_legendary_fx()
-	_message.text = ("무료 소환 완료 · " if free else "") + ("전설 장비가 강림했습니다!" if high else "장비를 획득했습니다.")
-	_message.add_theme_color_override("font_color", UIKit.GOLD_L if high else UIKit.MINT)
-	_reveal_sequence(_reveal_token)
+	_fx.open(EquipmentData.rarity_color(highest), level)
+	_summon_sequence(_reveal_token, ordered, highest, free)
 
 
-func _reveal_sequence(token: int) -> void:
-	for card in _result_nodes:
+func _summon_sequence(token: int, items: Array, highest: String, free: bool) -> void:
+	var level := _rarity_level(highest)
+	var steps := 2 + level
+	var delays := [0.34, 0.44, 0.52, 0.60]
+	var labels := [
+		"달빛이 모여듭니다",
+		"별의 파편이 반응합니다",
+		"강한 기운이 감돕니다",
+		"전설의 기운이 감돕니다",
+	]
+	Audio.play("gacha_charge", 0.82 + level * 0.1, -4.0)
+	for i in steps:
+		await get_tree().create_timer(float(delays[level]), true, false, false).timeout
 		if token != _reveal_token:
 			return
+		var text := String(labels[mini(i, level)])
+		if i == steps - 1:
+			text = "장비의 형체가 드러납니다"
+		_fx.phase(text, level, 1.0 + level * 0.35)
+		if i == 1:
+			Audio.play("pulse", 0.9, -5.0)
+		if level >= 2 and i == steps - 2:
+			Audio.play("boss", 0.68, -4.0)
+			Haptics.play("miniboss", 0.55)
+	if level >= 3:
+		await get_tree().create_timer(0.34, true, false, false).timeout
+		if token != _reveal_token:
+			return
+		_fx.phase("전설의 기운이 감돕니다", 3, 2.2)
+		Audio.play("boss", 0.6, -1.0)
+		Haptics.play("boss", 0.6)
+		await get_tree().create_timer(0.5, true, false, false).timeout
+		if token != _reveal_token:
+			return
+	_fx.burst(level)
+	Audio.play("gacha_impact", 1.0 if level < 3 else 0.9, -2.0)
+	if level >= 3:
+		Audio.play("gacha_legendary", 1.0, -1.0)
+		Haptics.play("ultimate", 0.82)
+	elif level >= 2:
+		Audio.play("levelup", 0.9, -3.0)
+		Haptics.play("levelup", 0.8)
+	await get_tree().create_timer(0.55, true, false, false).timeout
+	if token != _reveal_token:
+		return
+	_fx.close()
+	await get_tree().create_timer(0.3, true, false, false).timeout
+	if token != _reveal_token:
+		return
+	_reveal_sequence(token, items, free)
+
+
+func _reveal_sequence(token: int, items: Array, free: bool) -> void:
+	_skip_btn.text = "결과 전체 공개"
+	_skip_btn.visible = true
+	var waits := [0.09, 0.14, 0.25, 0.44]
+	for i in _result_nodes.size():
+		if token != _reveal_token:
+			return
+		var card: Panel = _result_nodes[i]
+		var item: Dictionary = items[i] if i < items.size() else {}
+		var rarity := String(item.get("rarity", "common"))
+		var level := _rarity_level(rarity)
+		var color := EquipmentData.rarity_color(rarity)
 		card.visible = true
+		card.modulate.a = 0.0
+		card.scale = Vector2(0.58, 0.58)
+		card.rotation = -0.045 if i % 2 == 0 else 0.045
+		_fx.card_burst(level, color, card.get_global_rect().get_center())
+		match level:
+			3:
+				Audio.play("gacha_legendary", 1.08, -6.0)
+				Haptics.play("levelup", 0.95)
+			2:
+				Audio.play("levelup", 1.16, -5.0)
+				Haptics.play("levelup", 0.65)
+			1:
+				Audio.play("pickup", 0.92, -4.0)
 		var tw := create_tween()
-		tw.tween_property(card, "scale", Vector2.ONE, 0.18)
-		await get_tree().create_timer(0.105, true, false, false).timeout
-	if token == _reveal_token:
-		_skip_btn.visible = false
+		tw.set_parallel(true)
+		tw.tween_property(card, "modulate:a", 1.0, 0.22)
+		tw.tween_property(card, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw.tween_property(card, "rotation", 0.0, 0.32).set_ease(Tween.EASE_OUT)
+		await get_tree().create_timer(float(waits[level]), true, false, false).timeout
+	if token != _reveal_token:
+		return
+	_skip_btn.visible = false
+	if _rarity_level(_highest_rarity(items)) >= 3:
+		await get_tree().create_timer(0.45, true, false, false).timeout
+		if token != _reveal_token:
+			return
+	_fx.finish()
+	_set_busy(false)
+	_finish_message(free)
 
 
 func _skip_reveal() -> void:
+	if not _busy and not _skip_btn.visible:
+		return
 	_reveal_token += 1
-	for card in _result_nodes:
-		card.visible = true
-		card.scale = Vector2.ONE
+	_fx.cancel()
+	_show_all_cards()
 	_skip_btn.visible = false
+	_set_busy(false)
+	_finish_message(_last_free)
 	Audio.play_click()
 
 
-func _legendary_fx() -> void:
-	_flash.visible = true
-	_flash.color = Color(1.0, 0.82, 0.35, 0.0)
-	_banner.text = "전설 강림"
-	_banner.visible = true
-	Audio.play("levelup", 0.8, -1.0)
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(_flash, "color:a", 0.32, 0.12)
-	tw.tween_property(_flash, "color:a", 0.0, 0.5).set_delay(0.16)
-	tw.tween_property(_banner, "modulate:a", 0.0, 0.45).set_delay(0.3)
-	tw.chain().tween_callback(func() -> void:
-		_flash.visible = false
-		_banner.visible = false
-		_banner.modulate.a = 1.0
-	)
+func _show_all_cards() -> void:
+	for card in _result_nodes:
+		card.visible = true
+		card.modulate.a = 1.0
+		card.scale = Vector2.ONE
+		card.rotation = 0.0
+
+
+func _set_busy(value: bool) -> void:
+	_busy = value
+	if _back_btn != null:
+		_back_btn.disabled = value
+	if _rates_btn != null:
+		_rates_btn.disabled = value
+	if _test_btn != null:
+		_test_btn.disabled = value
+	_refresh()
+
+
+func _finish_message(free: bool) -> void:
+	var highest := _highest_rarity(_last_items)
+	var prefix := ("무료 소환 완료 · " if free else "%d회 소환 완료 · " % _last_items.size())
+	match _rarity_level(highest):
+		3:
+			_message.text = prefix + "전설 장비 강림!"
+			_message.add_theme_color_override("font_color", UIKit.GOLD_L)
+		2:
+			_message.text = prefix + "에픽 장비 획득"
+			_message.add_theme_color_override("font_color", UIKit.PURPLE)
+		_:
+			_message.text = prefix + "장비를 획득했습니다."
+			_message.add_theme_color_override("font_color", UIKit.MINT)
+	_refresh()
+
+
+func _highest_rarity(items: Array) -> String:
+	var highest := "common"
+	for item in items:
+		if item is Dictionary and _rarity_level(String(item.get("rarity", "common"))) > _rarity_level(highest):
+			highest = String(item.get("rarity", "common"))
+	return highest
+
+
+func _rarity_level(rarity: String) -> int:
+	match rarity:
+		"legendary":
+			return 3
+		"epic":
+			return 2
+		"rare":
+			return 1
+	return 0
 
 
 func _make_result_card(item: Dictionary) -> Panel:
@@ -346,30 +482,76 @@ func _make_result_card(item: Dictionary) -> Panel:
 		accent, 2)
 	card.custom_minimum_size = Vector2(260, 88) if _portrait else Vector2(158, 122)
 	card.size = card.custom_minimum_size
+	card.clip_contents = true
+	_add_card_aura(card, rarity)
 	var icon := UIKit.icon(EquipmentData.item_icon(item), 42 if not _portrait else 48)
 	icon.position = Vector2(12, 12) if not _portrait else Vector2(14, 14)
 	card.add_child(icon)
-	var name_label := UIKit.label(EquipmentData.item_name(item), 14 if not _portrait else 17, accent, 2)
+	var display_name := EquipmentData.item_name(item)
+	var max_chars := 7 if not _portrait else 14
+	if display_name.length() > max_chars:
+		display_name = display_name.left(max_chars - 1) + "…"
+	var name_label := UIKit.label(display_name, 13 if not _portrait else 16, accent, 2)
 	name_label.position = Vector2(60, 12) if not _portrait else Vector2(72, 15)
-	name_label.size = Vector2(88, 38) if not _portrait else Vector2(176, 34)
+	name_label.size = Vector2(94, 38) if not _portrait else Vector2(180, 34)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(name_label)
-	var rarity_label := UIKit.label(EquipmentData.rarity_name(rarity).to_upper(), 10 if not _portrait else 12, accent)
-	rarity_label.position = Vector2(60, 58) if not _portrait else Vector2(72, 58)
+	var rarity_label := UIKit.label(EquipmentData.rarity_name(rarity).to_upper(), 10 if not _portrait else 11, accent)
+	rarity_label.position = Vector2(60, 58) if not _portrait else Vector2(72, 50)
 	card.add_child(rarity_label)
 	var type_label := UIKit.label(EquipmentData.item_short(item), 11, UIKit.MUTED)
-	type_label.position = Vector2(60, 76) if not _portrait else Vector2(72, 80)
+	type_label.position = Vector2(60, 76) if not _portrait else Vector2(72, 66)
+	type_label.size = Vector2(94, 18) if not _portrait else Vector2(180, 18)
 	if bool(item.get("duplicate", false)):
 		type_label.text = "중복 · 조각 +%d" % int(item.get("shard_gain", 0))
 		type_label.add_theme_color_override("font_color", UIKit.CORAL)
 	card.add_child(type_label)
 	if rarity == "legendary":
-		var glow := UIKit.label("★", 16, UIKit.GOLD)
-		glow.position = Vector2(132, 4) if not _portrait else Vector2(224, 4)
-		glow.size = Vector2(20, 22)
+		var glow := UIKit.label("★", 14, UIKit.GOLD)
+		glow.position = Vector2(136, 101) if not _portrait else Vector2(238, 64)
+		glow.size = Vector2(18, 18)
 		glow.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		card.add_child(glow)
+		var tw := glow.create_tween()
+		tw.set_loops()
+		tw.tween_property(glow, "modulate:a", 0.42, 0.55)
+		tw.tween_property(glow, "modulate:a", 1.0, 0.55)
 	return card
+
+
+func _add_card_aura(card: Panel, rarity: String) -> void:
+	var level := _rarity_level(rarity)
+	if level <= 0:
+		return
+	var color := EquipmentData.rarity_color(rarity)
+	var side: float = [0.0, 142.0, 168.0, 235.0][level]
+	var base_alpha: float = [0.0, 0.13, 0.15, 0.20][level]
+	var path := "res://assets/art/fx/glow.png" if level < 3 else "res://assets/art/fx/gacha_rays.png"
+	var aura := TextureRect.new()
+	aura.texture = load(path)
+	aura.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	aura.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	aura.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	aura.size = Vector2(side, side)
+	aura.position = (card.size - aura.size) * 0.5
+	aura.pivot_offset = aura.size * 0.5
+	aura.modulate = Color(color.r, color.g, color.b, base_alpha)
+	aura.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	aura.material = mat
+	card.add_child(aura)
+	var tw := aura.create_tween()
+	tw.set_loops()
+	if level >= 3:
+		tw.tween_property(aura, "rotation", TAU, 5.5)
+		var pulse := aura.create_tween()
+		pulse.set_loops()
+		pulse.tween_property(aura, "scale", Vector2.ONE * 1.12, 1.2)
+		pulse.tween_property(aura, "scale", Vector2.ONE, 1.2)
+	else:
+		tw.tween_property(aura, "modulate:a", base_alpha * 1.8, 0.8)
+		tw.tween_property(aura, "modulate:a", base_alpha, 0.8)
 
 
 func _clear_results() -> void:
@@ -394,16 +576,54 @@ func _test_charge() -> void:
 func _capture() -> void:
 	await get_tree().create_timer(0.8, true, false, true).timeout
 	await get_tree().process_frame
-	var dir := ProjectSettings.globalize_path("res://screenshots")
-	DirAccess.make_dir_recursive_absolute(dir)
-	var img := get_viewport().get_texture().get_image()
-	var name := "gacha_portrait.png" if _portrait else "gacha.png"
-	img.save_png(dir + "/" + name)
-	print("CAPTURED: ", dir + "/" + name)
+	_save_capture("gacha_portrait.png" if _portrait else "gacha.png")
 	get_tree().quit()
 
 
+func _capture_fx() -> void:
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	Game.add_diamonds(5000, true)
+	Game.gacha_pity = EquipmentData.GACHA_PITY_LIMIT - 1
+	_pull(10)
+	await get_tree().create_timer(1.15, true, false, true).timeout
+	await get_tree().process_frame
+	_save_capture("gacha_charge_portrait.png" if _portrait else "gacha_charge.png")
+	await get_tree().create_timer(2.8, true, false, true).timeout
+	await get_tree().process_frame
+	_save_capture("gacha_burst_portrait.png" if _portrait else "gacha_burst.png")
+	await get_tree().create_timer(3.4, true, false, true).timeout
+	await get_tree().process_frame
+	_save_capture("gacha_result_portrait.png" if _portrait else "gacha_result.png")
+	get_tree().quit()
+
+
+func _test_gacha_fx() -> void:
+	await get_tree().create_timer(0.35, true, false, true).timeout
+	Game.add_diamonds(5000, true)
+	Game.gacha_pity = EquipmentData.GACHA_PITY_LIMIT - 1
+	_pull(1)
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	_skip_reveal()
+	await get_tree().create_timer(0.35, true, false, true).timeout
+	var card_visible: bool = _result_nodes.size() == 1 and _result_nodes[0].visible
+	var ok: bool = not _busy and card_visible and not _skip_btn.visible and not _fx.visible
+	print("GACHA FX TEST %s cards=%d busy=%s fx=%s" % [
+		"OK" if ok else "FAIL", _result_nodes.size(), str(_busy), str(_fx.visible),
+	])
+	get_tree().quit(0 if ok else 1)
+
+
+func _save_capture(file_name: String) -> void:
+	var dir := ProjectSettings.globalize_path("res://screenshots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(dir + "/" + file_name)
+	print("CAPTURED: ", dir + "/" + file_name)
+
+
 func _go_back() -> void:
+	if _busy:
+		return
 	Audio.play_click()
 	Game.close_gacha()
 
@@ -411,7 +631,9 @@ func _go_back() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
-			if _rates_modal != null and _rates_modal.visible:
+			if _busy:
+				_skip_reveal()
+			elif _rates_modal != null and _rates_modal.visible:
 				_rates_modal.visible = false
 			else:
 				_go_back()

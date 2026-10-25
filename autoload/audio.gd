@@ -3,7 +3,8 @@ extends Node
 ## Tiny pooled audio player with music ducking.
 
 const SFX := ["shoot", "hit", "kill", "pickup", "heal", "hurt", "levelup",
-	"click", "laser", "pulse", "boss", "victory", "gameover", "dash", "ultimate"]
+	"click", "laser", "pulse", "boss", "victory", "gameover", "dash", "ultimate",
+	"gacha_charge", "gacha_impact", "gacha_legendary"]
 const MUSIC := "res://assets/audio/music_loop.ogg"
 
 var _streams := {}
