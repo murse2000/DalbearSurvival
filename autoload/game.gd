@@ -58,9 +58,9 @@ var run_elite_bonus := 0.0
 var run_damage_taken := 0.0
 var endless_boss_wave := 0
 
-var stage_id := "forest"
+var stage_id := "forest_01"
 var difficulty_id := "normal"
-var selected_stage := "forest"
+var selected_stage := "forest_01"
 var selected_difficulty := "normal"
 
 var record := {"best_time": 0.0, "best_level": 0, "best_kills": 0, "victory": false}
@@ -72,6 +72,7 @@ var _warned := {}
 var _pending_run_snapshot: Dictionary = {}
 var achievement_return := "stage_select"
 var achievements := {}
+var chapter_rewards := {}
 var altar_levels := {}
 var altar_return := "stage_select"
 var weekly_key := ""
@@ -160,7 +161,8 @@ func daily_key() -> String:
 func prepare_daily() -> void:
 	var key := daily_key()
 	var seed := int(key.replace("-", "").to_int())
-	var stage := String(GameData.STAGE_ORDER[seed % GameData.STAGE_ORDER.size()])
+	var order := GameData.campaign_order()
+	var stage := String(order[seed % order.size()])
 	var diff := String(GameData.DIFFICULTY_ORDER[int(seed / 7.0) % GameData.DIFFICULTY_ORDER.size()])
 	var mod: Dictionary = GameData.DAILY_MODIFIERS[seed % GameData.DAILY_MODIFIERS.size()]
 	daily_info = {"date": key, "seed": seed, "stage": stage, "diff": diff, "modifier": mod}
@@ -223,7 +225,7 @@ func new_run(stage: String = "", diff: String = "", run_mode: String = "campaign
 		stage = String(daily_info.get("stage", "forest"))
 		diff = String(daily_info.get("diff", "normal"))
 		_apply_run_mods(daily_info.get("modifier", {}))
-	if stage != "" and GameData.STAGES.has(stage):
+	if stage != "" and GameData.is_valid_stage(stage):
 		stage_id = stage
 	if diff != "" and GameData.DIFFICULTIES.has(diff):
 		difficulty_id = diff
@@ -247,7 +249,7 @@ func start_stage(stage: String, diff: String) -> void:
 
 
 func select_stage(stage: String, diff: String) -> void:
-	if GameData.STAGES.has(stage):
+	if GameData.is_valid_stage(stage):
 		selected_stage = stage
 		stage_id = stage
 	if GameData.DIFFICULTIES.has(diff):
@@ -361,7 +363,7 @@ func load_run_checkpoint() -> Dictionary:
 		return {}
 	var stage := String(cfg.get_value("meta", "stage", ""))
 	var diff := String(cfg.get_value("meta", "difficulty", ""))
-	if not GameData.STAGES.has(stage) or not GameData.DIFFICULTIES.has(diff):
+	if not GameData.is_valid_stage(stage) or not GameData.DIFFICULTIES.has(diff):
 		return {}
 	var checkpoint_time := float(cfg.get_value("meta", "time", -1.0))
 	if checkpoint_time < 0.0:
@@ -485,8 +487,8 @@ func clear_run_checkpoint() -> void:
 func _apply_run_meta(meta: Dictionary) -> void:
 	stage_id = String(meta.get("stage", stage_id))
 	difficulty_id = String(meta.get("difficulty", difficulty_id))
-	if not GameData.STAGES.has(stage_id):
-		stage_id = "forest"
+	if not GameData.is_valid_stage(stage_id):
+		stage_id = "forest_01"
 	if not GameData.DIFFICULTIES.has(difficulty_id):
 		difficulty_id = "normal"
 	selected_stage = stage_id
@@ -973,9 +975,9 @@ func equipment_summary() -> String:
 
 func grant_run_rewards(victory: bool, boss_killed: bool) -> Dictionary:
 	var diff_idx := maxi(0, GameData.DIFFICULTY_ORDER.find(difficulty_id))
-	var stage_idx := maxi(0, GameData.STAGE_ORDER.find(stage_id))
+	var stage_idx := maxi(0, GameData.campaign_index(stage_id))
 	var diff_mult := float([0.8, 1.0, 1.25, 1.6][mini(diff_idx, 3)])
-	var stage_mult := 1.0 + float(stage_idx) * 0.12
+	var stage_mult := 1.0 + float(stage_idx) * 0.02
 	var gain := 40.0 + float(kills) * 0.16 + time * 0.09
 	if victory:
 		gain += 55.0
@@ -987,7 +989,7 @@ func grant_run_rewards(victory: bool, boss_killed: bool) -> Dictionary:
 		luck += 1.6
 	if boss_killed:
 		luck += 2.0
-	var drop_level := 1 + (1 if diff_idx >= 2 else 0) + floori(float(stage_idx) / 5.0)
+	var drop_level := 1 + (1 if diff_idx >= 2 else 0) + floori(float(stage_idx) / 20.0)
 	var drop_count := 1 + (1 if victory else 0) + (1 if boss_killed else 0)
 	var drops: Array = []
 	for i in drop_count:
@@ -1695,7 +1697,19 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 		weekly_boss_reward_key = weekly_key
 		diamonds += 100
 		diamonds_changed.emit(diamonds)
+	var chapter_reward_line := ""
+	if victory and boss_killed and mode == "campaign" and GameData.stage_number(stage_id) == GameData.CHAPTER_STAGE_COUNT:
+		var chapter := GameData.chapter_of(stage_id)
+		if not chapter_boss_claimed(chapter):
+			chapter_rewards[chapter] = true
+			var reward: Dictionary = GameData.chapter_boss_data(chapter).get("reward", {})
+			chapter_reward_line = GameData.reward_text(reward)
+			warning.emit("챕터 보스 격파 · 영구 보상  %s" % chapter_reward_line, 5.0)
+			diamonds += 200
+			diamonds_changed.emit(diamonds)
 	grant_run_rewards(victory and not is_endless(), boss_killed)
+	if chapter_reward_line != "":
+		last_rewards["chapter_reward"] = chapter_reward_line
 	_check_achievements()
 	save_settings()
 	run_ended.emit(victory, boss_killed)
@@ -1862,6 +1876,20 @@ func stage_record_text(stage: String, diff: String) -> String:
 
 
 func has_cleared(stage: String) -> bool:
+	if GameData.STAGES.has(stage):
+		# A chapter is considered cleared when its tenth / chapter-boss stage is
+		# cleared, while old saves stored the chapter id directly.
+		for diff in GameData.DIFFICULTY_ORDER:
+			var legacy := get_stage_record(stage, diff)
+			if int(legacy.get("clears", 0)) > 0:
+				return true
+		return has_cleared(GameData.campaign_stage_id(stage, GameData.CHAPTER_STAGE_COUNT))
+	if GameData.stage_number(stage) == GameData.CHAPTER_STAGE_COUNT:
+		var chapter := GameData.chapter_of(stage)
+		for diff in GameData.DIFFICULTY_ORDER:
+			var legacy := get_stage_record(chapter, diff)
+			if int(legacy.get("clears", 0)) > 0:
+				return true
 	for diff in GameData.DIFFICULTY_ORDER:
 		var rec := get_stage_record(stage, diff)
 		if int(rec.get("clears", 0)) > 0:
@@ -1870,19 +1898,47 @@ func has_cleared(stage: String) -> bool:
 
 
 func is_stage_unlocked(stage: String) -> bool:
-	var idx := GameData.STAGE_ORDER.find(stage)
+	if GameData.STAGES.has(stage):
+		return is_stage_unlocked(GameData.campaign_stage_id(stage, 1))
+	var order := GameData.campaign_order()
+	var idx := order.find(stage)
 	if idx < 0:
 		return false
 	if idx == 0:
 		return true
-	return has_cleared(GameData.STAGE_ORDER[idx - 1])
+	return has_cleared(String(order[idx - 1]))
 
 
 func first_unlocked_stage() -> String:
-	for id in GameData.STAGE_ORDER:
-		if not is_stage_unlocked(id):
-			return GameData.STAGE_ORDER[maxi(0, GameData.STAGE_ORDER.find(id) - 1)]
-	return GameData.STAGE_ORDER[GameData.STAGE_ORDER.size() - 1]
+	var order := GameData.campaign_order()
+	for id in order:
+		if not is_stage_unlocked(String(id)):
+			var idx := maxi(0, order.find(id) - 1)
+			return String(order[idx])
+	return String(order[order.size() - 1])
+
+
+func chapter_boss_claimed(chapter: String) -> bool:
+	return bool(chapter_rewards.get(chapter, false))
+
+
+func chapter_bonuses() -> Dictionary:
+	var out := {}
+	for chapter in chapter_rewards:
+		if not bool(chapter_rewards[chapter]):
+			continue
+		var reward: Dictionary = (GameData.chapter_boss_data(String(chapter)).get("reward", {}) as Dictionary)
+		for key in reward:
+			out[key] = float(out.get(key, 0.0)) + float(reward[key])
+	return out
+
+
+func current_chapter() -> String:
+	return GameData.chapter_of(stage_id)
+
+
+func is_chapter_boss_stage() -> bool:
+	return mode == "campaign" and GameData.stage_number(stage_id) == GameData.CHAPTER_STAGE_COUNT
 
 
 func go_title() -> void:
@@ -1929,6 +1985,7 @@ func save_settings() -> void:
 	cfg.set_value("records", "daily", daily_records)
 	cfg.set_value("progress", "stats", stats)
 	cfg.set_value("progress", "achievements", achievements)
+	cfg.set_value("progress", "chapter_rewards", chapter_rewards)
 	cfg.set_value("altar", "levels", altar_levels)
 	cfg.set_value("weekly", "key", weekly_key)
 	cfg.set_value("weekly", "records", weekly_records)
@@ -1966,10 +2023,10 @@ func load_record() -> void:
 	record["best_level"] = int(cfg.get_value("record", "best_level", 0))
 	record["best_kills"] = int(cfg.get_value("record", "best_kills", 0))
 	record["victory"] = bool(cfg.get_value("record", "victory", false))
-	selected_stage = String(cfg.get_value("settings", "selected_stage", "forest"))
+	selected_stage = String(cfg.get_value("settings", "selected_stage", "forest_01"))
 	selected_difficulty = String(cfg.get_value("settings", "selected_difficulty", "normal"))
-	if not GameData.STAGES.has(selected_stage):
-		selected_stage = "forest"
+	if not GameData.is_valid_stage(selected_stage):
+		selected_stage = "forest_01"
 	if not GameData.DIFFICULTIES.has(selected_difficulty):
 		selected_difficulty = "normal"
 	stage_id = selected_stage
@@ -1977,6 +2034,27 @@ func load_record() -> void:
 	var rec = cfg.get_value("records", "stages", {})
 	if rec is Dictionary:
 		stage_records = rec
+	# Old saves stored one record per front. Expand a cleared front into its
+	# ten chapter stages so the new chapter progress remains complete.
+	for chapter in GameData.STAGE_ORDER:
+		for diff in GameData.DIFFICULTY_ORDER:
+			var legacy = stage_records.get("%s:%s" % [chapter, diff], {})
+			if not (legacy is Dictionary) or int(legacy.get("clears", 0)) <= 0:
+				continue
+			for number in range(1, GameData.CHAPTER_STAGE_COUNT + 1):
+				var key := "%s:%s" % [GameData.campaign_stage_id(String(chapter), number), diff]
+				if not stage_records.has(key):
+					stage_records[key] = (legacy as Dictionary).duplicate(true)
+	if GameData.STAGES.has(selected_stage):
+		var chapter := selected_stage
+		var legacy_clear := false
+		for diff in GameData.DIFFICULTY_ORDER:
+			var entry = stage_records.get("%s:%s" % [chapter, diff], {})
+			if entry is Dictionary and int(entry.get("clears", 0)) > 0:
+				legacy_clear = true
+				break
+		selected_stage = GameData.campaign_stage_id(chapter, GameData.CHAPTER_STAGE_COUNT if legacy_clear else 1)
+		stage_id = selected_stage
 	var endless = cfg.get_value("records", "endless", {})
 	if endless is Dictionary:
 		endless_records = endless
@@ -1990,6 +2068,9 @@ func load_record() -> void:
 	var loaded_ach = cfg.get_value("progress", "achievements", {})
 	if loaded_ach is Dictionary:
 		achievements = loaded_ach
+	var loaded_chapter_rewards = cfg.get_value("progress", "chapter_rewards", {})
+	if loaded_chapter_rewards is Dictionary:
+		chapter_rewards = loaded_chapter_rewards
 	var loaded_altar = cfg.get_value("altar", "levels", {})
 	if loaded_altar is Dictionary:
 		altar_levels = loaded_altar

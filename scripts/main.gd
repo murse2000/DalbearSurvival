@@ -45,7 +45,7 @@ func _ready() -> void:
 	for a in _args:
 		if a.begins_with("--stage="):
 			var sid := a.substr(8)
-			if GameData.STAGES.has(sid):
+			if GameData.is_valid_stage(sid):
 				Game.stage_id = sid
 		elif a.begins_with("--diff="):
 			var did := a.substr(7)
@@ -703,7 +703,7 @@ func _test_late_balance() -> void:
 	player.recalc_stats()
 	for id in ["moon_shot", "satellite", "pulse", "laser"]:
 		player.evolve_weapon(id)
-	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(Game.stage_id, ["dune_stalker", "sand_spitter"])
+	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(GameData.chapter_of(Game.stage_id), ["dune_stalker", "sand_spitter"])
 	var start_hp := 0.0
 	for i in 64:
 		var a := TAU * float(i) / 64.0
@@ -770,7 +770,7 @@ func _bench_enemies() -> void:
 		player.recalc_stats()
 		for id in ["moon_shot", "satellite", "pulse", "laser"]:
 			player.evolve_weapon(id)
-	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(Game.stage_id, ["blob", "drone"])
+	var pair: Array = GameData.NEW_STAGE_ENEMIES.get(GameData.chapter_of(Game.stage_id), ["blob", "drone"])
 	for i in count:
 		var a := TAU * float(i) / float(count)
 		var d := 120.0 + float(i % 9) * 110.0
@@ -983,6 +983,8 @@ func _test_progression() -> void:
 	diagonal_ok = diagonal_ok and front_diag_differs and back_diag_differs
 	var content_ok := GameData.STAGE_ORDER.size() == 20 \
 		and GameData.STAGES.size() == 20 \
+		and GameData.CHAPTER_BOSSES.size() == 20 \
+		and GameData.campaign_order().size() == 200 \
 		and GameData.NEW_STAGE_ENEMIES.size() == 15 \
 		and GameData.NEW_STAGE_OBSTACLES.size() == 15
 	for id in ["dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit",
@@ -1185,8 +1187,9 @@ func _capture_game() -> void:
 	Game.kills_changed.emit(Game.kills)
 	Game.xp_changed.emit(Game.xp, Game.xp_need, Game.level)
 	var kinds := ["blob", "blob", "drone", "drone", "grey", "jelly", "blob", "drone", "grey", "jelly", "blob", "mech"]
-	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
-		var pair: Array = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
+	var chapter_id := GameData.chapter_of(Game.stage_id)
+	if GameData.NEW_STAGE_ENEMIES.has(chapter_id):
+		var pair: Array = GameData.NEW_STAGE_ENEMIES[chapter_id]
 		kinds = [String(pair[0]), String(pair[1]), String(pair[0]), String(pair[0]),
 			String(pair[1]), String(pair[0]), String(pair[1]), String(pair[0]),
 			String(pair[1]), String(pair[0]), String(pair[0]), String(pair[1])]
@@ -2108,6 +2111,13 @@ func _test_patterns() -> void:
 		b.set("slam_cd", 0.5)
 		b.set("boss_beam_cd", 1.0)
 		b.set("spiral_cd", 0.5)
+		if GameData.stage_number(Game.stage_id) == GameData.CHAPTER_STAGE_COUNT:
+			var expected := GameData.chapter_boss_name(Game.stage_id)
+			if not bool(b.get("chapter_boss")) or String(b.get("display_name")) != expected:
+				push_error("CHAPTER BOSS TEST: identity mismatch")
+			if (b.get("chapter_skill") as Dictionary).is_empty():
+				push_error("CHAPTER BOSS TEST: skill missing")
+			b.set("chapter_skill_cd", 0.1)
 	await get_tree().create_timer(8.0, true, false, true).timeout
 	print("PATTERN TEST OK stage=", Game.stage_id, " enemies=", manager.enemies.size())
 	get_tree().quit()
@@ -2505,7 +2515,7 @@ func _test_modes() -> void:
 	var info: Dictionary = Game.daily_info
 	if String(info.get("date", "")) != Game.daily_key():
 		errors.append("daily date mismatch")
-	if not GameData.STAGES.has(String(info.get("stage", ""))):
+	if not GameData.is_valid_stage(String(info.get("stage", ""))):
 		errors.append("daily stage invalid")
 	if not GameData.DIFFICULTIES.has(String(info.get("diff", ""))):
 		errors.append("daily diff invalid")

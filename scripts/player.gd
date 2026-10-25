@@ -424,6 +424,7 @@ func recalc_stats() -> void:
 	var alloy := int(passive_levels.get("armor", 0))
 	var nano := int(passive_levels.get("nano", 0))
 	var gear: Dictionary = Game.equipment_bonuses()
+	var chapter := Game.chapter_bonuses()
 	var rm := relic_mods
 	var base_hp := float(character.get("max_hp", GameData.BASE_STATS["max_hp"]))
 	var base_speed := float(character.get("speed", GameData.BASE_STATS["speed"]))
@@ -436,28 +437,36 @@ func recalc_stats() -> void:
 	var altar := Game.altar_bonuses()
 	var set_bonus := Game.set_bonuses()
 	max_hp = base_hp + heart * 20.0 + float(gear.get("max_hp", 0.0)) + float(rm.get("max_hp", 0.0)) \
-		+ float(altar.get("max_hp", 0.0)) + float(set_bonus.get("max_hp", 0.0))
+		+ float(altar.get("max_hp", 0.0)) + float(set_bonus.get("max_hp", 0.0)) \
+		+ float(chapter.get("max_hp", 0.0))
 	speed = base_speed * (1.0 + boots * 0.08) * (1.0 + float(gear.get("speed_pct", 0.0))) \
 		* (1.0 + float(rm.get("speed_pct", 0.0))) \
-		* (1.0 + float(altar.get("speed_pct", 0.0)) + float(set_bonus.get("speed_pct", 0.0)))
+		* (1.0 + float(altar.get("speed_pct", 0.0)) + float(set_bonus.get("speed_pct", 0.0))) \
+		* (1.0 + float(chapter.get("speed_pct", 0.0)))
 	damage_mult = base_damage * (1.0 + core * 0.12) * (1.0 + float(gear.get("damage_pct", 0.0))) \
 		* (1.0 + float(rm.get("damage_pct", 0.0))) \
-		* (1.0 + float(altar.get("damage_pct", 0.0)) + float(set_bonus.get("damage_pct", 0.0)))
+		* (1.0 + float(altar.get("damage_pct", 0.0)) + float(set_bonus.get("damage_pct", 0.0))) \
+		* (1.0 + float(chapter.get("damage_pct", 0.0)))
 	cooldown_mult = maxf(0.3, base_cooldown * (1.0 - coolant * 0.07) \
 		* (1.0 - float(gear.get("cooldown_pct", 0.0))) \
 		* (1.0 - float(rm.get("cooldown_pct", 0.0))) \
-		* (1.0 - float(set_bonus.get("cooldown_pct", 0.0))))
+		* (1.0 - float(set_bonus.get("cooldown_pct", 0.0))) \
+		* (1.0 - float(chapter.get("cooldown_pct", 0.0))))
 	pickup_radius = base_pickup + magnet * 28.0 + float(gear.get("pickup", 0.0)) \
-		+ float(rm.get("pickup", 0.0)) + Game.run_pickup_bonus + float(altar.get("pickup", 0.0))
+		+ float(rm.get("pickup", 0.0)) + Game.run_pickup_bonus + float(altar.get("pickup", 0.0)) \
+		+ float(chapter.get("pickup", 0.0))
 	armor = base_armor + alloy * 1.0 + float(gear.get("armor", 0.0)) \
-		+ float(rm.get("armor", 0.0)) + float(set_bonus.get("armor", 0.0))
+		+ float(rm.get("armor", 0.0)) + float(set_bonus.get("armor", 0.0)) \
+		+ float(chapter.get("armor", 0.0))
 	crit = clampf(base_crit + star * 0.05 + float(gear.get("crit", 0.0)) \
 		+ float(rm.get("crit", 0.0)) + float(altar.get("crit", 0.0)) \
-		+ float(set_bonus.get("crit", 0.0)), 0.0, 0.9)
+		+ float(set_bonus.get("crit", 0.0)) + float(chapter.get("crit", 0.0)), 0.0, 0.9)
 	crit_mult = 1.75
 	regen = base_regen + nano * 0.5 + float(gear.get("regen", 0.0)) \
-		+ float(rm.get("regen", 0.0)) + float(set_bonus.get("regen", 0.0))
-	xp_mult = 1.0 + float(rm.get("xp_mult", 0.0)) + float(altar.get("xp_pct", 0.0))
+		+ float(rm.get("regen", 0.0)) + float(set_bonus.get("regen", 0.0)) \
+		+ float(chapter.get("regen", 0.0))
+	xp_mult = 1.0 + float(rm.get("xp_mult", 0.0)) + float(altar.get("xp_pct", 0.0)) \
+		+ float(chapter.get("xp_pct", 0.0))
 	dash_cd_max = float(character.get("dash_cd", DASH_COOLDOWN))
 	if max_hp > old_max:
 		hp += max_hp - old_max

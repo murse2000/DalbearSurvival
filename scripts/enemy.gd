@@ -29,6 +29,9 @@ var miniboss := false
 var behavior := "chase"
 var boss_style := ""
 var mini_style := ""
+var chapter_boss := false
+var chapter_skill: Dictionary = {}
+var chapter_skill_cd := 0.0
 var mini_attack_cd := 2.0
 var mini_summon_cd := 4.5
 var mini_charge_cd := 2.0
@@ -144,6 +147,21 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 	max_hp *= Game.run_hp_mult
 	damage *= Game.run_damage_mult
 	speed *= Game.run_speed_mult
+	var chapter_data := GameData.chapter_boss_for_stage(Game.stage_id)
+	if boss and not chapter_data.is_empty():
+		chapter_boss = true
+		chapter_skill = (chapter_data.get("skill", {}) as Dictionary).duplicate(true)
+		max_hp *= float(chapter_data.get("hp_mult", 2.8))
+		damage *= float(chapter_data.get("damage_mult", 1.35))
+		speed *= 1.06
+		xp_value = int(round(float(xp_value) * 2.5))
+		radius *= 1.12
+		height *= 1.10
+		visual_scale *= 1.14
+		display_name = String(chapter_data.get("name", display_name))
+		var skill_color: Color = chapter_skill.get("color", color)
+		color = skill_color.lerp(color, 0.42)
+		chapter_skill_cd = 5.5
 	if Game.is_endless():
 		var overtime := maxf(0.0, Game.time - 240.0)
 		if boss:
@@ -632,8 +650,9 @@ func _miniboss_charger(delta: float, dir: Vector2, dist: float) -> void:
 
 func _miniboss_summon() -> void:
 	var kinds := ["larva", "sporeling"] if mini_style == "summon" else ["blob", "grey"]
-	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
-		kinds = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
+	var chapter_id := GameData.chapter_of(Game.stage_id)
+	if GameData.NEW_STAGE_ENEMIES.has(chapter_id):
+		kinds = GameData.NEW_STAGE_ENEMIES[chapter_id]
 	var count := 4
 	for i in count:
 		var a := TAU * float(i) / float(count) + randf() * 0.4
@@ -693,6 +712,11 @@ func _boss_attacks(delta: float) -> void:
 	if enraged:
 		boss_orb_cd = minf(boss_orb_cd, 1.6)
 		boss_summon_cd = minf(boss_summon_cd, 5.0)
+	if chapter_boss and not chapter_skill.is_empty():
+		chapter_skill_cd -= delta
+		if chapter_skill_cd <= 0.0:
+			_cast_chapter_skill()
+			chapter_skill_cd = float(chapter_skill.get("cooldown", 8.5)) * (0.68 if enraged else 1.0)
 	match boss_style:
 		"queen":
 			boss_orb_cd -= delta
@@ -831,6 +855,79 @@ func _boss_attacks(delta: float) -> void:
 				boss_summon_cd = 8.5
 
 
+func _cast_chapter_skill() -> void:
+	var skill := chapter_skill
+	var skill_name := String(skill.get("name", "챕터 스킬"))
+	var color_value: Color = skill.get("color", Color(1.0, 0.82, 0.42))
+	var count := maxi(4, int(skill.get("count", 12)))
+	var power := damage * float(skill.get("damage", 0.55))
+	var start := global_position + Vector2(0, -12)
+	FX.float_text(global_position + Vector2(0, -height * visual_scale * 0.62), skill_name, color_value, 23)
+	FX.ring(start, color_value, 128.0, 0.45)
+	FX.particles(start, "star", color_value, 18, 0.55, 50, 160, 0.35, 180, Vector2.ZERO, true)
+	Audio.play("boss", 1.22, -5.0)
+	FX.shake(2.5, 0.22)
+	match String(skill.get("type", "nova")):
+		"fan":
+			var fan_aim: Vector2 = (player.global_position + Vector2(0, -10) - start).normalized()
+			for i in count:
+				var a := deg_to_rad(9.0) * (float(i) - float(count - 1) * 0.5)
+				manager.spawn_enemy_orb(start, fan_aim.rotated(a) * 205.0, power)
+		"rain":
+			var rain_center: Vector2 = player.global_position
+			for i in count:
+				var pos := rain_center + Vector2(randf_range(-190.0, 190.0), randf_range(-310.0, -210.0))
+				manager.spawn_enemy_orb(pos, Vector2(randf_range(-20.0, 20.0), 235.0), power)
+				FX.rune(pos, color_value, 36.0, 0.28)
+		"spiral":
+			var arms := 3
+			for arm in arms:
+				for i in int(ceil(float(count) / float(arms))):
+					var a := TAU * float(arm) / float(arms) + float(i) * 0.34 + age * 0.3
+					manager.spawn_enemy_orb(start, Vector2.from_angle(a) * (150.0 + float(i) * 5.0), power)
+		"chrono":
+			for i in count:
+				var a := TAU * float(i) / float(count) + age * 0.45
+				var bullet_speed := 225.0 if i % 2 == 0 else 120.0
+				manager.spawn_enemy_orb(start, Vector2.from_angle(a) * bullet_speed, power)
+		"mirror":
+			var mirror_aim: Vector2 = (player.global_position + Vector2(0, -10) - start).normalized()
+			for side in [-1.0, 1.0]:
+				var origin := start + Vector2(52.0 * side, -8.0)
+				for i in int(ceil(float(count) / 2.0)):
+					var a := deg_to_rad(10.0) * (float(i) - float(count) * 0.25)
+					manager.spawn_enemy_orb(origin, mirror_aim.rotated(a) * 215.0, power)
+		"beam":
+			_start_beam("ship")
+			for i in 10:
+				var a := TAU * float(i) / 10.0 + age
+				manager.spawn_enemy_orb(start, Vector2.from_angle(a) * 150.0, power * 0.65)
+		"slam":
+			_start_slam()
+		"summon":
+			_boss_summon()
+			for i in 8:
+				var a := TAU * float(i) / 8.0
+				manager.spawn_enemy_orb(start, Vector2.from_angle(a) * 145.0, power * 0.7)
+		"genesis":
+			for arc in 4:
+				for i in int(ceil(float(count) / 4.0)):
+					var a := TAU * float(arc) / 4.0 + float(i) * 0.12 + age * 0.3
+					manager.spawn_enemy_orb(start, Vector2.from_angle(a) * (140.0 + float(i) * 7.0), power)
+		"grave":
+			var grave_center: Vector2 = player.global_position
+			for i in count:
+				var pos := grave_center + Vector2(randf_range(-160.0, 160.0), randf_range(-280.0, -180.0))
+				manager.spawn_enemy_orb(pos, Vector2(randf_range(-25.0, 25.0), 225.0), power)
+		"heart":
+			_heart_pulse()
+		_:
+			for i in count:
+				var a := TAU * float(i) / float(count) + age * 0.3
+				manager.spawn_enemy_orb(start, Vector2.from_angle(a) * 175.0, power)
+	FX.flash(Color(color_value.r, color_value.g, color_value.b, 0.16), 0.16, 0.45)
+
+
 func _mirror_fan() -> void:
 	var aim: Vector2 = (player.global_position + Vector2(0, -10) - global_position).normalized()
 	var offsets := [Vector2(-54, -12), Vector2(54, -12)]
@@ -945,8 +1042,9 @@ func _fire_slam() -> void:
 func _boss_summon() -> void:
 	var count := 5 if enraged else 4
 	var summon_kinds := ["drone", "grey"]
-	if GameData.NEW_STAGE_ENEMIES.has(Game.stage_id):
-		summon_kinds = GameData.NEW_STAGE_ENEMIES[Game.stage_id]
+	var chapter_id := GameData.chapter_of(Game.stage_id)
+	if GameData.NEW_STAGE_ENEMIES.has(chapter_id):
+		summon_kinds = GameData.NEW_STAGE_ENEMIES[chapter_id]
 	elif boss_style == "queen":
 		summon_kinds = ["spitter", "bomber"]
 	elif boss_style == "ship":

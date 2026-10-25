@@ -532,9 +532,9 @@ func _show_combo_banner(milestone: int) -> void:
 func _refresh_stage() -> void:
 	var st := Game.stage_data()
 	var diff := Game.difficulty_data()
-	stage_label.text = "%s · %s" % [String(st["short"]), String(diff["name"])]
+	stage_label.text = "%s %s · %s" % [String(st["short"]), String(st.get("stage_label", "")), String(diff["name"])]
 	stage_label.add_theme_color_override("font_color", diff["color"])
-	timer_sub.text = "%s · %s" % [String(st["short"]), String(diff["name"])]
+	timer_sub.text = "%s %s · %s" % [String(st["short"]), String(st.get("stage_label", "")), String(diff["name"])]
 	timer_sub.add_theme_color_override("font_color", UIKit.MUTED)
 
 

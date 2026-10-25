@@ -41,6 +41,11 @@ var _drag_start_ms := 0
 var _drag_moved := 0.0
 var _diff_desc: Label
 var _stage_hint: Label
+var _stage_modal: Control
+var _stage_modal_chapter := ""
+var _stage_modal_title: Label
+var _stage_modal_info: Label
+var _stage_modal_buttons: Array[Button] = []
 var _shards_label: Label
 var _character_btn: Button
 var _selected_stage := "forest"
@@ -68,22 +73,22 @@ func _ready() -> void:
 	Audio.set_music_pitch(1.0)
 	_portrait = _is_portrait()
 	_apply_layout_metrics()
-	_selected_stage = Game.selected_stage if GameData.STAGES.has(Game.selected_stage) else "forest"
+	_selected_stage = Game.selected_stage if GameData.is_valid_stage(Game.selected_stage) else GameData.campaign_stage_id("forest", 1)
 	var marketing := "--capture-select" in _args or "--capture-select-late" in _args
 	if marketing:
 		# Marketing captures show the map unlocked without touching the save.
-		for id in GameData.STAGE_ORDER:
+		for id in GameData.campaign_order():
 			for diff in GameData.DIFFICULTY_ORDER:
 				Game.stage_records["%s:%s" % [id, diff]] = {
 					"clears": 1, "boss": true, "best_kills": 180, "best_level": 18,
 					"best_time": 210.0,
 				}
 	if "--capture-select-late" in _args:
-		_selected_stage = "genesis"
+		_selected_stage = "genesis_10"
 	elif "--capture-select" in _args:
-		_selected_stage = "dunes"
+		_selected_stage = "dunes_01"
 	elif "--test-swipe" in _args:
-		_selected_stage = "forest"
+		_selected_stage = "forest_01"
 	elif not Game.is_stage_unlocked(_selected_stage):
 		_selected_stage = Game.first_unlocked_stage()
 	_selected_diff = Game.selected_difficulty if GameData.DIFFICULTIES.has(Game.selected_difficulty) else "normal"
@@ -99,6 +104,10 @@ func _ready() -> void:
 		_capture("stage_select_late")
 	elif "--capture-select" in _args:
 		_capture()
+	elif "--capture-chapters" in _args:
+		_capture_chapters.call_deferred()
+	elif "--test-chapters" in _args:
+		_test_chapters.call_deferred()
 	elif "--test-swipe" in _args:
 		_test_swipe.call_deferred()
 	elif "--test-platform-input" in _args:
@@ -179,6 +188,7 @@ func _build() -> void:
 
 	_build_daily_modal()
 	_build_weekly_modal()
+	_build_stage_modal()
 	_refresh()
 	_refresh_input_hint()
 
@@ -190,7 +200,7 @@ func _build_header_landscape() -> void:
 	var title := UIKit.label("전선 선택", 52, UIKit.GOLD, 7)
 	title.position = Vector2(52, 48)
 	add_child(title)
-	var sub := UIKit.label("스무 개의 전선, 네 개의 난이도 · 이전 전선을 클리어하면 다음 전선이 열립니다.", 18, UIKit.CREAM)
+	var sub := UIKit.label("스무 개의 챕터, 챕터당 열 개의 전장 · 마지막 전장은 각성 챕터 보스입니다.", 18, UIKit.CREAM)
 	sub.position = Vector2(56, 112)
 	add_child(sub)
 	_page_label = UIKit.label("", 13, UIKit.MUTED)
@@ -238,7 +248,7 @@ func _build_header_portrait() -> void:
 	var title := UIKit.label("전선 선택", 42, UIKit.GOLD, 6)
 	title.position = Vector2(22, 38)
 	add_child(title)
-	var sub := UIKit.label("스무 개의 전선 · 이전 전선을 클리어하면 다음이 열립니다.", 12, UIKit.CREAM)
+	var sub := UIKit.label("스무 개의 챕터 · 챕터당 열 개의 전장 · 마지막은 챕터 보스.", 12, UIKit.CREAM)
 	sub.position = Vector2(24, 98)
 	sub.size = Vector2(530, 20)
 	add_child(sub)
@@ -498,6 +508,99 @@ func _open_weekly() -> void:
 	Audio.play_click()
 
 
+func _build_stage_modal() -> void:
+	_stage_modal = Control.new()
+	_stage_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_stage_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_stage_modal.visible = false
+	add_child(_stage_modal)
+	_stage_modal.add_child(UIKit.dimmer(0.78))
+	var pw := 660.0 if _portrait else 760.0
+	var ph := 650.0 if _portrait else 470.0
+	var panel := UIKit.panel(Color(0.045, 0.072, 0.11, 0.99), UIKit.GOLD, 3)
+	panel.position = Vector2(30, 315) if _portrait else Vector2(260, 120)
+	panel.size = Vector2(pw, ph)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_stage_modal.add_child(panel)
+	var over := UIKit.label("CHAPTER STAGES", 12, UIKit.MINT)
+	over.position = Vector2(28, 18)
+	panel.add_child(over)
+	_stage_modal_title = UIKit.label("", 28, UIKit.GOLD, 5)
+	_stage_modal_title.position = Vector2(26, 38)
+	_stage_modal_title.size = Vector2(pw - 52, 40)
+	panel.add_child(_stage_modal_title)
+	_stage_modal_info = UIKit.label("", 12, UIKit.CREAM)
+	_stage_modal_info.position = Vector2(28, 88)
+	_stage_modal_info.size = Vector2(pw - 56, 52)
+	_stage_modal_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(_stage_modal_info)
+	for i in range(10):
+		var button := UIKit.button("", Vector2(140, 58) if not _portrait else Vector2(296, 58))
+		button.add_theme_font_size_override("font_size", 14 if not _portrait else 16)
+		button.position = (Vector2(28 + (i % 5) * 148, 160 + floori(float(i) / 5.0) * 70) if not _portrait
+			else Vector2(28 + (i % 2) * 306, 160 + floori(float(i) / 2.0) * 70))
+		button.pressed.connect(_choose_stage.bind(i + 1))
+		panel.add_child(button)
+		_stage_modal_buttons.append(button)
+	var close := UIKit.button("닫기", Vector2(180, 48))
+	close.position = Vector2((pw - 180) * 0.5, ph - 64)
+	close.add_theme_font_size_override("font_size", 18)
+	close.pressed.connect(func() -> void: _stage_modal.visible = false)
+	panel.add_child(close)
+
+
+func _open_stage_picker(chapter: String) -> void:
+	if not Game.is_stage_unlocked(GameData.campaign_stage_id(chapter, 1)):
+		if _stage_hint != null:
+			_stage_hint.visible = true
+			_stage_hint.text = "이전 챕터의 보스를 처치해야 이 챕터가 열립니다."
+		return
+	_stage_modal_chapter = chapter
+	var info: Dictionary = GameData.STAGES[chapter]
+	var boss: Dictionary = GameData.chapter_boss_data(chapter)
+	var reward_line := GameData.reward_text(boss.get("reward", {}))
+	var claimed := " · 획득 완료" if Game.chapter_boss_claimed(chapter) else ""
+	_stage_modal_title.text = "제%d장 · %s" % [int(info.get("num", 1)), String(info.get("short", ""))]
+	_stage_modal_info.text = "챕터 보스  %s  ·  %s\n첫 격파 보상  %s%s" % [
+		String(boss.get("name", "")), String((boss.get("skill", {}) as Dictionary).get("name", "")),
+		reward_line, claimed,
+	]
+	for i in range(10):
+		var number := i + 1
+		var id := GameData.campaign_stage_id(chapter, number)
+		var button: Button = _stage_modal_buttons[i]
+		var unlocked := Game.is_stage_unlocked(id)
+		var cleared := Game.has_cleared(id)
+		button.disabled = not unlocked
+		button.text = "%d-%d%s" % [int(info.get("num", 1)), number, "  BOSS" if number == 10 else ("  ✓" if cleared else "")]
+		button.add_theme_color_override("font_color",
+			UIKit.GOLD_L if number == 10 and unlocked else (UIKit.MINT if cleared else UIKit.CREAM))
+		button.add_theme_color_override("font_disabled_color", UIKit.MUTED.darkened(0.25))
+		if chapter == GameData.chapter_of(_selected_stage) and number == GameData.stage_number(_selected_stage):
+			button.add_theme_stylebox_override("normal",
+				UIKit.style(Color(0.10, 0.15, 0.21, 0.99), UIKit.GOLD, 2, 0))
+		else:
+			button.add_theme_stylebox_override("normal",
+				UIKit.style(Color(0.055, 0.085, 0.12, 0.98), UIKit.BORDER, 1, 0))
+	_stage_modal.visible = true
+	Audio.play_click()
+
+
+func _choose_stage(number: int) -> void:
+	if _stage_modal_chapter == "":
+		return
+	var id := GameData.campaign_stage_id(_stage_modal_chapter, number)
+	if not Game.is_stage_unlocked(id):
+		return
+	_selected_stage = id
+	Game.select_stage(id, _selected_diff)
+	_stage_modal.visible = false
+	_refresh()
+	_ensure_page(id)
+	Audio.play_click()
+
+
+
 func _build_carousel() -> void:
 	_carousel = Control.new()
 	_carousel.name = "FrontCarousel"
@@ -631,11 +734,12 @@ func _make_stage_card(id: String, _index: int) -> Dictionary:
 		icon.position = Vector2(56 + i * 34, 194)
 		root.add_child(icon)
 
-	var boss := UIKit.label("%s · BOSS" % GameData.format_time(float(info["duration"])), 11, accent)
+	var boss := UIKit.label("10 STAGES · CH. BOSS", 11, accent)
 	boss.position = Vector2(16, 230)
 	boss.size = Vector2(204, 18)
 	root.add_child(boss)
-	var boss_name := UIKit.label(String(GameData.ENEMIES[info["boss"]]["name"]), 11, accent)
+	var chapter_boss: Dictionary = GameData.chapter_boss_data(id)
+	var boss_name := UIKit.label(String(chapter_boss.get("name", GameData.ENEMIES[info["boss"]]["name"])), 11, accent)
 	boss_name.position = Vector2(16, 248)
 	boss_name.size = Vector2(204, 18)
 	root.add_child(boss_name)
@@ -762,7 +866,7 @@ func _end_drag(pos: Vector2) -> void:
 	if _drag_moved < 12.0 and absf(dx) < 12.0:
 		var id := _card_at(_drag_start)
 		if id != "":
-			_select_stage(id)
+			_open_stage_picker(id)
 		_go_page(_page)
 	else:
 		var target := _page
@@ -786,10 +890,16 @@ func _go_page(target: int, animate: bool = true, select_visible: bool = false) -
 	else:
 		_strip.position.x = x
 	if select_visible and _portrait:
-		var id: String = GameData.STAGE_ORDER[_page]
-		if Game.is_stage_unlocked(id):
-			_selected_stage = id
-			Game.select_stage(id, _selected_diff)
+		var chapter: String = GameData.STAGE_ORDER[_page]
+		if Game.is_stage_unlocked(GameData.campaign_stage_id(chapter, 1)):
+			if GameData.chapter_of(_selected_stage) != chapter:
+				var chosen := GameData.campaign_stage_id(chapter, 1)
+				for number in range(1, GameData.CHAPTER_STAGE_COUNT + 1):
+					var candidate := GameData.campaign_stage_id(chapter, number)
+					if Game.is_stage_unlocked(candidate):
+						chosen = candidate
+				_selected_stage = chosen
+			Game.select_stage(_selected_stage, _selected_diff)
 			_refresh()
 			Audio.play_click()
 	_update_page_ui()
@@ -801,7 +911,8 @@ func _kill_page_tween() -> void:
 
 
 func _ensure_page(id: String, animate: bool = true) -> void:
-	var idx := GameData.STAGE_ORDER.find(id)
+	var chapter := GameData.chapter_of(id)
+	var idx := GameData.STAGE_ORDER.find(chapter)
 	if idx < 0:
 		return
 	var page := idx if _portrait else floori(float(idx) / float(PAGE_SIZE))
@@ -857,8 +968,8 @@ func _clear_hover() -> void:
 
 func _update_page_ui() -> void:
 	if _page_label != null:
-		_page_label.text = "%d FRONTS  ·  %d / %d  ·  SWIPE" % [
-			GameData.STAGE_ORDER.size(), _page + 1, _page_count,
+		_page_label.text = "20 CHAPTERS · 10 STAGES EACH · %d / %d  ·  SWIPE" % [
+			_page + 1, _page_count,
 		]
 	if _prev_btn != null:
 		_prev_btn.disabled = _page <= 0
@@ -876,7 +987,7 @@ func _on_diff_input(event: InputEvent, id: String) -> void:
 
 func _cycle_stage(direction: int) -> void:
 	var order: Array = GameData.STAGE_ORDER
-	var idx := order.find(_selected_stage)
+	var idx := order.find(GameData.chapter_of(_selected_stage))
 	if idx < 0:
 		return
 	for step in range(1, order.size() + 1):
@@ -901,10 +1012,18 @@ func _select_stage(id: String) -> void:
 			_stage_hint.visible = true
 			_stage_hint.text = "이전 전선을 클리어해야 다음 전선이 열립니다."
 		return
-	_selected_stage = id
+	var chapter := GameData.chapter_of(id)
+	var chosen := id
+	if GameData.STAGES.has(id):
+		chosen = GameData.campaign_stage_id(chapter, 1)
+		for number in range(1, GameData.CHAPTER_STAGE_COUNT + 1):
+			var candidate := GameData.campaign_stage_id(chapter, number)
+			if Game.is_stage_unlocked(candidate):
+				chosen = candidate
+	_selected_stage = chosen
 	Game.select_stage(_selected_stage, _selected_diff)
 	_refresh()
-	_ensure_page(id)
+	_ensure_page(chosen)
 	Audio.play_click()
 
 
@@ -919,8 +1038,8 @@ func _refresh() -> void:
 	for id in _cards:
 		var card: Dictionary = _cards[id]
 		var accent: Color = card["accent"]
-		var unlocked := Game.is_stage_unlocked(id)
-		var selected: bool = id == _selected_stage
+		var unlocked := Game.is_stage_unlocked(GameData.campaign_stage_id(id, 1))
+		var selected: bool = id == GameData.chapter_of(_selected_stage)
 		var hovered: bool = unlocked and id == _hover_stage
 		card["root"].modulate = Color(1, 1, 1, 1) if unlocked else Color(0.62, 0.62, 0.68, 1)
 		card["lock"].visible = not unlocked
@@ -928,7 +1047,11 @@ func _refresh() -> void:
 			Color(0.075, 0.11, 0.155, 0.98) if (selected or hovered) else Color(0.045, 0.07, 0.105, 0.94),
 			accent if (selected or hovered) else UIKit.BORDER,
 			3 if selected else (3 if hovered else 2), 0))
-		card["record"].text = ("기록  " + Game.stage_record_text(id, _selected_diff)) if unlocked else "이전 전선 클리어 필요"
+		var cleared_count := 0
+		for number in range(1, GameData.CHAPTER_STAGE_COUNT + 1):
+			if Game.has_cleared(GameData.campaign_stage_id(id, number)):
+				cleared_count += 1
+		card["record"].text = ("챕터 진행  %d / 10" % cleared_count) if unlocked else "이전 챕터 클리어 필요"
 		card["record"].add_theme_color_override("font_color", accent if selected else (UIKit.MINT if unlocked else UIKit.CORAL))
 	for id in _diff_chips:
 		var chip: Dictionary = _diff_chips[id]
@@ -942,6 +1065,11 @@ func _refresh() -> void:
 	_diff_desc.add_theme_color_override("font_color", diff["color"])
 	if _shards_label != null:
 		_shards_label.text = "◈ 달빛 조각  %d" % Game.shards
+	if _start_btn != null:
+		var current_stage := GameData.stage(_selected_stage)
+		_start_btn.text = "출격 %s" % String(current_stage.get("stage_label", "1-1"))
+	if _stage_hint != null:
+		_stage_hint.visible = false
 	if _character_btn != null:
 		_character_btn.text = "친구 · %s" % CharacterData.display_name(Game.selected_character)
 	if _endless_btn != null:
@@ -950,7 +1078,7 @@ func _refresh() -> void:
 			_endless_btn.text = "무한" if unlocked else "무한 잠금"
 		else:
 			_endless_btn.text = "무한 모드" if unlocked else "무한 잠금"
-		_endless_btn.tooltip_text = "끝없이 버티는 모드" if unlocked else "20전선을 완료하면 해금됩니다"
+		_endless_btn.tooltip_text = "끝없이 버티는 모드" if unlocked else "20개 챕터를 완료하면 해금됩니다"
 		if unlocked:
 			var er: Dictionary = Game.endless_best(_selected_stage)
 			if float(er.get("best_time", 0.0)) > 0.0:
@@ -991,7 +1119,7 @@ func _start_endless() -> void:
 	if not Game.is_endless_unlocked():
 		if _stage_hint != null:
 			_stage_hint.visible = true
-			_stage_hint.text = "20전선을 완료하면 무한 모드가 열립니다."
+			_stage_hint.text = "20개 챕터를 완료하면 무한 모드가 열립니다."
 		return
 	_starting = true
 	Audio.play_click()
@@ -1076,6 +1204,11 @@ func _go_title() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _stage_modal != null and _stage_modal.visible:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			_stage_modal.visible = false
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventJoypadButton and event.pressed:
 		_handle_joy_button(event.button_index)
 		return
@@ -1204,6 +1337,8 @@ func _notification(what: int) -> void:
 			_close_daily_modal()
 		elif _weekly_modal != null and _weekly_modal.visible:
 			_weekly_modal.visible = false
+		elif _stage_modal != null and _stage_modal.visible:
+			_stage_modal.visible = false
 		else:
 			_go_title()
 
@@ -1213,15 +1348,14 @@ func _test_platform_input() -> void:
 	var errors: Array = []
 	var old_stage := _selected_stage
 	var old_diff := _selected_diff
-	var old_forest = Game.stage_records.get("forest:normal", null)
-	var old_hive = Game.stage_records.get("hive:normal", null)
-	Game.stage_records["forest:normal"] = {"clears": 1}
-	Game.stage_records["hive:normal"] = {"clears": 1}
-	_selected_stage = "forest"
+	var old_records := Game.stage_records.duplicate(true)
+	Game.stage_records = {}
+	Game.stage_records["forest_10:normal"] = {"clears": 1}
+	_selected_stage = "forest_10"
 	_selected_diff = "normal"
 	_handle_joy_button(JOY_BUTTON_DPAD_RIGHT)
-	if _selected_stage != "hive":
-		errors.append("D-PAD right did not select the next front")
+	if GameData.chapter_of(_selected_stage) != "hive":
+		errors.append("D-PAD right did not select the next chapter")
 	_cycle_difficulty(1)
 	if _selected_diff != "dark":
 		errors.append("D-PAD difficulty cycle failed")
@@ -1231,14 +1365,7 @@ func _test_platform_input() -> void:
 	_refresh_input_hint()
 	if _input_hint == null or _input_hint.text.is_empty():
 		errors.append("input hint missing")
-	if old_forest == null:
-		Game.stage_records.erase("forest:normal")
-	else:
-		Game.stage_records["forest:normal"] = old_forest
-	if old_hive == null:
-		Game.stage_records.erase("hive:normal")
-	else:
-		Game.stage_records["hive:normal"] = old_hive
+	Game.stage_records = old_records
 	_selected_stage = old_stage
 	_selected_diff = old_diff
 	Game.select_stage(_selected_stage, _selected_diff)
@@ -1253,17 +1380,20 @@ func _test_platform_input() -> void:
 		for error in errors:
 			print("  ", error)
 		print("TEST FAIL")
-	get_tree().quit()
+	get_tree().quit(0 if errors.is_empty() else 1)
 
 
 func _test_swipe() -> void:
 	await get_tree().create_timer(0.3, true, false, true).timeout
-	for id in GameData.STAGE_ORDER:
+	var old_records := Game.stage_records.duplicate(true)
+	var old_stage := _selected_stage
+	var old_diff := _selected_diff
+	for id in GameData.campaign_order():
 		Game.stage_records["%s:normal" % id] = {
 			"clears": 1, "boss": true, "best_kills": 100, "best_level": 10,
 			"best_time": 200.0,
 		}
-	_selected_stage = "hive"
+	_selected_stage = "hive_01"
 	Game.select_stage(_selected_stage, _selected_diff)
 	_refresh()
 	_ensure_page(_selected_stage, false)
@@ -1281,7 +1411,15 @@ func _test_swipe() -> void:
 	var clamp_ok := _page == 0
 	var tap_pos := Vector2(19 + 115, 180) if not _portrait else Vector2(360, 300)
 	await _tap(tap_pos)
-	var tap_ok := _selected_stage == "forest"
+	var opened := _stage_modal != null and _stage_modal.visible
+	_choose_stage(1)
+	var tap_ok := opened and _selected_stage == "forest_01"
+	Game.stage_records = old_records
+	_selected_stage = old_stage
+	_selected_diff = old_diff
+	Game.select_stage(_selected_stage, _selected_diff)
+	Game.save_settings()
+	_refresh()
 	print("SWIPE TEST portrait=%s start=%d next=%s back=%s clamp=%s tap=%s selected=%s page=%d" % [
 		_portrait, start_page, next_ok, back_ok, clamp_ok, tap_ok, _selected_stage, _page,
 	])
@@ -1291,6 +1429,68 @@ func _test_swipe() -> void:
 		return
 	print("SWIPE TEST OK")
 	get_tree().quit()
+
+
+func _capture_chapters() -> void:
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	_open_stage_picker("forest")
+	await get_tree().create_timer(0.25, true, false, true).timeout
+	await _capture("chapters")
+
+
+func _test_chapters() -> void:
+	await get_tree().create_timer(0.35, true, false, true).timeout
+	var errors: Array = []
+	var old_records := Game.stage_records.duplicate(true)
+	var old_stage := _selected_stage
+	var old_diff := _selected_diff
+	if GameData.campaign_order().size() != 200:
+		errors.append("campaign order=%d" % GameData.campaign_order().size())
+	if GameData.CHAPTER_BOSSES.size() != 20:
+		errors.append("chapter bosses=%d" % GameData.CHAPTER_BOSSES.size())
+	var boss := GameData.chapter_boss_data("forest")
+	if boss.is_empty() or String((boss.get("skill", {}) as Dictionary).get("name", "")) == "":
+		errors.append("chapter boss skill missing")
+	if GameData.reward_text(boss.get("reward", {})).is_empty():
+		errors.append("chapter boss reward missing")
+	var old_rewards := Game.chapter_rewards.duplicate(true)
+	Game.chapter_rewards["forest"] = true
+	if float(Game.chapter_bonuses().get("max_hp", 0.0)) < 15.0:
+		errors.append("chapter reward not applied")
+	Game.chapter_rewards = old_rewards
+	Game.stage_records = {}
+	if not Game.is_stage_unlocked("forest_01"):
+		errors.append("first stage locked")
+	if Game.is_stage_unlocked("forest_02"):
+		errors.append("second stage opened too early")
+	Game.stage_records["forest_01:normal"] = {"clears": 1}
+	if not Game.is_stage_unlocked("forest_02"):
+		errors.append("second stage did not unlock")
+	Game.stage_records["forest_10:normal"] = {"clears": 1}
+	if not Game.is_stage_unlocked("hive_01"):
+		errors.append("next chapter did not unlock")
+	_open_stage_picker("forest")
+	if not _stage_modal.visible or _stage_modal_buttons.size() != 10:
+		errors.append("stage picker did not open")
+	_choose_stage(1)
+	if _selected_stage != "forest_01":
+		errors.append("stage picker selection=%s" % _selected_stage)
+	Game.stage_records = old_records
+	_selected_stage = old_stage
+	_selected_diff = old_diff
+	Game.select_stage(_selected_stage, _selected_diff)
+	Game.save_settings()
+	_refresh()
+	if errors.is_empty():
+		print("CHAPTER TEST PASS stages=200 chapters=20")
+		print("TEST PASS")
+	else:
+		print("CHAPTER TEST FAIL")
+		for error in errors:
+			print("  ", error)
+		print("TEST FAIL")
+	get_tree().quit(0 if errors.is_empty() else 1)
+
 
 
 func _swipe(from: Vector2, to: Vector2) -> void:

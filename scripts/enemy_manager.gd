@@ -186,7 +186,12 @@ func _spawn_boss() -> void:
 	FX.shake(12.0, 1.0)
 	Audio.play("boss", 1.0, 0.0)
 	var boss_name := String(GameData.ENEMIES[kind]["name"])
-	Game.warning.emit("%s 접근 — 전선이 흔들린다" % boss_name, 4.0)
+	var chapter_boss := GameData.stage_number(Game.stage_id) == GameData.CHAPTER_STAGE_COUNT
+	if chapter_boss:
+		var named := GameData.chapter_boss_name(Game.stage_id)
+		if named != "":
+			boss_name = named
+	Game.warning.emit(("%s 강림 — 챕터 보스" % boss_name) if chapter_boss else ("%s 접근 — 전선이 흔들린다" % boss_name), 4.0)
 	Haptics.play("boss")
 
 
@@ -395,8 +400,9 @@ func spawn_stage_obstacles() -> void:
 		return
 	var kinds: Array = []
 	var count := 22
-	if GameData.NEW_STAGE_OBSTACLES.has(Game.stage_id):
-		kinds = GameData.NEW_STAGE_OBSTACLES[Game.stage_id]
+	var chapter_id := GameData.chapter_of(Game.stage_id)
+	if GameData.NEW_STAGE_OBSTACLES.has(chapter_id):
+		kinds = GameData.NEW_STAGE_OBSTACLES[chapter_id]
 		count = 24
 	else:
 		match Game.stage_id:

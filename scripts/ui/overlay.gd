@@ -879,6 +879,8 @@ func show_end(victory: bool, boss_killed: bool = false) -> void:
 		for item in Game.last_rewards.get("items", []):
 			if item is Dictionary:
 				reward_parts.append(EquipmentData.item_name(item))
+		if String(Game.last_rewards.get("chapter_reward", "")) != "":
+			reward_parts.append("챕터 보상 " + String(Game.last_rewards.get("chapter_reward", "")))
 		end_reward.text = "이번 밤 보상  " + " · ".join(reward_parts)
 	else:
 		end_reward.text = ""

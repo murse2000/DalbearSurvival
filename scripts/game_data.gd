@@ -1717,7 +1717,132 @@ const STAGES := {
 	},
 }
 
-## One rotating twist per daily challenge, chosen from the date seed.
+## Each chapter's tenth stage is guarded by an awakened version of its boss.
+## `type` selects the extra attack pattern implemented by enemy.gd; the name,
+## colour and reward are unique per chapter.
+const CHAPTER_BOSSES := {
+	"forest": {
+		"name": "월광의 군주", "title": "달빛을 삼킨 자",
+		"skill": {"name": "월광 참격", "type": "fan", "cooldown": 8.5,
+			"damage": 0.55, "count": 9, "color": Color(0.62, 1.0, 0.72)},
+		"hp_mult": 2.8, "damage_mult": 1.35, "reward": {"max_hp": 15},
+	},
+	"hive": {
+		"name": "각성한 군체 여왕", "title": "포자의 어머니",
+		"skill": {"name": "포자 폭풍", "type": "rain", "cooldown": 9.0,
+			"damage": 0.52, "count": 10, "color": Color(0.86, 0.56, 1.0)},
+		"hp_mult": 3.0, "damage_mult": 1.38, "reward": {"regen": 0.2},
+	},
+	"ship": {
+		"name": "모선 파괴자", "title": "궤도를 불태우는 함장",
+		"skill": {"name": "궤도 포격", "type": "rain", "cooldown": 8.2,
+			"damage": 0.58, "count": 12, "color": Color(0.55, 1.0, 0.95)},
+		"hp_mult": 3.1, "damage_mult": 1.40, "reward": {"damage_pct": 0.02},
+	},
+	"crater": {
+		"name": "재의 레비아탄", "title": "용암의 심장",
+		"skill": {"name": "용암 분출", "type": "nova", "cooldown": 8.0,
+			"damage": 0.55, "count": 22, "color": Color(1.0, 0.48, 0.22)},
+		"hp_mult": 3.2, "damage_mult": 1.42, "reward": {"armor": 1.0},
+	},
+	"void": {
+		"name": "월식의 군주", "title": "빛이 닿지 않는 왕",
+		"skill": {"name": "공허 붕괴", "type": "nova", "cooldown": 7.8,
+			"damage": 0.60, "count": 24, "color": Color(0.66, 0.42, 1.0)},
+		"hp_mult": 3.3, "damage_mult": 1.45, "reward": {"crit": 0.01},
+	},
+	"dunes": {
+		"name": "사막의 스콜피온", "title": "모래를 움직이는 발톱",
+		"skill": {"name": "모래 회오리", "type": "spiral", "cooldown": 8.4,
+			"damage": 0.52, "count": 24, "color": Color(1.0, 0.48, 0.24)},
+		"hp_mult": 3.4, "damage_mult": 1.46, "reward": {"speed_pct": 0.015},
+	},
+	"frost": {
+		"name": "서리 거인", "title": "호수를 얼리는 거신",
+		"skill": {"name": "빙결 파동", "type": "chrono", "cooldown": 8.6,
+			"damage": 0.54, "count": 20, "color": Color(0.48, 0.86, 1.0)},
+		"hp_mult": 3.5, "damage_mult": 1.48, "reward": {"max_hp": 20},
+	},
+	"mire": {
+		"name": "독니 여왕", "title": "안개 속의 어머니",
+		"skill": {"name": "독안개", "type": "summon", "cooldown": 9.2,
+			"damage": 0.50, "count": 18, "color": Color(0.62, 1.0, 0.42)},
+		"hp_mult": 3.6, "damage_mult": 1.50, "reward": {"pickup": 10.0},
+	},
+	"ruins": {
+		"name": "폐허의 강철신", "title": "무너진 기계의 왕",
+		"skill": {"name": "철벽 포격", "type": "fan", "cooldown": 8.0,
+			"damage": 0.58, "count": 11, "color": Color(0.62, 0.82, 0.94)},
+		"hp_mult": 3.7, "damage_mult": 1.52, "reward": {"cooldown_pct": 0.015},
+	},
+	"citadel": {
+		"name": "달빛 성채의 군주", "title": "성벽을 내려온 왕",
+		"skill": {"name": "성채 심판", "type": "beam", "cooldown": 9.0,
+			"damage": 0.62, "count": 8, "color": Color(0.78, 0.52, 1.0)},
+		"hp_mult": 3.8, "damage_mult": 1.55, "reward": {"damage_pct": 0.03},
+	},
+	"trench": {
+		"name": "심연 포식자", "title": "해구 아래의 입",
+		"skill": {"name": "심연 삼킴", "type": "summon", "cooldown": 9.4,
+			"damage": 0.56, "count": 20, "color": Color(0.62, 0.36, 1.0)},
+		"hp_mult": 3.9, "damage_mult": 1.58, "reward": {"armor": 1.0},
+	},
+	"sunspot": {
+		"name": "흑점의 군주", "title": "태양을 삼킨 흑점",
+		"skill": {"name": "흑점 폭발", "type": "nova", "cooldown": 7.6,
+			"damage": 0.65, "count": 26, "color": Color(1.0, 0.62, 0.18)},
+		"hp_mult": 4.0, "damage_mult": 1.60, "reward": {"crit": 0.01},
+	},
+	"maze": {
+		"name": "미궁의 현자", "title": "길을 접는 자",
+		"skill": {"name": "미궁 왜곡", "type": "mirror", "cooldown": 8.8,
+			"damage": 0.52, "count": 10, "color": Color(0.66, 0.62, 1.0)},
+		"hp_mult": 4.1, "damage_mult": 1.62, "reward": {"speed_pct": 0.015},
+	},
+	"orbit": {
+		"name": "종말의 궤도신", "title": "궤도를 끊는 자",
+		"skill": {"name": "궤도 절단", "type": "beam", "cooldown": 8.4,
+			"damage": 0.66, "count": 10, "color": Color(0.42, 1.0, 0.94)},
+		"hp_mult": 4.2, "damage_mult": 1.65, "reward": {"pickup": 12.0},
+	},
+	"dawn": {
+		"name": "새벽을 삼킨 자", "title": "모든 밤의 끝",
+		"skill": {"name": "새벽 심판", "type": "genesis", "cooldown": 8.5,
+			"damage": 0.64, "count": 24, "color": Color(1.0, 0.82, 0.38)},
+		"hp_mult": 4.3, "damage_mult": 1.68, "reward": {"max_hp": 25},
+	},
+	"mirror": {
+		"name": "거울의 거신", "title": "비친 왕",
+		"skill": {"name": "거울 분열", "type": "mirror", "cooldown": 8.2,
+			"damage": 0.56, "count": 12, "color": Color(0.48, 0.94, 1.0)},
+		"hp_mult": 4.4, "damage_mult": 1.70, "reward": {"regen": 0.25},
+	},
+	"chrono": {
+		"name": "시계태엽 예언자", "title": "멈춘 밤의 예언",
+		"skill": {"name": "시간 역행", "type": "chrono", "cooldown": 8.0,
+			"damage": 0.62, "count": 24, "color": Color(1.0, 0.78, 0.34)},
+		"hp_mult": 4.5, "damage_mult": 1.72, "reward": {"cooldown_pct": 0.02},
+	},
+	"grave": {
+		"name": "별의 장례자", "title": "꺼진 별의 목자",
+		"skill": {"name": "별의 장례", "type": "grave", "cooldown": 8.6,
+			"damage": 0.60, "count": 12, "color": Color(0.72, 0.56, 1.0)},
+		"hp_mult": 4.6, "damage_mult": 1.75, "reward": {"damage_pct": 0.035},
+	},
+	"heart": {
+		"name": "달의 심장", "title": "마지막으로 뛰는 심장",
+		"skill": {"name": "심장 정지", "type": "heart", "cooldown": 8.8,
+			"damage": 0.68, "count": 18, "color": Color(1.0, 0.56, 0.66)},
+		"hp_mult": 4.7, "damage_mult": 1.78, "reward": {"max_hp": 30},
+	},
+	"genesis": {
+		"name": "태초의 어머니", "title": "첫 새벽의 어머니",
+		"skill": {"name": "태초의 빛", "type": "genesis", "cooldown": 7.8,
+			"damage": 0.72, "count": 28, "color": Color(1.0, 0.92, 0.58)},
+		"hp_mult": 4.8, "damage_mult": 1.82, "reward": {"damage_pct": 0.04, "crit": 0.01},
+	},
+}
+
 const DAILY_MODIFIERS := [
 	{"id": "swarm", "name": "떼몰이", "desc": "적 출현 +25%", "spawn": 0.8,
 		"color": Color(0.9, 0.72, 0.4)},
@@ -1825,8 +1950,120 @@ const DIFFICULTIES := {
 }
 
 
+const CHAPTER_STAGE_COUNT := 10
+static var _campaign_cache: Array = []
+
+
+static func chapter_of(id: String) -> String:
+	var cut := id.rfind("_")
+	if cut > 0:
+		var suffix := id.substr(cut + 1)
+		if suffix.is_valid_int() and STAGES.has(id.substr(0, cut)):
+			return id.substr(0, cut)
+	return id if STAGES.has(id) else "forest"
+
+
+static func stage_number(id: String) -> int:
+	var cut := id.rfind("_")
+	if cut > 0:
+		var suffix := id.substr(cut + 1)
+		if suffix.is_valid_int() and STAGES.has(id.substr(0, cut)):
+			return clampi(suffix.to_int(), 1, CHAPTER_STAGE_COUNT)
+	return CHAPTER_STAGE_COUNT
+
+
+static func campaign_stage_id(chapter: String, number: int) -> String:
+	var safe_chapter := chapter if STAGES.has(chapter) else "forest"
+	return "%s_%02d" % [safe_chapter, clampi(number, 1, CHAPTER_STAGE_COUNT)]
+
+
+static func campaign_order() -> Array:
+	if _campaign_cache.is_empty():
+		for chapter in STAGE_ORDER:
+			for number in range(1, CHAPTER_STAGE_COUNT + 1):
+				_campaign_cache.append(campaign_stage_id(String(chapter), number))
+	return _campaign_cache
+
+
+static func campaign_index(id: String) -> int:
+	return campaign_order().find(id)
+
+
+static func is_valid_stage(id: String) -> bool:
+	if STAGES.has(id):
+		return true
+	var chapter := chapter_of(id)
+	if not STAGES.has(chapter):
+		return false
+	var cut := id.rfind("_")
+	if cut <= 0:
+		return false
+	var suffix := id.substr(cut + 1)
+	return suffix.is_valid_int() and int(suffix) >= 1 and int(suffix) <= CHAPTER_STAGE_COUNT
+
+
+static func chapter_boss_data(chapter: String) -> Dictionary:
+	return CHAPTER_BOSSES.get(chapter, {})
+
+
+static func chapter_boss_for_stage(id: String) -> Dictionary:
+	if stage_number(id) != CHAPTER_STAGE_COUNT:
+		return {}
+	return chapter_boss_data(chapter_of(id))
+
+
+static func chapter_boss_name(id: String) -> String:
+	var data := chapter_boss_for_stage(id)
+	return String(data.get("name", "")) if not data.is_empty() else ""
+
+
+static func reward_text(reward: Dictionary) -> String:
+	var parts: Array = []
+	for key in reward:
+		match String(key):
+			"max_hp":
+				parts.append("최대 체력 +%d" % int(reward[key]))
+			"damage_pct":
+				parts.append("피해 +%d%%" % int(round(float(reward[key]) * 100.0)))
+			"armor":
+				parts.append("방어 +%d" % int(reward[key]))
+			"cooldown_pct":
+				parts.append("공격 대기 -%d%%" % int(round(float(reward[key]) * 100.0)))
+			"crit":
+				parts.append("치명타 +%d%%" % int(round(float(reward[key]) * 100.0)))
+			"speed_pct":
+				parts.append("이동 속도 +%d%%" % int(round(float(reward[key]) * 100.0)))
+			"pickup":
+				parts.append("자력 +%d" % int(reward[key]))
+			"regen":
+				parts.append("재생 +%.2f/s" % float(reward[key]))
+			"xp_pct":
+				parts.append("경험치 +%d%%" % int(round(float(reward[key]) * 100.0)))
+	return " · ".join(parts)
+
+
 static func stage(id: String) -> Dictionary:
-	return STAGES.get(id, STAGES["forest"])
+	var chapter := chapter_of(id)
+	var number := stage_number(id)
+	var source: Dictionary = STAGES.get(chapter, STAGES["forest"])
+	var out := source.duplicate(true)
+	var step := float(number - 1)
+	out["id"] = id
+	out["chapter"] = chapter
+	out["chapter_stage"] = number
+	out["stage_label"] = "%d-%d" % [int(source.get("num", 1)), number]
+	out["name"] = "%s %s" % [String(source.get("name", "전선")), out["stage_label"]]
+	out["short"] = String(source.get("short", "전선"))
+	out["hp_scale"] = float(source.get("hp_scale", 1.0)) * (1.0 + step * 0.06)
+	out["damage_scale"] = float(source.get("damage_scale", 1.0)) * (1.0 + step * 0.025)
+	out["spawn_scale"] = float(source.get("spawn_scale", 1.0)) * (1.0 - step * 0.006)
+	out["is_chapter_boss"] = number == CHAPTER_STAGE_COUNT
+	if number == CHAPTER_STAGE_COUNT:
+		var chapter_boss := chapter_boss_for_stage(id)
+		out["chapter_boss_name"] = String(chapter_boss.get("name", ""))
+		out["chapter_boss_skill"] = String((chapter_boss.get("skill", {}) as Dictionary).get("name", ""))
+		out["boss"] = String(source.get("boss", "boss_scout"))
+	return out
 
 
 static func difficulty(id: String) -> Dictionary:
@@ -1842,9 +2079,12 @@ static func stage_boss_time(id: String) -> float:
 
 
 static func next_stage_id(id: String) -> String:
-	var idx := STAGE_ORDER.find(id)
-	if idx >= 0 and idx + 1 < STAGE_ORDER.size():
-		return STAGE_ORDER[idx + 1]
+	var order := campaign_order()
+	var idx := order.find(id)
+	if idx < 0 and STAGES.has(id):
+		idx = order.find(campaign_stage_id(id, CHAPTER_STAGE_COUNT))
+	if idx >= 0 and idx + 1 < order.size():
+		return String(order[idx + 1])
 	return ""
 
 
@@ -1895,15 +2135,16 @@ static func status_synergy(a: String, b: String) -> Dictionary:
 
 
 static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
-	if NEW_STAGE_ENEMIES.has(stage_id):
-		var pair: Array = NEW_STAGE_ENEMIES[stage_id]
+	var chapter := chapter_of(stage_id)
+	if NEW_STAGE_ENEMIES.has(chapter):
+		var pair: Array = NEW_STAGE_ENEMIES[chapter]
 		var w := {String(pair[0]): 4.0, String(pair[1]): 3.0}
 		if t > 70.0:
 			w[String(pair[1])] = 4.5
 		if t > 140.0:
 			w[String(pair[0])] = 5.0
 		return w
-	match stage_id:
+	match chapter:
 		"hive":
 			var w := {"spitter": 4.2, "blob": maxf(2.0, 8.0 - t / 50.0), "larva": 3.0}
 			if t > 35.0:
