@@ -427,9 +427,12 @@ func _build_inventory_panel() -> void:
 	filters.size = Vector2(360, 24)
 	filters.add_theme_constant_override("separation", 6)
 	panel.add_child(filters)
-	for entry in [["all", "전체"], ["armor", "방어구"], ["weapon", "무기"], ["accessory", "악세서리"]]:
+	for entry in [
+		["all", "전체", 62], ["armor", "방어", 58], ["weapon", "무기", 56],
+		["accessory", "악세", 58], ["gacha", "가챠", 62],
+	]:
 		var key := String(entry[0])
-		var b := UIKit.button(String(entry[1]), Vector2(80 if key != "accessory" else 94, 24))
+		var b := UIKit.button(String(entry[1]), Vector2(float(entry[2]), 24))
 		b.add_theme_font_size_override("font_size", 10)
 		b.toggle_mode = true
 		b.button_pressed = key == _filter
@@ -851,7 +854,10 @@ func _build_inventory() -> void:
 	for item in Game.inventory:
 		if not item is Dictionary:
 			continue
-		if _filter != "all" and EquipmentData.group_of(String(item.get("slot", ""))) != _filter:
+		if _filter == "gacha":
+			if not bool(item.get("gacha_only", false)):
+				continue
+		elif _filter != "all" and EquipmentData.group_of(String(item.get("slot", ""))) != _filter:
 			continue
 		items.append(item)
 	items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -959,6 +965,11 @@ func _make_inventory_cell(item: Dictionary) -> Panel:
 	band_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.add_child(band_label)
 
+	if bool(item.get("new_acquired", false)):
+		var new_label := UIKit.label("NEW", 8, UIKit.MINT, 2)
+		UIKit.place(new_label, 2, 14, 28, 12)
+		new_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(new_label)
 	if equipped:
 		var check := UIKit.label("✓", 13, UIKit.GOLD, 3)
 		UIKit.place(check, 46, 0, 16, 16)
@@ -1030,6 +1041,7 @@ func _select_item(uid: String) -> void:
 	_selected_uid = uid
 	_confirm_dismantle_uid = ""
 	_confirm_timer = 0.0
+	Game.mark_item_seen(uid)
 	_refresh_all()
 
 
@@ -1084,6 +1096,9 @@ func _refresh_detail() -> void:
 		EquipmentData.type_label(item), EquipmentData.rarity_name(rarity_id), lv, cap,
 		equipped_text, affinity_text,
 	]
+	var effect_text := EquipmentData.effect_text(item)
+	if effect_text != "":
+		_detail_type.text += "  ·  " + effect_text
 	var item_locked := Game.item_locked(_selected_uid)
 	if item_locked:
 		_detail_type.text += "  ·  잠금"

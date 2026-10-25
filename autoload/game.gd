@@ -94,6 +94,12 @@ var diamonds := 1000
 var gacha_pity := 0
 var gacha_count := 0
 var gacha_return := "title"
+var gacha_history: Array = []
+var gacha_free_date := ""
+var gacha_login_date := ""
+var gacha_login_streak := 0
+var daily_clear_reward_date := ""
+var weekly_boss_reward_key := ""
 var next_item_uid := 1
 var equipment_initialized := false
 var last_rewards := {}
@@ -262,7 +268,7 @@ func _reset() -> void:
 	kills = 0
 	pending_levelups = 0
 	levelup_open = false
-	rerolls = REROLL_MAX
+	rerolls = REROLL_MAX + gacha_effect_count("reroll")
 	banishes = BANISH_MAX
 	run_damage_taken = 0.0
 	boss = null
@@ -943,6 +949,15 @@ func equipped_weapons() -> Array:
 	return out
 
 
+func gacha_effect_count(effect: String) -> int:
+	var total := 0
+	for slot in EquipmentData.SLOT_ORDER:
+		var item := equipped_item(slot)
+		if not item.is_empty() and String(item.get("effect", "")) == effect:
+			total += 1
+	return total
+
+
 func equipment_power() -> int:
 	var total := 0.0
 	for slot in EquipmentData.SLOT_ORDER:
@@ -1337,13 +1352,22 @@ func add_diamonds(amount: int, save_now: bool = false) -> void:
 		save_settings()
 
 
-func gacha_pull(count: int) -> Dictionary:
+func daily_free_gacha_available() -> bool:
+	return gacha_free_date != daily_key()
+
+
+func gacha_pull(count: int, free: bool = false) -> Dictionary:
 	if count != 1 and count != 10:
 		return {"ok": false, "message": "1회 또는 10회만 소환할 수 있습니다."}
-	var cost := GACHA_1_COST if count == 1 else GACHA_10_COST
-	if diamonds < cost:
+	if free and (count != 1 or not daily_free_gacha_available()):
+		return {"ok": false, "message": "오늘의 무료 소환을 이미 사용했습니다."}
+	var cost := 0 if free else (GACHA_1_COST if count == 1 else GACHA_10_COST)
+	if not free and diamonds < cost:
 		return {"ok": false, "message": "다이아가 부족합니다."}
-	diamonds -= cost
+	if free:
+		gacha_free_date = daily_key()
+	else:
+		diamonds -= cost
 	var results: Array = []
 	var high_rank := false
 	for i in count:
@@ -1366,8 +1390,26 @@ func gacha_pull(count: int) -> Dictionary:
 		if rarity == "legendary":
 			gacha_pity = 0
 		var item := EquipmentData.make_gacha_item(rarity)
-		var added := add_item(item, false)
-		results.append(added)
+		var key := EquipmentData.gacha_dup_key(item)
+		var duplicate := _has_gacha_key(key)
+		if duplicate:
+			var shard_gain := EquipmentData.gacha_duplicate_shards(item)
+			shards += shard_gain
+			item["duplicate"] = true
+			item["shard_gain"] = shard_gain
+		else:
+			item["gacha_key"] = key
+			item["new_acquired"] = true
+			item = add_item(item, false)
+		results.append(item)
+		gacha_history.append({
+			"name": EquipmentData.item_name(item),
+			"rarity": rarity,
+			"duplicate": duplicate,
+			"date": daily_key(),
+		})
+	if gacha_history.size() > 30:
+		gacha_history = gacha_history.slice(gacha_history.size() - 30)
 	gacha_count += count
 	save_settings()
 	diamonds_changed.emit(diamonds)
@@ -1378,7 +1420,41 @@ func gacha_pull(count: int) -> Dictionary:
 		"pity": gacha_pity,
 		"count": gacha_count,
 		"cost": cost,
+		"free": free,
 	}
+
+
+func _has_gacha_key(key: String) -> bool:
+	for item in inventory:
+		if item is Dictionary and EquipmentData.gacha_dup_key(item) == key:
+			return true
+	for slot in equipped.keys():
+		var item := equipped_item(String(slot))
+		if not item.is_empty() and EquipmentData.gacha_dup_key(item) == key:
+			return true
+	return false
+
+
+func mark_item_seen(uid: String) -> void:
+	for item in inventory:
+		if item is Dictionary and String(item.get("uid", "")) == uid and bool(item.get("new_acquired", false)):
+			item["new_acquired"] = false
+			equipment_changed.emit()
+			save_settings()
+			return
+
+
+func claim_login_reward() -> int:
+	var today := daily_key()
+	if gacha_login_date == today:
+		return 0
+	var yesterday := Time.get_date_string_from_unix_time(int(Time.get_unix_time_from_system()) - 86400)
+	gacha_login_streak = clampi(gacha_login_streak + 1 if gacha_login_date == yesterday else 1, 1, 7)
+	gacha_login_date = today
+	var amount := 50 * gacha_login_streak
+	add_diamonds(amount, false)
+	save_settings()
+	return amount
 
 
 func altar_level(id: String) -> int:
@@ -1515,7 +1591,9 @@ func _check_achievements(announce: bool = true) -> void:
 			achievements[id] = true
 			changed = true
 			if announce:
-				warning.emit("업적 달성 · %s" % String(a["name"]), 3.4)
+				diamonds += 25
+				diamonds_changed.emit(diamonds)
+				warning.emit("업적 달성 · %s  ·  ◆ 25" % String(a["name"]), 3.4)
 			achievement_unlocked.emit(id)
 	if changed:
 		save_settings()
@@ -1609,6 +1687,14 @@ func end_run(victory: bool, boss_killed: bool = false) -> void:
 		if not is_endless() and run_damage_taken <= 0.0:
 			stats["flawless_wins"] = int(stats.get("flawless_wins", 0)) + 1
 	stats["max_level"] = maxi(int(stats.get("max_level", 1)), level)
+	if victory and mode == "daily" and daily_clear_reward_date != daily_key():
+		daily_clear_reward_date = daily_key()
+		diamonds += 50
+		diamonds_changed.emit(diamonds)
+	if victory and boss_killed and weekly_boss_reward_key != weekly_key:
+		weekly_boss_reward_key = weekly_key
+		diamonds += 100
+		diamonds_changed.emit(diamonds)
 	grant_run_rewards(victory and not is_endless(), boss_killed)
 	_check_achievements()
 	save_settings()
@@ -1854,6 +1940,12 @@ func save_settings() -> void:
 	cfg.set_value("gacha", "diamonds", diamonds)
 	cfg.set_value("gacha", "pity", gacha_pity)
 	cfg.set_value("gacha", "count", gacha_count)
+	cfg.set_value("gacha", "history", gacha_history)
+	cfg.set_value("gacha", "free_date", gacha_free_date)
+	cfg.set_value("gacha", "login_date", gacha_login_date)
+	cfg.set_value("gacha", "login_streak", gacha_login_streak)
+	cfg.set_value("gacha", "daily_clear_date", daily_clear_reward_date)
+	cfg.set_value("gacha", "weekly_boss_key", weekly_boss_reward_key)
 	cfg.set_value("equipment", "next_uid", next_item_uid)
 	cfg.set_value("equipment", "initialized", equipment_initialized)
 	cfg.set_value("equipment", "last_rewards", last_rewards)
@@ -1927,6 +2019,14 @@ func load_record() -> void:
 	diamonds = maxi(0, int(cfg.get_value("gacha", "diamonds", 1000)))
 	gacha_pity = maxi(0, int(cfg.get_value("gacha", "pity", 0)))
 	gacha_count = maxi(0, int(cfg.get_value("gacha", "count", 0)))
+	var loaded_history = cfg.get_value("gacha", "history", [])
+	if loaded_history is Array:
+		gacha_history = loaded_history
+	gacha_free_date = String(cfg.get_value("gacha", "free_date", ""))
+	gacha_login_date = String(cfg.get_value("gacha", "login_date", ""))
+	gacha_login_streak = maxi(0, int(cfg.get_value("gacha", "login_streak", 0)))
+	daily_clear_reward_date = String(cfg.get_value("gacha", "daily_clear_date", ""))
+	weekly_boss_reward_key = String(cfg.get_value("gacha", "weekly_boss_key", ""))
 	next_item_uid = int(cfg.get_value("equipment", "next_uid", 1))
 	equipment_initialized = bool(cfg.get_value("equipment", "initialized", false))
 	var rewards = cfg.get_value("equipment", "last_rewards", {})

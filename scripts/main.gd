@@ -1670,6 +1670,11 @@ func _test_gacha() -> void:
 	var old_count := Game.gacha_count
 	var old_inventory: Array = Game.inventory.duplicate(true)
 	var old_uid := Game.next_item_uid
+	var old_shards := Game.shards
+	var old_history: Array = Game.gacha_history.duplicate(true)
+	var old_free := Game.gacha_free_date
+	var old_login := Game.gacha_login_date
+	var old_streak := Game.gacha_login_streak
 	Game.diamonds = 2000
 	Game.gacha_pity = EquipmentData.GACHA_PITY_LIMIT - 1
 	var result := Game.gacha_pull(10)
@@ -1698,6 +1703,11 @@ func _test_gacha() -> void:
 	Game.gacha_count = old_count
 	Game.inventory = old_inventory
 	Game.next_item_uid = old_uid
+	Game.shards = old_shards
+	Game.gacha_history = old_history
+	Game.gacha_free_date = old_free
+	Game.gacha_login_date = old_login
+	Game.gacha_login_streak = old_streak
 	Game.save_settings()
 	if errors.is_empty():
 		print("GACHA TEST PASS legendary_pool=%d pity=%d" % [

@@ -149,6 +149,9 @@ func _ready() -> void:
 	recalc_stats()
 	hp = max_hp
 	_equip_starting_weapons()
+	_rebuild_relic_mods()
+	if Game.gacha_effect_count("ultimate") > 0:
+		ultimate_charge = ultimate_max * 0.5
 	hp_changed.emit(hp, max_hp)
 	stats_changed.emit()
 	Game.kills_changed.connect(_on_kills_changed)
@@ -476,7 +479,7 @@ func add_relic(id: String) -> bool:
 
 func _rebuild_relic_mods() -> void:
 	relic_mods.clear()
-	revive_charges = 0
+	revive_charges = Game.gacha_effect_count("revive")
 	for id in relics:
 		var info := RelicData.get_relic(String(id))
 		var mods: Dictionary = info.get("mods", {})

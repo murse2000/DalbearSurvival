@@ -41,17 +41,17 @@ const ITEM_SLOT_LABELS := {
 ## Gacha-only legendaries. They never enter the normal stage drop pool.
 const GACHA_LEGENDARIES := [
 	{"slot": "helmet", "name": "황혼의 왕관", "icon_override": "res://assets/art/ui/icon_equip_helmet.png",
-		"bonus": {"max_hp": 70.0, "armor": 4.0, "crit": 0.04}},
+		"bonus": {"max_hp": 70.0, "armor": 4.0, "crit": 0.04}, "effect": "revive"},
 	{"slot": "gloves", "name": "월식을 삼킨 장갑", "icon_override": "res://assets/art/ui/icon_equip_gloves.png",
-		"bonus": {"damage_pct": 0.18, "cooldown_pct": 0.10, "crit": 0.05}},
+		"bonus": {"damage_pct": 0.18, "cooldown_pct": 0.10, "crit": 0.05}, "effect": "reroll"},
 	{"slot": "chest", "name": "성운의 흉갑", "icon_override": "res://assets/art/ui/icon_equip_chest.png",
-		"bonus": {"max_hp": 130.0, "armor": 9.0, "regen": 1.0}},
+		"bonus": {"max_hp": 130.0, "armor": 9.0, "regen": 1.0}, "effect": "ultimate"},
 	{"slot": "pants", "name": "유성의 각반", "icon_override": "res://assets/art/ui/icon_equip_pants.png",
 		"bonus": {"max_hp": 80.0, "speed_pct": 0.08, "pickup": 30.0}},
 	{"slot": "boots", "name": "혜성의 발걸음", "icon_override": "res://assets/art/ui/icon_equip_boots.png",
 		"bonus": {"speed_pct": 0.13, "pickup": 45.0, "cooldown_pct": 0.05}},
 	{"slot": "cape", "name": "심연의 망토", "icon_override": "res://assets/art/ui/icon_equip_cape.png",
-		"bonus": {"armor": 8.0, "regen": 2.0, "max_hp": 60.0}},
+		"bonus": {"armor": 8.0, "regen": 2.0, "max_hp": 60.0}, "effect": "revive"},
 	{"slot": "weapon", "weapon_id": "moon_shot", "name": "월광의 종말", "icon_override": "res://assets/art/ui/icon_moon_shot.png",
 		"bonus": {"damage_pct": 0.26, "crit": 0.08, "cooldown_pct": 0.06}},
 	{"slot": "weapon", "weapon_id": "satellite", "name": "궤도를 벗어난 송곳니", "icon_override": "res://assets/art/ui/icon_satellite.png",
@@ -618,6 +618,7 @@ static func make_gacha_legendary() -> Dictionary:
 	item["icon_override"] = String(template.get("icon_override", ""))
 	item["gacha_only"] = true
 	item["gacha_legendary"] = true
+	item["effect"] = String(template.get("effect", ""))
 	return item
 
 
@@ -625,3 +626,32 @@ static func make_gacha_item(rarity_id: String) -> Dictionary:
 	if rarity_id == "legendary":
 		return make_gacha_legendary()
 	return make_item(roll_drop_slot(), rarity_id, 1)
+
+
+static func gacha_dup_key(item: Dictionary) -> String:
+	var saved := String(item.get("gacha_key", ""))
+	if saved != "":
+		return saved
+	if bool(item.get("gacha_legendary", false)):
+		return "legend:" + String(item.get("name", ""))
+	return "gear:%s:%s" % [String(item.get("slot", "")), String(item.get("rarity", "common"))]
+
+
+static func gacha_duplicate_shards(item: Dictionary) -> int:
+	return {
+		"common": 25,
+		"rare": 60,
+		"epic": 150,
+		"legendary": 600,
+	}.get(String(item.get("rarity", "common")), 25)
+
+
+static func effect_text(item: Dictionary) -> String:
+	match String(item.get("effect", "")):
+		"revive":
+			return "고유 효과 · 전투 중 1회 부활"
+		"reroll":
+			return "고유 효과 · 런 시작 리롤 +1"
+		"ultimate":
+			return "고유 효과 · 궁극기 50% 충전 시작"
+	return ""

@@ -7,13 +7,18 @@ var _portrait := false
 var _reloading := false
 var _diamonds_label: Label
 var _pity_label: Label
+var _history_label: Label
 var _message: Label
 var _results: GridContainer
 var _one_btn: Button
 var _ten_btn: Button
 var _test_btn: Button
+var _skip_btn: Button
 var _rates_modal: Control
 var _result_nodes: Array[Node] = []
+var _reveal_token := 0
+var _flash: ColorRect
+var _banner: Label
 
 
 func _ready() -> void:
@@ -28,6 +33,11 @@ func _ready() -> void:
 	UIFit.wrap_menu(self, "res://assets/art/ui/menu_backdrop.png",
 		UIFit.PORTRAIT if _portrait else UIFit.DESIGN)
 	get_viewport().size_changed.connect(_on_viewport_resized)
+	_refresh()
+	var login_bonus := Game.claim_login_reward()
+	if login_bonus > 0 and _message != null:
+		_message.text = "출석 보상  ◆ %d  ·  %d일차" % [login_bonus, Game.gacha_login_streak]
+		_message.add_theme_color_override("font_color", UIKit.GOLD_L)
 	_refresh()
 	var args := OS.get_cmdline_user_args()
 	if "--capture-gacha" in args:
@@ -138,6 +148,12 @@ func _build() -> void:
 		_results.size = Vector2(852, 280)
 	main_panel.add_child(_results)
 
+	_history_label = UIKit.label("", 11, UIKit.MUTED)
+	_history_label.position = Vector2(24, 354 if not _portrait else 594)
+	_history_label.size = Vector2(852 if not _portrait else 624, 22)
+	_history_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	main_panel.add_child(_history_label)
+
 	_message = UIKit.label("소환 버튼을 눌러 장비를 획득하세요.", 13, UIKit.MUTED)
 	_message.position = Vector2(24, 408 if not _portrait else 730)
 	_message.size = Vector2(852 if not _portrait else 624, 28)
@@ -168,6 +184,26 @@ func _build() -> void:
 	_test_btn.add_theme_font_size_override("font_size", 12)
 	_test_btn.pressed.connect(_test_charge)
 	add_child(_test_btn)
+
+	_skip_btn = UIKit.button("결과 전체 공개", Vector2(220, 34))
+	_skip_btn.position = Vector2(530, 680) if not _portrait else Vector2(240, 1120)
+	_skip_btn.add_theme_font_size_override("font_size", 14)
+	_skip_btn.visible = false
+	_skip_btn.pressed.connect(_skip_reveal)
+	add_child(_skip_btn)
+
+	_flash = ColorRect.new()
+	_flash.color = Color(1.0, 0.82, 0.35, 0.0)
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.visible = false
+	add_child(_flash)
+	_banner = UIKit.label("", 34 if _portrait else 42, UIKit.GOLD_L, 8)
+	_banner.position = Vector2(0, 300) if _portrait else Vector2(0, 300)
+	_banner.size = Vector2(720 if _portrait else 1280, 60)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.visible = false
+	add_child(_banner)
 
 	_build_rates_modal()
 
@@ -209,15 +245,32 @@ func _refresh() -> void:
 	if _diamonds_label != null:
 		_diamonds_label.text = "%d" % Game.diamonds
 	if _pity_label != null:
-		_pity_label.text = "천장까지  %d / %d" % [Game.gacha_pity, EquipmentData.GACHA_PITY_LIMIT]
+		_pity_label.text = "다음 전설까지  %d회  ·  누적 소환  %d" % [
+			maxi(0, EquipmentData.GACHA_PITY_LIMIT - Game.gacha_pity), Game.gacha_count,
+		]
 	if _one_btn != null:
-		_one_btn.disabled = Game.diamonds < Game.GACHA_1_COST
+		if Game.daily_free_gacha_available():
+			_one_btn.text = "오늘의 무료 소환"
+			_one_btn.disabled = false
+		else:
+			_one_btn.text = "1회 소환  ◆ %d" % Game.GACHA_1_COST
+			_one_btn.disabled = Game.diamonds < Game.GACHA_1_COST
 	if _ten_btn != null:
 		_ten_btn.disabled = Game.diamonds < Game.GACHA_10_COST
+	if _history_label != null:
+		var recent: Array = []
+		for i in range(maxi(0, Game.gacha_history.size() - 3), Game.gacha_history.size()):
+			var entry: Dictionary = Game.gacha_history[i]
+			recent.append("%s · %s" % [
+				EquipmentData.rarity_name(String(entry.get("rarity", "common"))),
+				String(entry.get("name", "")),
+			])
+		_history_label.text = "최근 소환  ·  " + ("  /  ".join(recent) if not recent.is_empty() else "기록 없음")
 
 
 func _pull(count: int) -> void:
-	var result := Game.gacha_pull(count)
+	var free := count == 1 and Game.daily_free_gacha_available()
+	var result := Game.gacha_pull(count, free)
 	if not result.get("ok", false):
 		_message.text = String(result.get("message", "소환할 수 없습니다."))
 		_message.add_theme_color_override("font_color", UIKit.CORAL)
@@ -226,22 +279,63 @@ func _pull(count: int) -> void:
 	Audio.play_click()
 	var items: Array = result.get("items", [])
 	_clear_results()
+	_reveal_token += 1
 	var high := false
 	for index in items.size():
 		var item: Dictionary = items[index]
 		var card := _make_result_card(item)
 		_results.add_child(card)
 		_result_nodes.append(card)
+		card.visible = false
 		card.scale = Vector2(0.82, 0.82)
 		card.pivot_offset = card.size * 0.5
-		var tw := create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(card, "scale", Vector2.ONE, 0.22).set_delay(index * 0.055)
 		if String(item.get("rarity", "")) == "legendary":
 			high = true
-	_message.text = "전설 장비가 강림했습니다!" if high else "장비를 획득했습니다."
+	_skip_btn.visible = true
+	if high:
+		_legendary_fx()
+	_message.text = ("무료 소환 완료 · " if free else "") + ("전설 장비가 강림했습니다!" if high else "장비를 획득했습니다.")
 	_message.add_theme_color_override("font_color", UIKit.GOLD_L if high else UIKit.MINT)
-	_refresh()
+	_reveal_sequence(_reveal_token)
+
+
+func _reveal_sequence(token: int) -> void:
+	for card in _result_nodes:
+		if token != _reveal_token:
+			return
+		card.visible = true
+		var tw := create_tween()
+		tw.tween_property(card, "scale", Vector2.ONE, 0.18)
+		await get_tree().create_timer(0.105, true, false, false).timeout
+	if token == _reveal_token:
+		_skip_btn.visible = false
+
+
+func _skip_reveal() -> void:
+	_reveal_token += 1
+	for card in _result_nodes:
+		card.visible = true
+		card.scale = Vector2.ONE
+	_skip_btn.visible = false
+	Audio.play_click()
+
+
+func _legendary_fx() -> void:
+	_flash.visible = true
+	_flash.color = Color(1.0, 0.82, 0.35, 0.0)
+	_banner.text = "전설 강림"
+	_banner.visible = true
+	Audio.play("levelup", 0.8, -1.0)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_flash, "color:a", 0.32, 0.12)
+	tw.tween_property(_flash, "color:a", 0.0, 0.5).set_delay(0.16)
+	tw.tween_property(_banner, "modulate:a", 0.0, 0.45).set_delay(0.3)
+	tw.chain().tween_callback(func() -> void:
+		_flash.visible = false
+		_banner.visible = false
+		_banner.modulate.a = 1.0
+	)
 
 
 func _make_result_card(item: Dictionary) -> Panel:
@@ -265,6 +359,9 @@ func _make_result_card(item: Dictionary) -> Panel:
 	card.add_child(rarity_label)
 	var type_label := UIKit.label(EquipmentData.item_short(item), 11, UIKit.MUTED)
 	type_label.position = Vector2(60, 76) if not _portrait else Vector2(72, 80)
+	if bool(item.get("duplicate", false)):
+		type_label.text = "중복 · 조각 +%d" % int(item.get("shard_gain", 0))
+		type_label.add_theme_color_override("font_color", UIKit.CORAL)
 	card.add_child(type_label)
 	if rarity == "legendary":
 		var glow := UIKit.label("★", 16, UIKit.GOLD)
