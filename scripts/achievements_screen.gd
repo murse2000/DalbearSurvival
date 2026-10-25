@@ -174,8 +174,7 @@ func _make_card(a: Dictionary, pos: Vector2, w: float, h: float) -> Panel:
 		Color(0.075, 0.11, 0.155, 0.96) if done else Color(0.045, 0.07, 0.105, 0.94),
 		accent, 2 if done else 1, 10))
 	_card_parent.add_child(card)
-	UIKit.add_panel_ornament(card,
-		Color(1.0, 0.88, 0.55, 0.72) if done else Color(1.0, 0.82, 0.44, 0.34))
+	UIKit.add_panel_ornament(card)
 
 	var icon := TextureRect.new()
 	icon.texture = load(String(a["icon"]))

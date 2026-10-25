@@ -14,12 +14,13 @@ const BORDER := Color(0.152, 0.235, 0.318)
 const INK := Color(0.027, 0.039, 0.059)
 const PURPLE := Color(0.62, 0.44, 0.9)
 
-const FANTASY_DIR := "res://assets/ui/fantasy/"
+const FANTASY_DIR := "res://assets/ui/pixel_adventure/"
 const BUTTON_NORMAL := FANTASY_DIR + "button_normal.png"
 const BUTTON_HOVER := FANTASY_DIR + "button_hover.png"
 const BUTTON_PRESSED := FANTASY_DIR + "button_pressed.png"
 const BUTTON_DISABLED := FANTASY_DIR + "button_disabled.png"
-const PANEL_FRAME := FANTASY_DIR + "panel_frame.png"
+const PANEL_BORDER := FANTASY_DIR + "panel_border_gold.png"
+const PANEL_BORDER_ALERT := FANTASY_DIR + "panel_border_alert.png"
 
 
 static func style(bg: Color, border: Color = BORDER, width: int = 2,
@@ -64,36 +65,37 @@ static func panel(bg: Color = BG, border: Color = BORDER, width: int = 2,
 	return p
 
 
-static func set_panel_ornament(p: Control, tint: Color) -> void:
-	var n := p.get_node_or_null("Ornament")
+static func set_panel_alert(p: Control, alert: bool) -> void:
+	var n := p.get_node_or_null("Ornament") as NinePatchRect
 	if n != null:
-		n.modulate = tint
+		n.texture = load(PANEL_BORDER_ALERT if alert else PANEL_BORDER)
 
 
-static func _add_panel_ornament(p: Control, tint: Color = Color(1.0, 0.82, 0.44, 0.62)) -> void:
-	var texture := load(PANEL_FRAME)
+static func _add_panel_ornament(p: Control) -> void:
+	var texture := load(PANEL_BORDER)
 	if texture == null:
 		return
 	var n := NinePatchRect.new()
 	n.name = "Ornament"
 	n.texture = texture
-	n.patch_margin_left = 16
-	n.patch_margin_top = 16
-	n.patch_margin_right = 16
-	n.patch_margin_bottom = 16
-	n.modulate = tint
+	n.patch_margin_left = 8
+	n.patch_margin_top = 8
+	n.patch_margin_right = 8
+	n.patch_margin_bottom = 8
 	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	n.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	p.add_child(n)
 	var update := func() -> void:
-		n.visible = p.size.x >= 44.0 and p.size.y >= 36.0
+		n.visible = p.size.x >= 30.0 and p.size.y >= 28.0
 	p.resized.connect(update)
 	p.tree_entered.connect(update)
 	update.call()
 
 
-static func add_panel_ornament(p: Control, tint: Color = Color(1.0, 0.82, 0.44, 0.62)) -> void:
-	_add_panel_ornament(p, tint)
+static func add_panel_ornament(p: Control, alert: bool = false) -> void:
+	_add_panel_ornament(p)
+	if alert:
+		set_panel_alert(p, true)
 
 
 static func panel_container(bg: Color = BG, border: Color = BORDER, width: int = 2,
@@ -148,10 +150,10 @@ static func apply_tab_style(b: Button, selected: bool) -> void:
 static func _button_style(path: String) -> StyleBoxTexture:
 	var s := StyleBoxTexture.new()
 	s.texture = load(path)
-	s.texture_margin_left = 12
-	s.texture_margin_top = 12
-	s.texture_margin_right = 12
-	s.texture_margin_bottom = 12
+	s.texture_margin_left = 8
+	s.texture_margin_top = 8
+	s.texture_margin_right = 8
+	s.texture_margin_bottom = 8
 	s.content_margin_left = 0
 	s.content_margin_top = 0
 	s.content_margin_right = 0

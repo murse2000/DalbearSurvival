@@ -651,8 +651,7 @@ func show_warning(text: String, duration: float = 3.0) -> void:
 	var warning_accent := warning_panel.get_node_or_null("Accent") as ColorRect
 	if warning_accent != null:
 		warning_accent.color = UIKit.GOLD if achievement else UIKit.CORAL
-	UIKit.set_panel_ornament(warning_panel,
-		Color(1.0, 0.88, 0.55, 0.86) if achievement else Color(1.0, 0.45, 0.38, 0.78))
+	UIKit.set_panel_alert(warning_panel, not achievement)
 	warning_label.add_theme_color_override("font_color", UIKit.GOLD_L if achievement else Color(1.0, 0.82, 0.7))
 	warning_panel.visible = true
 	warning_panel.modulate.a = 0.0

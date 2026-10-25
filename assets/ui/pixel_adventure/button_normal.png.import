@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b7kpgijr1i05v"
-path="res://.godot/imported/button_normal.png-393093c1537f314d4070ca3b7d8bef2f.ctex"
+uid="uid://cxqgedqf10tna"
+path="res://.godot/imported/button_normal.png-50100a6ec6e5df5e17aab6332faf6cd3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/fantasy/button_normal.png"
-dest_files=["res://.godot/imported/button_normal.png-393093c1537f314d4070ca3b7d8bef2f.ctex"]
+source_file="res://assets/ui/pixel_adventure/button_normal.png"
+dest_files=["res://.godot/imported/button_normal.png-50100a6ec6e5df5e17aab6332faf6cd3.ctex"]
 
 [params]
 

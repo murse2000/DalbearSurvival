@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pqevnioxek5t"
-path="res://.godot/imported/button_hover.png-09cf6511cd700de2f77be37acbe19d5e.ctex"
+uid="uid://cv5nbjuuuefle"
+path="res://.godot/imported/button_hover.png-6841592f43bcc44f5981632330a593cb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/fantasy/button_hover.png"
-dest_files=["res://.godot/imported/button_hover.png-09cf6511cd700de2f77be37acbe19d5e.ctex"]
+source_file="res://assets/ui/pixel_adventure/button_hover.png"
+dest_files=["res://.godot/imported/button_hover.png-6841592f43bcc44f5981632330a593cb.ctex"]
 
 [params]
 

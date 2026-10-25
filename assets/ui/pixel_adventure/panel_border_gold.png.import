@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://04dm07d8hmas"
-path="res://.godot/imported/button_pressed.png-ab26173bfe81b0bf4c47dd5a18163326.ctex"
+uid="uid://meunmk3kvn4n"
+path="res://.godot/imported/panel_border_gold.png-20637fa37ea518c049c0c01684421a55.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/fantasy/button_pressed.png"
-dest_files=["res://.godot/imported/button_pressed.png-ab26173bfe81b0bf4c47dd5a18163326.ctex"]
+source_file="res://assets/ui/pixel_adventure/panel_border_gold.png"
+dest_files=["res://.godot/imported/panel_border_gold.png-20637fa37ea518c049c0c01684421a55.ctex"]
 
 [params]
 

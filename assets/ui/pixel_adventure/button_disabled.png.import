@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bcxoelbsnpt35"
-path="res://.godot/imported/button_disabled.png-b7eb5b4f7cac226a0bd725f73c520221.ctex"
+uid="uid://c5h1r608335bu"
+path="res://.godot/imported/button_disabled.png-8398a2729068d775028d806477ce66a1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/fantasy/button_disabled.png"
-dest_files=["res://.godot/imported/button_disabled.png-b7eb5b4f7cac226a0bd725f73c520221.ctex"]
+source_file="res://assets/ui/pixel_adventure/button_disabled.png"
+dest_files=["res://.godot/imported/button_disabled.png-8398a2729068d775028d806477ce66a1.ctex"]
 
 [params]
 

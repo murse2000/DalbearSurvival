@@ -59,15 +59,15 @@ third-party game or franchise.
 - Generated music and SFX: `assets/audio/`
 - Generation tools: `tools/` (Python/Pillow/NumPy)
 
-## 6. Kenney Fantasy UI Borders
+## 6. Kenney UI Pack - Pixel Adventure
 
 - Author: Kenney (Kenney.nl)
-- Source: https://kenney.nl/assets/fantasy-ui-borders
+- Source: https://kenney.nl/assets/ui-pack-pixel-adventure
 - License: Creative Commons CC0 1.0 Universal
-- Local license: `assets/ui/fantasy/LICENSE.txt`
-- Use: selected button and panel frame textures in `assets/ui/fantasy/`
-- Modifications: frames tinted, composited with the game's dark palette, and
-  converted to 9-slice UI styles.
+- Local license: `assets/ui/pixel_adventure/LICENSE.txt`
+- Use: selected button and panel border tiles in `assets/ui/pixel_adventure/`
+- Modifications: colors remapped to the game's navy/gold palette and converted
+  to 9-slice UI styles.
 
 CC0 1.0 waives copyright and related rights. Attribution is not required and is
 included here as a courtesy.

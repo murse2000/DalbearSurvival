@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://de8yxd38en4do"
-path="res://.godot/imported/divider.png-1258b8be6647718bf70b22b970f257d8.ctex"
+uid="uid://b7gtshhbd0b7u"
+path="res://.godot/imported/panel_border_alert.png-e2b2ad622e37e4f45561e1b57d6439ff.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/fantasy/divider.png"
-dest_files=["res://.godot/imported/divider.png-1258b8be6647718bf70b22b970f257d8.ctex"]
+source_file="res://assets/ui/pixel_adventure/panel_border_alert.png"
+dest_files=["res://.godot/imported/panel_border_alert.png-e2b2ad622e37e4f45561e1b57d6439ff.ctex"]
 
 [params]
 
