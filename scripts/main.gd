@@ -1006,6 +1006,13 @@ func _test_progression() -> void:
 			"orbit_breaker", "dawn_seraph", "mirror_warden", "chrono_devourer",
 			"grave_collector", "moon_captain", "genesis_mother"]:
 		content_ok = content_ok and GameData.ENEMIES.has(id)
+	var unique_kind := GameData.chapter_enemy_id("forest_05")
+	manager.spawn_enemy(unique_kind, player.global_position + Vector2(120, 0), false)
+	var unique_spawn_ok := false
+	for e in manager.enemies:
+		if is_instance_valid(e) and String(e.get("kind")) == unique_kind:
+			unique_spawn_ok = true
+	content_ok = content_ok and unique_spawn_ok
 	print("PROGRESSION TEST stages=%d forest=%s hive_locked=%s hive=%s ship_locked=%s void=%s dunes_locked=%s dunes=%s chain=%s diagonal=%s content=%s" % [
 		GameData.STAGE_ORDER.size(), forest_open, hive_locked, hive_open, ship_locked,
 		void_open, dunes_locked, dunes_open, chain_ok, diagonal_ok, content_ok,

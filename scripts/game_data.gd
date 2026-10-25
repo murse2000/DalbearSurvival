@@ -9,6 +9,22 @@ const STAGE_ORDER := ["forest", "hive", "ship", "crater", "void",
 	"dunes", "frost", "mire", "ruins", "citadel", "trench", "sunspot", "maze", "orbit", "dawn",
 	"mirror", "chrono", "grave", "heart", "genesis"]
 
+## Every chapter has one visual / behavioural family. Stage enemies keep the
+## family palette and silhouette while gaining a stage-specific crest.
+const CHAPTER_ENEMY_CONCEPTS := {
+	"forest": "이끼 기생체", "hive": "포자 군체", "ship": "기계 파수병",
+	"crater": "잿불 마귀", "void": "공허 망령", "dunes": "모래 독니",
+	"frost": "서리 정령", "mire": "독안개 충", "ruins": "폐허 기계",
+	"citadel": "성채 기사", "trench": "심연 아귀", "sunspot": "흑점 화령",
+	"maze": "미궁 환영", "orbit": "궤도 절단자", "dawn": "새벽 사도",
+	"mirror": "거울 파편", "chrono": "시계태엽충", "grave": "별의 시체",
+	"heart": "심장 수호충", "genesis": "태초의 파편",
+}
+const STAGE_ENEMY_SUFFIXES := ["유생", "정찰병", "포식자", "기생체", "수호자",
+	"사냥꾼", "변이체", "전령", "군주", "각성체"]
+static var _chapter_enemy_cache: Dictionary = {}
+
+
 ## Each new front has its own enemy roster; no existing enemy is re-used.
 const NEW_STAGE_ENEMIES := {
 	"dunes": ["dune_stalker", "sand_spitter"],
@@ -2002,6 +2018,70 @@ static func is_valid_stage(id: String) -> bool:
 	return suffix.is_valid_int() and int(suffix) >= 1 and int(suffix) <= CHAPTER_STAGE_COUNT
 
 
+static func chapter_enemy_id(stage_id: String) -> String:
+	var chapter := chapter_of(stage_id)
+	var chapter_index := STAGE_ORDER.find(chapter)
+	var number := stage_number(stage_id)
+	return "ch%02d_%02d" % [chapter_index + 1, number]
+
+
+static func chapter_enemy(stage_id: String) -> Dictionary:
+	var enemy_id := chapter_enemy_id(stage_id)
+	if _chapter_enemy_cache.has(enemy_id):
+		return _chapter_enemy_cache[enemy_id]
+	var chapter := chapter_of(stage_id)
+	var number := stage_number(stage_id)
+	var chapter_info: Dictionary = STAGES.get(chapter, STAGES["forest"])
+	var roster: Array = chapter_info.get("enemies", ["blob"])
+	var base_kind := String(roster[0]) if not roster.is_empty() else "blob"
+	var base: Dictionary = ENEMIES.get(base_kind, ENEMIES["blob"])
+	var data := {
+		"name": "%s %s" % [String(CHAPTER_ENEMY_CONCEPTS.get(chapter, "변이체")), String(STAGE_ENEMY_SUFFIXES[number - 1])],
+		"hp": float(base.get("hp", 20.0)) * (0.80 + float(number) * 0.065),
+		"speed": float(base.get("speed", 50.0)) * (0.94 + float(number) * 0.012),
+		"damage": float(base.get("damage", 5.0)) * (0.84 + float(number) * 0.055),
+		"xp": maxi(1, int(round(float(base.get("xp", 1)) * (0.8 + number * 0.12)))),
+		"radius": float(base.get("radius", 11.0)) * (0.96 + float(number) * 0.008),
+		"texture": "res://assets/art/char/chapter_enemies/%s.png" % enemy_id,
+		"height": float(base.get("height", 34.0)) * (0.96 + float(number) * 0.01),
+		"color": chapter_info.get("accent", Color(0.8, 0.8, 1.0)),
+		"flying": bool(base.get("flying", false)),
+		"behavior": String(base.get("behavior", "chase")),
+		"chapter": chapter,
+		"chapter_stage": number,
+		"element": String(chapter_info.get("theme", "forest")),
+	}
+	_chapter_enemy_cache[enemy_id] = data
+	return data
+
+
+static func stage_from_chapter_enemy_id(id: String) -> String:
+	var parts := id.split("_")
+	if parts.size() != 2 or not parts[0].begins_with("ch"):
+		return ""
+	var chapter_number := int(parts[0].substr(2))
+	var stage_number := int(parts[1])
+	if chapter_number < 1 or chapter_number > STAGE_ORDER.size():
+		return ""
+	if stage_number < 1 or stage_number > CHAPTER_STAGE_COUNT:
+		return ""
+	return campaign_stage_id(String(STAGE_ORDER[chapter_number - 1]), stage_number)
+
+
+static func enemy_data(id: String) -> Dictionary:
+	if ENEMIES.has(id):
+		return ENEMIES[id]
+	var stage_id := stage_from_chapter_enemy_id(id)
+	if stage_id != "":
+		return chapter_enemy(stage_id)
+	return ENEMIES["blob"]
+
+
+static func enemy_exists(id: String) -> bool:
+	return ENEMIES.has(id) or stage_from_chapter_enemy_id(id) != ""
+
+
+
 static func chapter_boss_data(chapter: String) -> Dictionary:
 	return CHAPTER_BOSSES.get(chapter, {})
 
@@ -2135,7 +2215,13 @@ static func status_synergy(a: String, b: String) -> Dictionary:
 
 
 static func stage_spawn_weights(stage_id: String, t: float) -> Dictionary:
-	var chapter := chapter_of(stage_id)
+	var weights := _chapter_spawn_weights(chapter_of(stage_id), t)
+	var unique_id := chapter_enemy_id(stage_id)
+	weights[unique_id] = 2.6 + clampf(t / 240.0, 0.0, 1.0) * 1.2
+	return weights
+
+
+static func _chapter_spawn_weights(chapter: String, t: float) -> Dictionary:
 	if NEW_STAGE_ENEMIES.has(chapter):
 		var pair: Array = NEW_STAGE_ENEMIES[chapter]
 		var w := {String(pair[0]): 4.0, String(pair[1]): 3.0}

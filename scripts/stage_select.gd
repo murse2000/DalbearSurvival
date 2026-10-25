@@ -573,6 +573,8 @@ func _open_stage_picker(chapter: String) -> void:
 		var cleared := Game.has_cleared(id)
 		button.disabled = not unlocked
 		button.text = "%d-%d%s" % [int(info.get("num", 1)), number, "  BOSS" if number == 10 else ("  ✓" if cleared else "")]
+		var unique_enemy := GameData.chapter_enemy(id)
+		button.tooltip_text = "전장 변이 적 · %s" % String(unique_enemy.get("name", ""))
 		button.add_theme_color_override("font_color",
 			UIKit.GOLD_L if number == 10 and unlocked else (UIKit.MINT if cleared else UIKit.CREAM))
 		button.add_theme_color_override("font_disabled_color", UIKit.MUTED.darkened(0.25))
@@ -1448,6 +1450,22 @@ func _test_chapters() -> void:
 		errors.append("campaign order=%d" % GameData.campaign_order().size())
 	if GameData.CHAPTER_BOSSES.size() != 20:
 		errors.append("chapter bosses=%d" % GameData.CHAPTER_BOSSES.size())
+	if GameData.CHAPTER_ENEMY_CONCEPTS.size() != 20:
+		errors.append("chapter concepts=%d" % GameData.CHAPTER_ENEMY_CONCEPTS.size())
+	var unique_names := {}
+	for stage_key in GameData.campaign_order():
+		var unique_id := GameData.chapter_enemy_id(String(stage_key))
+		if not GameData.enemy_exists(unique_id):
+			errors.append("missing enemy data: %s" % unique_id)
+			continue
+		var unique_data := GameData.enemy_data(unique_id)
+		if not ResourceLoader.exists(String(unique_data.get("texture", ""))):
+			errors.append("missing enemy sprite: %s" % unique_id)
+		unique_names[String(unique_data.get("name", ""))] = true
+		if not GameData.stage_spawn_weights(String(stage_key), 0.0).has(unique_id):
+			errors.append("enemy not in spawn weights: %s" % unique_id)
+	if unique_names.size() != 200:
+		errors.append("unique enemy names=%d" % unique_names.size())
 	var boss := GameData.chapter_boss_data("forest")
 	if boss.is_empty() or String((boss.get("skill", {}) as Dictionary).get("name", "")) == "":
 		errors.append("chapter boss skill missing")

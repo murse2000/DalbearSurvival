@@ -127,7 +127,7 @@ func _spawn_random() -> void:
 func spawn_enemy(kind: String, pos: Vector2, elite: bool = false) -> void:
 	if actors == null or enemies.size() >= _max_enemies:
 		return
-	if not GameData.ENEMIES.has(kind):
+	if not GameData.enemy_exists(kind):
 		return
 	var e = ENEMY_SCENE.instantiate()
 	actors.add_child(e)
@@ -185,7 +185,7 @@ func _spawn_boss() -> void:
 	FX.flash(Color(0.7, 0.4, 1.0), 0.5, 1.0)
 	FX.shake(12.0, 1.0)
 	Audio.play("boss", 1.0, 0.0)
-	var boss_name := String(GameData.ENEMIES[kind]["name"])
+	var boss_name := String(GameData.enemy_data(kind)["name"])
 	var chapter_boss := GameData.stage_number(Game.stage_id) == GameData.CHAPTER_STAGE_COUNT
 	if chapter_boss:
 		var named := GameData.chapter_boss_name(Game.stage_id)

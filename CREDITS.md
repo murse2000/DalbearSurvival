@@ -34,7 +34,7 @@
 `tools/gen_world.py`, `tools/gen_fx_ui.py`, `tools/gen_evo_icons.py`, `tools/gen_ability_icons.py`,
 `tools/gen_equipment_icons.py`, `tools/gen_friends.py`, `tools/gen_new_stages.py`,
 `tools/gen_new_content.py`, `tools/gen_relics.py`, `tools/gen_stage_thumbs.py`,
-`tools/gen_menu_backdrop.py`, `tools/gen_icon.py`
+`tools/gen_menu_backdrop.py`, `tools/gen_icon.py`, `tools/gen_chapter_enemies.py`
 (Python + Pillow로 절차 생성, 결과물은 `assets/art/`)
 
 ### Kenney Particle Pack (CC0 1.0)

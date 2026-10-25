@@ -56,11 +56,13 @@ All other art, audio, game code and text were created for this project
 third-party game or franchise.
 
 - Character/enemy/world/UI/title art: `assets/art/`
+- Chapter-stage enemy variants: `assets/art/char/chapter_enemies/` (200 generated sprites)
 - Generated music and SFX: `assets/audio/`
 - Gacha summon rays, vignette and cues: `assets/art/fx/gacha_rays.png`,
   `assets/art/fx/gacha_vignette.png`, `assets/audio/gacha_charge.wav`,
   `assets/audio/gacha_impact.wav`, `assets/audio/gacha_legendary.wav`
 - Generation tools: `tools/` (Python/Pillow/NumPy)
+- Chapter enemy generator: `tools/gen_chapter_enemies.py`
 
 ## 6. Kenney UI Pack - Pixel Adventure
 

@@ -96,7 +96,7 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 	kind = kind_id
 	manager = manager_ref
 	player = manager_ref.player
-	data = GameData.ENEMIES[kind]
+	data = GameData.enemy_data(kind)
 	boss = bool(data.get("boss", false))
 	miniboss = bool(data.get("mini_boss", false))
 	boss_style = String(data.get("style", ""))
@@ -147,6 +147,10 @@ func setup(kind_id: String, manager_ref: Node, is_elite: bool = false) -> void:
 	max_hp *= Game.run_hp_mult
 	damage *= Game.run_damage_mult
 	speed *= Game.run_speed_mult
+	if boss:
+		var stage_step := float(GameData.stage_number(Game.stage_id) - 1)
+		max_hp *= 1.0 + stage_step * 0.07
+		damage *= 1.0 + stage_step * 0.035
 	var chapter_data := GameData.chapter_boss_for_stage(Game.stage_id)
 	if boss and not chapter_data.is_empty():
 		chapter_boss = true
