@@ -78,6 +78,10 @@ var _press_uid := ""
 var _press_pos := Vector2.ZERO
 var _press_scroll := 0
 var _press_active := false
+var _swipe_pending := false
+var _swipe_active := false
+var _swipe_start := Vector2.ZERO
+var _swipe_start_scroll := 0
 
 
 func _is_portrait() -> bool:
@@ -112,6 +116,8 @@ func _ready() -> void:
 		_test_equipment.call_deferred()
 	if "--test-drag" in _args:
 		_test_drag.call_deferred()
+	if "--test-scroll" in _args:
+		_test_scroll.call_deferred()
 	if "--test-gear-qol" in _args:
 		_test_gear_qol.call_deferred()
 	if "--capture-bulk" in _args:
@@ -1348,8 +1354,28 @@ func _input(event: InputEvent) -> void:
 			_open_characters()
 			get_viewport().set_input_as_handled()
 		return
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_swipe_pending = _inventory_swipe_zone(event.position)
+			_swipe_active = false
+			if _swipe_pending:
+				_swipe_start = event.position
+				_swipe_start_scroll = _scroll.scroll_vertical
+		else:
+			_swipe_pending = false
+			_swipe_active = false
+		return
+	if event is InputEventScreenDrag:
+		if _swipe_pending:
+			_update_swipe_scroll(event.position)
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			_swipe_pending = _inventory_swipe_zone(event.position)
+			_swipe_active = false
+			if _swipe_pending:
+				_swipe_start = event.position
+				_swipe_start_scroll = _scroll.scroll_vertical
 			var uid := _cell_uid_at(event.position)
 			if uid != "":
 				# Do not take the press: the scroll container may still scroll.
@@ -1360,19 +1386,67 @@ func _input(event: InputEvent) -> void:
 				_press_scroll = _scroll.scroll_vertical if _scroll != null else 0
 		else:
 			_press_active = false
+			_swipe_pending = false
+			_swipe_active = false
 		return
-	if event is InputEventMouseMotion and _press_active and _drag_uid == "":
-		var scrolled: bool = _scroll != null and _scroll.scroll_vertical != _press_scroll
-		if scrolled:
-			_press_active = false
-			return
-		if event.position.distance_to(_press_pos) > 14.0:
-			_drag_begin(_press_uid, _press_pos)
-			if _drag_uid != "":
-				_drag_move(event.position)
-				get_viewport().set_input_as_handled()
-			else:
+	if event is InputEventMouseMotion:
+		if _swipe_pending or _swipe_active:
+			if _update_swipe_scroll(event.position):
+				return
+		if _press_active and _drag_uid == "":
+			var scrolled: bool = _scroll != null and _scroll.scroll_vertical != _press_scroll
+			if scrolled:
 				_press_active = false
+				return
+			if event.position.distance_to(_press_pos) > 14.0:
+				_drag_begin(_press_uid, _press_pos)
+				if _drag_uid != "":
+					_drag_move(event.position)
+					get_viewport().set_input_as_handled()
+				else:
+					_press_active = false
+
+
+func _inventory_swipe_zone(pos: Vector2) -> bool:
+	if _scroll == null or not _can_scroll_inventory():
+		return false
+	return _scroll.get_global_rect().has_point(pos)
+
+
+func _can_scroll_inventory() -> bool:
+	if _scroll == null:
+		return false
+	var bar := _scroll.get_v_scroll_bar()
+	return bar != null and bar.max_value > bar.page + 0.5
+
+
+func _update_swipe_scroll(pos: Vector2) -> bool:
+	if not _swipe_pending or _scroll == null:
+		return false
+	var delta := pos - _swipe_start
+	if not _swipe_active:
+		if absf(delta.y) < 12.0 or absf(delta.y) <= absf(delta.x):
+			return false
+		_swipe_active = true
+		if _drag_uid != "":
+			_drag_uid = ""
+			_drag_ghost.visible = false
+	if _swipe_active and _press_active and _press_uid != "" and _slot_at(pos) != "":
+		_swipe_pending = false
+		_swipe_active = false
+		_press_active = false
+		_drag_begin(_press_uid, _press_pos)
+		if _drag_uid != "":
+			_drag_move(pos)
+			get_viewport().set_input_as_handled()
+			return true
+		return false
+	var scale_y := absf(_scroll.get_global_transform_with_canvas().get_scale().y)
+	if scale_y < 0.001:
+		scale_y = 1.0
+	_scroll.scroll_vertical = _swipe_start_scroll - int(delta.y / scale_y)
+	get_viewport().set_input_as_handled()
+	return true
 
 
 func _cell_uid_at(pos: Vector2) -> String:
@@ -1559,6 +1633,60 @@ func _send_motion(pos: Vector2) -> void:
 	var e := InputEventMouseMotion.new()
 	e.position = pos
 	e.global_position = pos
+	get_viewport().push_input(e, true)
+
+
+func _test_scroll() -> void:
+	await get_tree().create_timer(0.5, true, false, true).timeout
+	var errors: Array = []
+	var moved := 0
+	var old_inv: Array = Game.inventory.duplicate(true)
+	for i in range(30):
+		Game.add_item(EquipmentData.make_item("helmet", "common", 1), false)
+	_refresh_all()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not _can_scroll_inventory():
+		errors.append("inventory did not overflow")
+	else:
+		var center := _scroll.get_global_rect().get_center()
+		var before := _scroll.scroll_vertical
+		_send_touch(center, true)
+		_send_button(center, true)
+		await get_tree().process_frame
+		_send_drag(center + Vector2(0, -50))
+		_send_drag(center + Vector2(0, -100))
+		_send_drag(center + Vector2(0, -150))
+		await get_tree().process_frame
+		_send_touch(center + Vector2(0, -150), false)
+		_send_button(center + Vector2(0, -150), false)
+		await get_tree().process_frame
+		moved = _scroll.scroll_vertical - before
+		if moved < 40:
+			errors.append("swipe scroll moved %d" % moved)
+	Game.inventory = old_inv
+	_refresh_all()
+	if errors.is_empty():
+		print("SCROLL TEST PASS moved=%d" % moved)
+		get_tree().quit()
+	else:
+		push_error("SCROLL TEST FAILED: %s" % str(errors))
+		get_tree().quit(1)
+
+
+func _send_touch(pos: Vector2, pressed: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = 0
+	e.pressed = pressed
+	e.position = pos
+	get_viewport().push_input(e, true)
+
+
+func _send_drag(pos: Vector2) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = 0
+	e.position = pos
+	e.relative = Vector2.ZERO
 	get_viewport().push_input(e, true)
 
 

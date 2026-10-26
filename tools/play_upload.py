@@ -37,14 +37,16 @@ DEFAULT_CREDENTIALS = Path("secrets/play-service-account.json")
 
 DEFAULT_NOTES = {
     "ko-KR": (
-        "v1.25.2 업데이트\n"
-        "- 챕터 전장 선택 창의 닫기 버튼이 화면 비율에 따라 잘리던 문제 수정\n"
-        "- 울트라와이드·태블릿에서 모달 중앙 정렬과 하단 여백 개선"
+        "v1.25.4 업데이트\n"
+        "- 장비 인벤토리가 넘칠 때 터치 스와이프로 스크롤할 수 있도록 수정\n"
+        "- 아이템을 슬롯 위로 끌면 기존처럼 드래그 장착\n"
+        "- 챕터 전장 선택 창의 닫기 버튼이 잘리던 문제 수정"
     ),
     "en-US": (
-        "v1.25.2 update\n"
-        "- Fixed the close button being clipped in the chapter stage picker on some aspect ratios\n"
-        "- Improved modal centering and bottom spacing on ultrawide and tablet screens"
+        "v1.25.4 update\n"
+        "- Inventory can now be scrolled with a touch swipe when it overflows\n"
+        "- Dragging an item onto a slot still equips it\n"
+        "- Fixed the chapter stage picker close button being clipped"
     ),
 }
 
