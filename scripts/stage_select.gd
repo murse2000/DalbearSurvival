@@ -42,6 +42,8 @@ var _drag_moved := 0.0
 var _diff_desc: Label
 var _stage_hint: Label
 var _stage_modal: Control
+var _stage_modal_panel: Panel
+var _stage_modal_close: Button
 var _stage_modal_chapter := ""
 var _stage_modal_title: Label
 var _stage_modal_info: Label
@@ -515,13 +517,20 @@ func _build_stage_modal() -> void:
 	_stage_modal.visible = false
 	add_child(_stage_modal)
 	_stage_modal.add_child(UIKit.dimmer(0.92))
+	var design := UIFit.PORTRAIT if _portrait else UIFit.DESIGN
 	var pw := 660.0 if _portrait else 760.0
-	var ph := 600.0 if _portrait else 370.0
-	var panel := UIKit.panel(Color(0.035, 0.058, 0.09, 0.995), UIKit.GOLD, 3)
-	panel.position = Vector2(30, 340) if _portrait else Vector2(260, 175)
-	panel.size = Vector2(pw, ph)
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_stage_modal.add_child(panel)
+	var rows := 5 if _portrait else 2
+	var grid_bottom := 155.0 + float(rows) * 70.0
+	var close_h := 48.0
+	var close_gap := 14.0
+	var bottom_margin := 24.0
+	var ph := grid_bottom + close_gap + close_h + bottom_margin
+	_stage_modal_panel = UIKit.panel(Color(0.035, 0.058, 0.09, 0.995), UIKit.GOLD, 3)
+	_stage_modal_panel.position = Vector2((design.x - pw) * 0.5, (design.y - ph) * 0.5)
+	_stage_modal_panel.size = Vector2(pw, ph)
+	_stage_modal_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_stage_modal.add_child(_stage_modal_panel)
+	var panel := _stage_modal_panel
 	var over := UIKit.label("CHAPTER STAGES", 12, UIKit.MINT)
 	over.position = Vector2(28, 18)
 	panel.add_child(over)
@@ -545,11 +554,12 @@ func _build_stage_modal() -> void:
 		button.pressed.connect(_choose_stage.bind(i + 1))
 		panel.add_child(button)
 		_stage_modal_buttons.append(button)
-	var close := UIKit.button("닫기", Vector2(180, 48))
-	close.position = Vector2((pw - 180) * 0.5, ph - 62)
+	var close := UIKit.button("닫기", Vector2(180, close_h))
+	close.position = Vector2((pw - 180.0) * 0.5, ph - bottom_margin - close_h)
 	close.add_theme_font_size_override("font_size", 18)
 	close.pressed.connect(func() -> void: _stage_modal.visible = false)
 	panel.add_child(close)
+	_stage_modal_close = close
 
 
 func _open_stage_picker(chapter: String) -> void:
@@ -1496,6 +1506,15 @@ func _test_chapters() -> void:
 	_open_stage_picker("forest")
 	if not _stage_modal.visible or _stage_modal_buttons.size() != 10:
 		errors.append("stage picker did not open")
+	if _stage_modal_panel == null or _stage_modal_close == null:
+		errors.append("stage picker layout refs missing")
+	else:
+		var design_height := UIFit.PORTRAIT.y if _portrait else UIFit.DESIGN.y
+		if _stage_modal_close.position.y + _stage_modal_close.size.y > _stage_modal_panel.size.y - 16.0:
+			errors.append("stage picker close button clipped")
+		if _stage_modal_panel.position.y < 0.0 \
+				or _stage_modal_panel.position.y + _stage_modal_panel.size.y > design_height:
+			errors.append("stage picker panel outside design")
 	_choose_stage(1)
 	if _selected_stage != "forest_01":
 		errors.append("stage picker selection=%s" % _selected_stage)

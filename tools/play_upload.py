@@ -37,18 +37,14 @@ DEFAULT_CREDENTIALS = Path("secrets/play-service-account.json")
 
 DEFAULT_NOTES = {
     "ko-KR": (
-        "v1.25.1 업데이트\n"
-        "- 20개 챕터 / 200개 전장으로 확장\n"
-        "- 챕터별 10번째 보스에 고유 스킬과 영구 능력치 보상 추가\n"
-        "- 200종 신규 변이 적과 전장별 난이도 스케일링 적용\n"
-        "- 챕터 선택 및 전장 선택 UI 개선"
+        "v1.25.2 업데이트\n"
+        "- 챕터 전장 선택 창의 닫기 버튼이 화면 비율에 따라 잘리던 문제 수정\n"
+        "- 울트라와이드·태블릿에서 모달 중앙 정렬과 하단 여백 개선"
     ),
     "en-US": (
-        "v1.25.1 update\n"
-        "- Expanded to 20 chapters and 200 stages\n"
-        "- Chapter bosses now have unique skills and permanent stat rewards\n"
-        "- Added 200 new variant enemies and per-stage difficulty scaling\n"
-        "- Improved chapter and stage selection UI"
+        "v1.25.2 update\n"
+        "- Fixed the close button being clipped in the chapter stage picker on some aspect ratios\n"
+        "- Improved modal centering and bottom spacing on ultrawide and tablet screens"
     ),
 }
 
