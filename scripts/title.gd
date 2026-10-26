@@ -47,6 +47,8 @@ func _ready() -> void:
 		_test_title_continue()
 	if "--test-title-resume" in _args:
 		_test_title_resume()
+	if "--test-title-layout" in _args:
+		_test_title_layout.call_deferred()
 	if "--smoke-start" in _args:
 		Game.clear_run_checkpoint()
 		_start.call_deferred()
@@ -275,7 +277,10 @@ func _fit_title() -> void:
 				_new_run_btn.position = Vector2(4, 446)
 				_new_run_btn.add_theme_font_size_override("font_size", 15)
 	else:
-		var s := maxf(1.0, minf(vp.y / 720.0, vp.x / 820.0))
+		var row_w := 790.0
+		if _button_row != null:
+			row_w = maxf(row_w, _button_row.get_combined_minimum_size().x)
+		var s := clampf(minf(vp.y / 720.0, (vp.x * 0.72 - 96.0) / row_w), 0.65, 2.4)
 		_content.scale = Vector2(s, s)
 		_content.position = Vector2(96.0 * s, maxf(24.0, (vp.y - 560.0 * s) * 0.5))
 		_bg.position = Vector2.ZERO
@@ -532,6 +537,33 @@ func _test_settings() -> void:
 	print("SETTINGS TEST OK bloom=", target, " persisted and restored=", original,
 		" quality_restored=", Settings.get_choice("quality"))
 	get_tree().quit()
+
+
+func _test_title_layout() -> void:
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	var errors: Array = []
+	var vp := get_viewport_rect().size
+	if _button_row == null:
+		errors.append("button row missing")
+	else:
+		var row := _button_row.get_global_rect()
+		if row.position.x < -2.0 or row.end.x > vp.x + 2.0:
+			errors.append("row x %.1f..%.1f vp %.1f" % [row.position.x, row.end.x, vp.x])
+		if row.position.y < -2.0 or row.end.y > vp.y + 2.0:
+			errors.append("row y %.1f..%.1f vp %.1f" % [row.position.y, row.end.y, vp.y])
+		for child in _button_row.get_children():
+			var button := child as Control
+			if button == null:
+				continue
+			var rect := button.get_global_rect()
+			if rect.position.x < -2.0 or rect.end.x > vp.x + 2.0:
+				errors.append("button %s x %.1f..%.1f" % [button.name, rect.position.x, rect.end.x])
+	if errors.is_empty():
+		print("TITLE LAYOUT PASS vp=%s scale=%.3f" % [str(vp), _content.scale.x])
+		get_tree().quit()
+		return
+	push_error("TITLE LAYOUT FAIL vp=%s %s" % [str(vp), str(errors)])
+	get_tree().quit(1)
 
 
 func _test_title_continue() -> void:
